@@ -15,30 +15,30 @@ data Expr
 
     -- | Lambda abstraction
     = Lam
-      { take :: Type
-      , expr :: Expr
+      {_take :: Type
+      ,_expr :: Expr
       }
 
     -- | Application
     | App
-      { f :: Expr
-      , x :: Expr
+      {_f :: Expr
+      ,_x :: Expr
       }
 
     -- | Term literal
     | Term
-      { term :: TermName
+      {_term :: TermName
       }
 
     -- | Variable
     | Var
-      { var :: Var
+      {_var :: Var
       }
 
     -- | Case analysis of an expression
     | Case
-      { caseExp      :: Expr
-      , caseBranches :: PossibleCaseBranches
+      {_caseExpr     :: Expr
+      ,_caseBranches :: PossibleCaseBranches
       }
 
     -- | An expression is indexed within a Sum type
@@ -46,9 +46,9 @@ data Expr
     -- Currently assuming type guarantees index is within bounds of sumType
     -- (Not unless type-checked that that the expr has that type)
     | Sum
-      { sumExpr  :: Expr
-      , sumIndex :: Int
-      , sumType  :: [Type]
+      {_sumExpr  :: Expr
+      ,_sumIndex :: Int
+      ,_sumType  :: [Type]
       }
     deriving Show
 
@@ -79,8 +79,6 @@ data PossibleCaseBranches
 
 -- | One or many 'CaseBranch'
 data SomeCaseBranches = SomeCaseBranches CaseBranch [CaseBranch]
-                     --SomeCaseTermBranches CaseTermBranch [CaseTermBranch]
-                     --SomeCaseSumBranch    CaseSumBranch [CaseSumBranch]
   deriving Show
 
 -- | A single branch in a case analysis of a type.
@@ -124,31 +122,31 @@ data TermInfo = TermInfo
 type NameCtx = Map.Map TermName TermInfo
 
 -- | A top-level expression is an expression without a variable context.
-topExpType :: NameCtx -> Expr -> Either Error Type
-topExpType = expType emptyVarCtx
+topExprType :: NameCtx -> Expr -> Either Error Type
+topExprType = exprType emptyVarCtx
 
 -- | Under a given variable context, type check an expression.
-expType :: VarCtx -> NameCtx -> Expr -> Either Error Type
-expType varCtx nameCtx e = case e of
+exprType :: VarCtx -> NameCtx -> Expr -> Either Error Type
+exprType varCtx nameCtx e = case e of
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
   --                 They therefore can never be applied.
   --
-  --      x : absTy     exp : expTy
+  --      x : absTy     expr : exprTy
   -- ----------------------------------
-  --   Lam absTy exp : absTy -> expTy
-  Lam absTy exp
+  --   Lam absTy expr : absTy -> exprTy
+  Lam absTy expr
     -> do let newVarCtx = addVar absTy varCtx
-          expTy <- expType newVarCtx nameCtx exp
-          Right $ Arrow absTy expTy
+          exprTy <- exprType newVarCtx nameCtx expr
+          Right $ Arrow absTy exprTy
 
   -- |
   --   f : a -> b    x : a
   -- -----------------------
   --       App f x : b
   App f x
-    -> do fTy <- expType varCtx nameCtx f -- Both f and x must type check
-          xTy <- expType varCtx nameCtx x
+    -> do fTy <- exprType varCtx nameCtx f -- Both f and x must type check
+          xTy <- exprType varCtx nameCtx x
 
           let errAppMismatch = Left $ EAppMismatch fTy xTy
           case fTy of
@@ -181,7 +179,7 @@ expType varCtx nameCtx e = case e of
   -- has that sum type.
   Sum expr index inTypr
     -> do -- Expression must type check
-          exprTy <- expType varCtx nameCtx expr
+          exprTy <- exprType varCtx nameCtx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
           _ <- if exprTy /= (inTypr !! index) then Left $ EMsg "Expression doesnt have the type of the position in a sum type it claims it has" else Right ()
@@ -203,42 +201,42 @@ expType varCtx nameCtx e = case e of
 
   -- | A case expression with only a defaut branch.
   --
-  -- caseExp : ct   defExp : t
+  -- caseExpr : ct   defExpr : t
   -- --------------------------
-  --   case caseExp Of
-  --      defExp         : t
-  Case caseExp (DefaultOnly defExp)
-    -> do -- caseExp should be well typed (but we don't care about anything else)
-          _ <- expType varCtx nameCtx caseExp
+  --   case caseExpr Of
+  --      defExpr        : t
+  Case caseExpr (DefaultOnly defExpr)
+    -> do -- caseExpr should be well typed (but we don't care about anything else)
+          _ <- exprType varCtx nameCtx caseExpr
 
           -- The case expression is then typed by the default branch assuming its well typed
-          expType varCtx nameCtx defExp
+          exprType varCtx nameCtx defExpr
 
 
   -- | A case expression with one or many branches and a possible default branch.
   --
-  -- caseExp : ct    defExp : dt    branch0 : t     branches : [t]
+  -- caseExpr : ct    defExpr : dt    branch0 : t     branches : [t]
   -- -------------------------------------------------------------
-  --                   case caseExp of
+  --                   case caseExpr of
   --                     branch0
   --                     branches      : t
-  --                     mDefExp
-  Case caseExp (CaseBranches (SomeCaseBranches branch0 branches) mDefExp)
+  --                     mDefExpr
+  Case caseExpr (CaseBranches (SomeCaseBranches branch0 branches) mDefExpr)
     -> do -- The expression case-analysed on must type-check
-          caseExpTy <- expType varCtx nameCtx caseExp
+          caseExprTy <- exprType varCtx nameCtx caseExpr
 
           -- Check the first and any other branches
-          branch0Ty <- branchType branch0 caseExpTy varCtx nameCtx
-          branchTys <- mapM (\branch -> branchType branch caseExpTy varCtx nameCtx) branches
+          branch0Ty <- branchType branch0 caseExprTy varCtx nameCtx
+          branchTys <- mapM (\branch -> branchType branch caseExprTy varCtx nameCtx) branches
 
           -- Check the default branch if it exists
-          mDefExpTy <- maybe (Right Nothing) (\defExp -> Just <$> expType varCtx nameCtx defExp) mDefExp
+          mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType varCtx nameCtx defExpr) mDefExpr
 
           -- Check all branches have the same result type
           -- If the default branch exists, its type must be the same as the first branch
           _<- maybe (Right ())
-                    (\defExpTy -> if defExpTy == branch0Ty then Right () else Left $ EMsg "Default branch and first case branch have different result types")
-                    mDefExpTy
+                    (\defExprTy -> if defExprTy == branch0Ty then Right () else Left $ EMsg "Default branch and first case branch have different result types")
+                    mDefExprTy
           -- Any other branches must have the same type as the first
           _<- mapM (\branchTy -> if branchTy == branch0Ty then Right () else Left $ EMsg "Branch and first branch have different result types")
                    branchTys
@@ -249,20 +247,20 @@ expType varCtx nameCtx e = case e of
 -- Type check a case branch, requring it match the expected type under a namectx
 -- if so, type checking the result expression which is returned
 branchType :: CaseBranch -> Type -> VarCtx -> NameCtx -> Either Error Type
-branchType caseBranch caseExpTy varCtx nameCtx = case caseBranch of
+branchType caseBranch caseExprTy varCtx nameCtx = case caseBranch of
     CaseTerm caseTermName caseTermMatches caseTermExpr
        -> do -- must be well-typed and have the same type as the case expression
-             bindVars <- checkMatchWith (MatchTerm caseTermName caseTermMatches) caseExpTy nameCtx
+             bindVars <- checkMatchWith (MatchTerm caseTermName caseTermMatches) caseExprTy nameCtx
 
              -- Type check the RHS under any newly bound vars
-             expType (addVars bindVars varCtx) nameCtx caseTermExpr
+             exprType (addVars bindVars varCtx) nameCtx caseTermExpr
 
     CaseSum caseSumIndex caseSumMatch caseSumExpr
       -> do -- must be well-typed and have the same type as the case expression
-            bindVars <- checkMatchWith (MatchSum caseSumIndex caseSumMatch) caseExpTy nameCtx
+            bindVars <- checkMatchWith (MatchSum caseSumIndex caseSumMatch) caseExprTy nameCtx
 
             -- Type check the RHS under any newly bound vars
-            expType (addVars bindVars varCtx) nameCtx caseSumExpr
+            exprType (addVars bindVars varCtx) nameCtx caseSumExpr
 
 -- | Check that a MatchArg matches the expected Type under a NameCtx.
 -- If so, return a list of types of any bound variables.
@@ -301,3 +299,4 @@ checkMatchesWith matches types nameCtx = case (matches,types) of
   (ms,[]) -> Left $ EMsg "Too many patterns in match"
   ((m:ms),(t:ts))
     -> checkMatchWith m t nameCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx >>= Right . (boundTs ++)
+

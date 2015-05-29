@@ -71,6 +71,6 @@ sum3Expr = Lam (SumT [ty "Nat",ty "Bool", ty "Nat"]) $
         )
         Nothing
 
-runTest = mapM (topExpType nameCtx) [andExpr,subTwoExpr,sum3Expr]
+runTest = mapM (topExprType nameCtx) [andExpr,subTwoExpr,sum3Expr]
 
 

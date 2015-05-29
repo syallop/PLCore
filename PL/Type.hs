@@ -18,6 +18,11 @@ data Type
     {_from :: Type
     ,_to   :: Type
     }
+
+  -- | Ordered alternative types
+  | SumT
+    {_sumTypes :: [Type]
+    }
   deriving (Eq,Ord)
 
 -- | Is a Type a simple named type
@@ -42,6 +47,9 @@ instance Show Type where
 
     Type belongs
       -> unTypeName belongs
+
+    SumT types
+      -> intercalate "|" $ map show types
 
 -- PARTIAL
 -- [a]   ~> Type a

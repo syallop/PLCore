@@ -40,6 +40,16 @@ data Expr
       { caseExp      :: Expr
       , caseBranches :: PossibleCaseBranches
       }
+
+    -- | An expression is indexed within a Sum type
+    --
+    -- Currently assuming type guarantees index is within bounds of sumType
+    -- (Not unless type-checked that that the expr has that type)
+    | Sum
+      { sumExpr  :: Expr
+      , sumIndex :: Int
+      , sumType  :: [Type]
+      }
     deriving Show
 
 -- | Body of a case expression. Is either:
@@ -69,6 +79,8 @@ data PossibleCaseBranches
 
 -- | One or many 'CaseBranch'
 data SomeCaseBranches = SomeCaseBranches CaseBranch [CaseBranch]
+                     --SomeCaseTermBranches CaseTermBranch [CaseTermBranch]
+                     --SomeCaseSumBranch    CaseSumBranch [CaseSumBranch]
   deriving Show
 
 -- | A single branch in a case analysis of a type.
@@ -78,10 +90,17 @@ data CaseBranch
 
     -- | Match against a fully applied term
     -- (where parameters are implicitly bound with de brujn indices)
-    = MatchTerm
-      {_caseTermName :: TermName   -- ^ The term literal matched upon
-      ,_caseMatches  :: [MatchArg] -- ^ Argument pattern
-      ,_caseExpr     :: Expr       -- ^ Result of a successful match
+    = CaseTerm
+      {_caseTermName    :: TermName   -- ^ The term literal matched upon
+      ,_caseTermMatches :: [MatchArg] -- ^ Argument pattern
+      ,_caseTermExpr    :: Expr       -- ^ Result of a successful match
+      }
+
+    -- | Match against an indexed alternative in a sum
+    | CaseSum
+      {_caseSumIndex :: Int
+      ,_caseSumMatch :: MatchArg
+      ,_caseSumExpr  :: Expr
       }
     deriving Show
 
@@ -89,8 +108,9 @@ data CaseBranch
 -- case ... of
 --  T {A b (C d E)} -> ...
 data MatchArg
-  = MatchLit TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
-  | BindVar                      -- ^ Match anything and bind it as a variable
+  = MatchTerm TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
+  | MatchSum  Int      MatchArg   -- ^ Match against a sum alternative (which may be applied to more patterns)
+  | BindVar                       -- ^ Match anything and bind it as a variable
   deriving Show
 
 -- | Describes some Term which takes zero or many typed params
@@ -137,6 +157,10 @@ expType varCtx nameCtx e = case e of
             Type _
               -> errAppMismatch
 
+            -- Expression of a sum type cannot be applied to things
+            SumT _
+              -> errAppMismatch
+
             -- 1. Regular function application attempt
             Arrow aTy bTy
               | aTy == xTy -> Right bTy
@@ -153,6 +177,21 @@ expType varCtx nameCtx e = case e of
     -> do TermInfo params belongs <- maybe (Left $ ETermNotDefined termName) Right $ Map.lookup termName nameCtx
           Right $ arrowise (params ++ [ty belongs])
 
+  -- Provided an expression type checks and its type is in the correct place within a sum,
+  -- has that sum type.
+  Sum expr index inTypr
+    -> do -- Expression must type check
+          exprTy <- expType varCtx nameCtx expr
+
+          -- Expression must have the type of the index in the sum it claims to have...
+          _ <- if exprTy /= (inTypr !! index) then Left $ EMsg "Expression doesnt have the type of the position in a sum type it claims it has" else Right ()
+
+          -- Allow the other types in the sum to not exist...
+          _ <- Right ()
+
+          -- Type is the claimed sum
+          Right $ SumT inTypr
+
   -- | A variable is typed by the context
   -- It is assumed the varCtx has been type checked
   --
@@ -161,7 +200,6 @@ expType varCtx nameCtx e = case e of
   --      var : t
   Var var
     -> Right $ var `index` varCtx
-
 
   -- | A case expression with only a defaut branch.
   --
@@ -188,34 +226,11 @@ expType varCtx nameCtx e = case e of
   Case caseExp (CaseBranches (SomeCaseBranches branch0 branches) mDefExp)
     -> do -- The expression case-analysed on must type-check
           caseExpTy <- expType varCtx nameCtx caseExp
-          -- .. and also must have a Type type
-          caseExpTyName <- if isType caseExpTy then Right (_hasType caseExpTy) else Left $ EMsg "Only case analysis on regular (non-function) types is supported"
-
-          -- Check a branches:
-          -- - Term exists
-          -- - Is applied to the correct number and type of arguments
-          -- - RHS expression is well typed under any new variables bound in the match
-          --
-          -- return the RHS type
-          let checkBranch :: CaseBranch -> Either Error Type
-              checkBranch branch = do
-                  -- The expected param and type of the given term name
-                  TermInfo termParamTys termBelongs <- maybe (Left $ EMsg "branch isnt a known term") Right $ Map.lookup (_caseTermName branch) nameCtx
-
-                  -- Must match on the same type as the case expression
-                  _ <- if caseExpTyName /= termBelongs then Left $ EMsg "branch matches on a term from a different type" else Right ()
-
-                  -- check the match term is applied to the correct number of args
-                  -- - return any bound vars that should be entered into the RHS exps context
-                  bindVars <- checkTermMatchArgs (_caseMatches branch) termParamTys nameCtx
-
-                  -- type check the RHS under any newy bound vars
-                  expType (addVars bindVars varCtx) nameCtx (_caseExpr branch)
-
 
           -- Check the first and any other branches
-          branch0Ty <- checkBranch branch0
-          branchTys <- mapM checkBranch branches
+          branch0Ty <- branchType branch0 caseExpTy varCtx nameCtx
+          branchTys <- mapM (\branch -> branchType branch caseExpTy varCtx nameCtx) branches
+
           -- Check the default branch if it exists
           mDefExpTy <- maybe (Right Nothing) (\defExp -> Just <$> expType varCtx nameCtx defExp) mDefExp
 
@@ -231,31 +246,58 @@ expType varCtx nameCtx e = case e of
           Right branch0Ty
           -- TODO: maybe check coverage...
 
+-- Type check a case branch, requring it match the expected type under a namectx
+-- if so, type checking the result expression which is returned
+branchType :: CaseBranch -> Type -> VarCtx -> NameCtx -> Either Error Type
+branchType caseBranch caseExpTy varCtx nameCtx = case caseBranch of
+    CaseTerm caseTermName caseTermMatches caseTermExpr
+       -> do -- must be well-typed and have the same type as the case expression
+             bindVars <- checkMatchWith (MatchTerm caseTermName caseTermMatches) caseExpTy nameCtx
 
--- | The matchArgs must correspond to the expected types, same length, same order. Return the list of types that are bound in order by the pattern.
-checkTermMatchArgs :: [MatchArg] -> [Type] -> NameCtx -> Either Error [Type]
-checkTermMatchArgs matchArgs expectedTs nameCtx = case (matchArgs,expectedTs) of
-    ([],[]) -> Right []
+             -- Type check the RHS under any newly bound vars
+             expType (addVars bindVars varCtx) nameCtx caseTermExpr
 
-    ([],ts) -> Left $ EMsg "Expected more types in match pattern"
-    (ts,[]) -> Left $ EMsg "Too many types in match pattern"
+    CaseSum caseSumIndex caseSumMatch caseSumExpr
+      -> do -- must be well-typed and have the same type as the case expression
+            bindVars <- checkMatchWith (MatchSum caseSumIndex caseSumMatch) caseExpTy nameCtx
 
-    ((BindVar:ms),(t:ts))
-      -> do boundTs <- checkTermMatchArgs ms ts nameCtx
-            Right $ t : boundTs
+            -- Type check the RHS under any newly bound vars
+            expType (addVars bindVars varCtx) nameCtx caseSumExpr
 
-    (((MatchLit l nestedMatchArgs):ms),(t:ts))
+-- | Check that a MatchArg matches the expected Type under a NameCtx.
+-- If so, return a list of types of any bound variables.
+checkMatchWith :: MatchArg -> Type -> NameCtx -> Either Error [Type]
+checkMatchWith match expectTy nameCtx = case match of
+
+    -- Bind the value to a variable
+    BindVar
+      -> Right [expectTy]
+
+    MatchTerm termLit nestedMatchArgs
       -> do -- The expected param and type of the given term name
-            TermInfo termParamTys termBelongs <- maybe (Left $ EMsg "branch matches on an unknown term") Right $ Map.lookup l nameCtx
+            TermInfo termParamTys termBelongs <- maybe (Left $ EMsg "pattern matches on unknown term literal") Right $ Map.lookup termLit nameCtx
 
-            -- Lit must have the expected type
-            _ <- if t /= (Type termBelongs) then Left $ EMsg "branch matches on a term from a different type" else Right ()
+            -- Lit Must have the expected type Type
+            _ <- if (Type termBelongs) /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
 
-            -- And it must be applied to the correct number of args
-            -- - return any bound vars that should be entered into the RHS exps context
-            boundTs <- checkTermMatchArgs nestedMatchArgs termParamTys nameCtx
+            -- Lit must be applied to the correct number of pattern args which must themselves be correctly typed and may bind nested vars
+            checkMatchesWith nestedMatchArgs termParamTys nameCtx
 
-            -- Check the rest of the pattern
-            boundTs2 <-checkTermMatchArgs ms ts nameCtx
-            Right $ boundTs ++ boundTs2
+    MatchSum sumIndex nestedMatchArg
+      -> do sumTypes <- case expectTy of
+                      SumT sumTypes -> Right sumTypes
+                      _             -> Left $ EMsg "Expected sum type in pattern match"
 
+            -- index must be within the number of alternative in the sum type
+            matchedTy <- if length sumTypes < sumIndex then Left $ EMsg "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
+
+            -- must have the expected index type
+            checkMatchWith nestedMatchArg matchedTy nameCtx
+
+checkMatchesWith :: [MatchArg] -> [Type] -> NameCtx -> Either Error [Type]
+checkMatchesWith matches types nameCtx = case (matches,types) of
+  ([],[]) -> Right []
+  ([],ts) -> Left $ EMsg "Expected more patterns in match"
+  (ms,[]) -> Left $ EMsg "Too many patterns in match"
+  ((m:ms),(t:ts))
+    -> checkMatchWith m t nameCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx >>= Right . (boundTs ++)

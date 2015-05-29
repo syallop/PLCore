@@ -7,7 +7,7 @@ import PL.Var
 
 import qualified Data.Map as Map
 
-andExpr = Lam (ty "Bool") $ Lam (ty "Bool") $             -- \x y ->
+andExpr = Lam (ty "Bool") $ Lam (ty "Bool") $             -- \x:Bool y:Bool ->
     Case (Var VZ)                                         -- case y of
       $ CaseBranches                                      --
         (SomeCaseBranches                                 --
@@ -18,7 +18,7 @@ andExpr = Lam (ty "Bool") $ Lam (ty "Bool") $             -- \x y ->
             (Case (Var $ VS VZ)                           --              case x of
               $ CaseBranches                              --
                 (SomeCaseBranches                         --
-                    (CaseTerm "False" [] $ Term "False") --                 False -> False
+                    (CaseTerm "False" [] $ Term "False")  --                 False -> False
                     []                                    --
                 )                                         --
                 (Just                                     --                 _     ->
@@ -45,32 +45,44 @@ nameCtx = boolNameCtx `Map.union` natNameCtx
 -- test nested pattern matching
 -- n > 2 ~> n-2
 -- otherwise ~> 0
-subTwoExpr = Lam (ty "Nat") $
-    Case (Var VZ)
-      $ CaseBranches
-        (SomeCaseBranches
-            (CaseTerm "S" [MatchTerm "S" [BindVar]] $ (Var VZ))
-            []
-        )
-        (Just
-            (Term "Z")
+subTwoExpr = Lam (ty "Nat") $                                   -- \n : Nat ->
+    Case (Var VZ)                                               -- case n of
+      $ CaseBranches                                            --
+        (SomeCaseBranches                                       --
+            (CaseTerm "S" [MatchTerm "S" [BindVar]] $ (Var VZ)) --   S S n -> n
+            []                                                  --
+        )                                                       --
+        (Just                                                   --
+            (Term "Z")                                          --   _     -> Z
         )
 
 -- case analysis on a sum type with overlapping members
-sum3Expr = Lam (SumT [ty "Nat",ty "Bool", ty "Nat"]) $
-    Case (Var VZ)
+sum3Expr = Lam (SumT [ty "Nat",ty "Bool", ty "Nat"]) $                   -- \x : Nat|Bool|Nat ->
+    Case (Var VZ)                                                        -- case x of
       $ CaseBranches
         (SomeCaseBranches
-            (CaseSum 0 (MatchTerm "S" [BindVar]) (Var VZ))
-            [CaseSum 0 (MatchTerm "Z" []) (Term "Z")
-            ,CaseSum 1 (MatchTerm "False" []) (Term "Z")
-            ,CaseSum 1 (MatchTerm "True" []) (App (Term "S") (Term "Z"))
-            ,CaseSum 2 (MatchTerm "S" [BindVar]) (Term "Z")
-            ,CaseSum 2 (MatchTerm "Z" []) (App (Term "S") (Term "Z"))
+            (CaseSum 0 (MatchTerm "S" [BindVar]) (Var VZ))               --  0| S n   -> n
+            [CaseSum 0 (MatchTerm "Z" []) (Term "Z")                     --  0| Z     -> Z
+            ,CaseSum 1 (MatchTerm "False" []) (Term "Z")                 --  1| False -> Z
+            ,CaseSum 1 (MatchTerm "True" []) (App (Term "S") (Term "Z")) --  1| True  -> S Z
+            ,CaseSum 2 (MatchTerm "S" [BindVar]) (Term "Z")              --  2| S n   -> Z
+            ,CaseSum 2 (MatchTerm "Z" []) (App (Term "S") (Term "Z"))    --  2| Z     -> S Z
             ]
         )
         Nothing
 
-runTest = mapM (topExprType nameCtx) [andExpr,subTwoExpr,sum3Expr]
+prod3Expr = Lam (ProdT [ty "Nat",ty "Bool",ty "Nat"]) $                     -- \x : Nat*Bool*Nat ->
+    Case (Var VZ)                                                           -- case x of
+      $ CaseBranches                                                        --
+        (SomeCaseBranches                                                   --
+            (CaseProd [MatchTerm "Z" [],BindVar,MatchTerm "Z" []] (Var VZ)) -- Z,y,Z -> y
+            [CaseProd [BindVar,BindVar,MatchTerm "Z" []] (Var VZ)]          -- x,y,Z -> y
+        )                                                                   --
+        (Just                                                               --
+            (Term "False")                                                      -- _ -> Z
+        )
+
+
+runTest = mapM (topExprType nameCtx) [andExpr,subTwoExpr,sum3Expr,prod3Expr]
 
 

@@ -10,6 +10,8 @@ import qualified Data.Map as Map
 import Control.Applicative
 import Control.Monad
 
+todo = error "TODO"
+
 -- | Small simply typed lambda calculus with term literals and case analysis.
 data Expr
 
@@ -49,6 +51,11 @@ data Expr
       {_sumExpr  :: Expr
       ,_sumIndex :: Int
       ,_sumType  :: [Type]
+      }
+
+    -- | An expression is a product of many expressions
+    | Prod
+      {_prodExprs :: [Expr]
       }
     deriving Show
 
@@ -100,6 +107,12 @@ data CaseBranch
       ,_caseSumMatch :: MatchArg
       ,_caseSumExpr  :: Expr
       }
+
+    -- | Match against a product of types
+    | CaseProd
+      {_caseProdMatches :: [MatchArg]
+      ,_caseProdExpr    :: Expr
+      }
     deriving Show
 
 -- | Argument pattern in a case statements match.
@@ -108,6 +121,7 @@ data CaseBranch
 data MatchArg
   = MatchTerm TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
   | MatchSum  Int      MatchArg   -- ^ Match against a sum alternative (which may be applied to more patterns)
+  | MatchProd [MatchArg]          -- ^ Match against a product of many types (which may be applied to more patterns)
   | BindVar                       -- ^ Match anything and bind it as a variable
   deriving Show
 
@@ -190,6 +204,15 @@ exprType varCtx nameCtx e = case e of
           -- Type is the claimed sum
           Right $ SumT inTypr
 
+  -- A product is typed by the order of each expression it contains
+  Prod prodExprs
+    -> do -- type check each successive expression
+          prodExprTys <- mapM (exprType varCtx nameCtx) prodExprs
+
+          -- the type is the product of those types
+          Right $ ProdT prodExprTys
+
+
   -- | A variable is typed by the context
   -- It is assumed the varCtx has been type checked
   --
@@ -262,6 +285,13 @@ branchType caseBranch caseExprTy varCtx nameCtx = case caseBranch of
             -- Type check the RHS under any newly bound vars
             exprType (addVars bindVars varCtx) nameCtx caseSumExpr
 
+    CaseProd caseProdMatches caseProdExpr
+      -> do -- must be well-typed and have the same type as the case expression
+            bindVars <- checkMatchWith (MatchProd caseProdMatches) caseExprTy nameCtx
+
+            -- Type check the RHS under any newly bound vars
+            exprType (addVars bindVars varCtx) nameCtx caseProdExpr
+
 -- | Check that a MatchArg matches the expected Type under a NameCtx.
 -- If so, return a list of types of any bound variables.
 checkMatchWith :: MatchArg -> Type -> NameCtx -> Either Error [Type]
@@ -291,6 +321,13 @@ checkMatchWith match expectTy nameCtx = case match of
 
             -- must have the expected index type
             checkMatchWith nestedMatchArg matchedTy nameCtx
+
+    MatchProd nestedMatchArgs
+      -> do prodTypes <- case expectTy of
+                             ProdT prodTypes -> Right prodTypes
+                             _               -> Left $ EMsg "Expected product type in pattern match"
+
+            checkMatchesWith nestedMatchArgs prodTypes nameCtx
 
 checkMatchesWith :: [MatchArg] -> [Type] -> NameCtx -> Either Error [Type]
 checkMatchesWith matches types nameCtx = case (matches,types) of

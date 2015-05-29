@@ -23,6 +23,11 @@ data Type
   | SumT
     {_sumTypes :: [Type]
     }
+
+  -- | Ordered product types
+  | ProdT
+    {_prodTypes :: [Type]
+    }
   deriving (Eq,Ord)
 
 -- | Is a Type a simple named type
@@ -50,6 +55,9 @@ instance Show Type where
 
     SumT types
       -> intercalate "|" $ map show types
+
+    ProdT types
+      -> intercalate "*" $ map show types
 
 -- PARTIAL
 -- [a]   ~> Type a

@@ -57,6 +57,12 @@ data Expr
     | Prod
       {_prodExprs :: [Expr]
       }
+
+    -- | An expression has one of many unique types
+    | Union
+      {_unionExpr :: Expr
+      ,_unionType :: Set.Set Type
+      }
     deriving Show
 
 -- | Body of a case expression. Is either:
@@ -113,6 +119,13 @@ data CaseBranch
       {_caseProdMatches :: [MatchArg]
       ,_caseProdExpr    :: Expr
       }
+
+    -- | Match against a union of types
+    | CaseUnion
+      {_caseUnionTypeIndex :: Type
+      ,_caseUnionMatch     :: MatchArg
+      ,_caseUnionExpr      :: Expr
+      }
     deriving Show
 
 -- | Argument pattern in a case statements match.
@@ -122,6 +135,7 @@ data MatchArg
   = MatchTerm TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
   | MatchSum  Int      MatchArg   -- ^ Match against a sum alternative (which may be applied to more patterns)
   | MatchProd [MatchArg]          -- ^ Match against a product of many types (which may be applied to more patterns)
+  | MatchUnion Type MatchArg      -- ^ Match against a union of alternatives
   | BindVar                       -- ^ Match anything and bind it as a variable
   deriving Show
 
@@ -212,6 +226,16 @@ exprType varCtx nameCtx e = case e of
           -- the type is the product of those types
           Right $ ProdT prodExprTys
 
+  -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
+  Union unionExpr unionTypes
+    -> do -- type check injected expression
+          unionExprTy <- exprType varCtx nameCtx unionExpr
+
+          --type of expression must be somewhere within the set
+          _ <- if unionExprTy `Set.member` unionTypes then Right () else Left $ EMsg "Expressions type is not within the union"
+
+          -- the type is the claimed union
+          Right $ UnionT unionTypes
 
   -- | A variable is typed by the context
   -- It is assumed the varCtx has been type checked
@@ -292,6 +316,13 @@ branchType caseBranch caseExprTy varCtx nameCtx = case caseBranch of
             -- Type check the RHS under any newly bound vars
             exprType (addVars bindVars varCtx) nameCtx caseProdExpr
 
+    CaseUnion caseUnionTypeIndex caseUnionMatch caseUnionExpr
+      -> do -- must be well-typed and have the same type as the case expression
+            bindVars <- checkMatchWith (MatchUnion caseUnionTypeIndex caseUnionMatch) caseExprTy nameCtx
+
+            -- Type check the RHS under any newly bound vars
+            exprType (addVars bindVars varCtx) nameCtx caseUnionExpr
+
 -- | Check that a MatchArg matches the expected Type under a NameCtx.
 -- If so, return a list of types of any bound variables.
 checkMatchWith :: MatchArg -> Type -> NameCtx -> Either Error [Type]
@@ -328,6 +359,18 @@ checkMatchWith match expectTy nameCtx = case match of
                              _               -> Left $ EMsg "Expected product type in pattern match"
 
             checkMatchesWith nestedMatchArgs prodTypes nameCtx
+
+    MatchUnion unionIndexTy nestedMatchArg
+      -> do unionTypes <- case expectTy of
+                        UnionT unionTypes -> Right unionTypes
+                        _                 -> Left $ EMsg "Expected union type in pattern match"
+
+            -- type index must be a member of the union alternatives
+            _ <- if Set.member unionIndexTy unionTypes then Right () else Left $ EMsg "Matching on a type which isnt a member of the union"
+
+            -- must actually match on the expected type
+            checkMatchWith nestedMatchArg unionIndexTy nameCtx
+
 
 checkMatchesWith :: [MatchArg] -> [Type] -> NameCtx -> Either Error [Type]
 checkMatchesWith matches types nameCtx = case (matches,types) of

@@ -6,6 +6,7 @@ import PL.Type
 import PL.Var
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 andExpr = Lam (ty "Bool") $ Lam (ty "Bool") $             -- \x:Bool y:Bool ->
     Case (Var VZ)                                         -- case y of
@@ -79,10 +80,22 @@ prod3Expr = Lam (ProdT [ty "Nat",ty "Bool",ty "Nat"]) $                     -- \
             [CaseProd [BindVar,BindVar,MatchTerm "Z" []] (Var VZ)]          -- x,y,Z -> y
         )                                                                   --
         (Just                                                               --
-            (Term "False")                                                      -- _ -> Z
+            (Term "False")                                                  -- _ -> Z
         )
 
+union2Expr = Lam (UnionT $ Set.fromList [ty "Bool",ty "Nat"]) $            -- \x : <Nat|Bool>
+    Case (Var VZ)                                                          -- case x of
+      $ CaseBranches                                                       --
+        (SomeCaseBranches                                                  --
+            (CaseUnion (ty "Nat")  (MatchTerm "Z" []) (Term "False"))      -- Nat | Z    -> False
+            [CaseUnion (ty "Nat")  (MatchTerm "S" [BindVar]) (Term "True") -- Nat | S n  -> True
+            ,CaseUnion (ty "Bool") (MatchTerm "True" []) (Term "True")     -- Bool| True -> True
+            ]                                                              --
+        )                                                                  --
+        (Just                                                              --
+            (Term "False")                                                 -- _          -> False
+        )
 
-runTest = mapM (topExprType nameCtx) [andExpr,subTwoExpr,sum3Expr,prod3Expr]
+runTest = mapM (topExprType nameCtx) [andExpr,subTwoExpr,sum3Expr,prod3Expr,union2Expr]
 
 

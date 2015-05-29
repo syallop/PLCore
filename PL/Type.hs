@@ -28,6 +28,11 @@ data Type
   | ProdT
     {_prodTypes :: [Type]
     }
+
+
+  | UnionT
+    {_unionTypes :: Set.Set Type
+    }
   deriving (Eq,Ord)
 
 -- | Is a Type a simple named type
@@ -58,6 +63,9 @@ instance Show Type where
 
     ProdT types
       -> intercalate "*" $ map show types
+
+    UnionT types
+      -> "<" ++ (intercalate "|" $ map show $ Set.toList types) ++ ">"
 
 -- PARTIAL
 -- [a]   ~> Type a

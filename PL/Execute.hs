@@ -54,6 +54,7 @@ reduce = reduce' []
               f' <- reduce' varCtx nameCtx f
               case f' of
                 Lam _ fExpr -> reduce' (Just x' : varCtx) nameCtx fExpr
+                Term tName  -> Right $ App (Term tName) x'
                 _           -> error "Cant reduce application of non-lambda term"
 
       -- If the caseExpression is a variable, reduce all of the possible branches

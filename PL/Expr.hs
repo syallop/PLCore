@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module PL.Expr where
 
 import PL.Type
@@ -7,9 +8,10 @@ import PL.Var
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import Data.List (intercalate)
 import Control.Applicative
-import Control.Monad
 
+todo :: a
 todo = error "TODO"
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
@@ -60,10 +62,12 @@ data Expr
 
     -- | An expression has one of many unique types
     | Union
-      {_unionExpr :: Expr
-      ,_unionType :: Set.Set Type
+      {_unionExpr      :: Expr
+      ,_unionTypeIndex :: Type
+      ,_unionType      :: Set.Set Type
       }
     deriving Show
+
 
 -- | Body of a case expression. Is either:
 -- - Just a catch all match
@@ -128,6 +132,58 @@ data CaseBranch
       }
     deriving Show
 
+unCaseBranch :: CaseBranch -> (MatchArg,Expr)
+unCaseBranch = \case
+  CaseTerm  name    matches rhs -> (MatchTerm  name    matches, rhs)
+  CaseSum   ix      match   rhs -> (MatchSum   ix      match  , rhs)
+  CaseProd  matches         rhs -> (MatchProd  matches        , rhs)
+  CaseUnion tyIx    match   rhs -> (MatchUnion tyIx    match  , rhs)
+
+rhs :: CaseBranch -> Expr
+rhs = \case
+  CaseTerm  _ _ rhs -> rhs
+  CaseSum   _ _ rhs -> rhs
+  CaseProd  _   rhs -> rhs
+  CaseUnion _ _ rhs -> rhs
+
+-- Map a monadic function over all the sub expressions within an expression
+{-exprMapM :: Monad m => (Expr -> m Expr) -> Expr -> m Expr-}
+
+-- Map a function over all contained subexpressions.
+-- The function should preserve the type of the expression.
+mapSubExpressions :: (Expr -> Expr) -> Expr -> Expr
+mapSubExpressions f = \case
+  Lam ty expr
+    -> Lam ty $ f expr
+
+  App fExpr xExpr
+    -> App (f fExpr) (f xExpr)
+
+  Case caseExpr possibleBranches
+    -> Case (f caseExpr) (case possibleBranches of
+                             DefaultOnly branchExpr
+                               -> DefaultOnly (f branchExpr)
+
+                             CaseBranches (SomeCaseBranches branch branches) mExpr
+                               -> let mapCaseRHSs :: CaseBranch -> CaseBranch
+                                      mapCaseRHSs = \case
+                                        CaseTerm  name    matches expr -> CaseTerm  name    matches (f expr)
+                                        CaseSum   ix      match   expr -> CaseSum   ix      match   (f expr)
+                                        CaseProd  matches         expr -> CaseProd  matches         (f expr)
+                                        CaseUnion tyIx    match   expr -> CaseUnion tyIx    match   (f expr)
+                                     in CaseBranches (SomeCaseBranches (mapCaseRHSs branch) (map mapCaseRHSs branches)) (f <$> mExpr)
+                         )
+
+  Sum expr ix ty
+    -> Sum (f expr) ix ty
+
+  Prod prodExprs
+    -> Prod (map f prodExprs)
+
+  Union unionExpr tyIx ty
+    -> Union (f unionExpr) tyIx ty
+
+
 -- | Argument pattern in a case statements match.
 -- case ... of
 --  T {A b (C d E)} -> ...
@@ -145,6 +201,85 @@ data TermInfo = TermInfo
   { _termParams  :: [Type]   -- ^ A term takes zero or many types
   , _termBelongs :: TypeName -- ^ In order to construct a type called
   }
+
+showExpr :: Expr -> String
+showExpr = \case
+  Lam takeTy expr
+    -> "\\" ++ show takeTy ++ "." ++ showExpr expr
+
+  App f x
+    -> "( " ++ showExpr f ++ " )" ++ "( " ++ showExpr x ++ " )"
+
+  Term termName
+    -> "#" ++ unTermName termName
+
+  Var v
+    -> show $ varToInt v
+
+  Case caseExpr caseBranches
+    -> "(CASE " ++ showExpr caseExpr ++ " OF\n" ++ showPossibleCaseBranches caseBranches ++ ")"
+
+  Sum sumExpr sumIndex sumType
+    -> let showSumT :: Int -> [Type] -> [String]
+           showSumT 0 (t:ts) = ("_" ++ show t ++ "_") : map show ts
+           showSumT n (t:ts) = show t : showSumT (n-1) ts
+          in showExpr sumExpr ++ " : " ++ (intercalate "|" $ showSumT sumIndex sumType)
+
+  Prod prodExprs
+    -> "( " ++ (intercalate "," $ map (\e -> "( " ++ show e ++ ") ") prodExprs) ++ ") "
+
+  Union unionExpr unionTypeIndex unionTy
+    -> let showUnionT :: Type -> [Type] -> [String]
+           showUnionT tyIx (t:ts)
+            | tyIx == t = ("_" ++ show t ++ "_") : map show ts
+            | otherwise = show t : showUnionT tyIx ts
+          in showExpr unionExpr ++ " : <" ++ (intercalate "|" $ showUnionT unionTypeIndex (Set.toList unionTy)) ++ ">"
+
+showPossibleCaseBranches :: PossibleCaseBranches -> String
+showPossibleCaseBranches = \case
+  DefaultOnly onMatch
+    -> "DEFAULT -> " ++ showExpr onMatch
+
+  CaseBranches someCaseBranches maybeDefaultOnMatch
+    -> showSomeCaseBranches someCaseBranches ++ "\n\n" ++ (maybe "" (("DEFAULT -> " ++) . showExpr) maybeDefaultOnMatch)
+
+showSomeCaseBranches :: SomeCaseBranches -> String
+showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n\n" $ map showCaseBranch (caseBranch : caseBranches)
+
+showCaseBranch :: CaseBranch -> String
+showCaseBranch = \case
+    CaseTerm name matches expr
+      -> "#" ++ show name ++ " " ++ showMatchArgs matches
+             ++ " -> " ++ showExpr expr
+
+    CaseSum ix match expr
+      -> showMatchArg (MatchSum ix match) ++ " -> " ++ showExpr expr
+
+    CaseProd matches expr
+      -> showMatchArg (MatchProd matches) ++ " -> " ++ showExpr expr
+
+    CaseUnion ty match expr
+      -> showMatchArg (MatchUnion ty match) ++ " -> " ++ showExpr expr
+
+showMatchArgs :: [MatchArg] -> String
+showMatchArgs = intercalate " " . map showMatchArg
+
+showMatchArg :: MatchArg -> String
+showMatchArg = \case
+  MatchTerm name matches
+    -> "#" ++ unTermName name ++ " " ++ showMatchArgs matches
+
+  MatchSum ix matchArg
+    -> show ix ++ "| " ++ showMatchArg matchArg
+
+  MatchProd matchArgs
+    -> intercalate "," $ map showMatchArg matchArgs
+
+  MatchUnion ty matchArg
+    -> show ty ++ "| " ++ showMatchArg matchArg
+
+  BindVar
+    -> "b"
 
 -- | Map term names to their params and the type they belong to.
 type NameCtx = Map.Map TermName TermInfo
@@ -178,19 +313,12 @@ exprType varCtx nameCtx e = case e of
 
           let errAppMismatch = Left $ EAppMismatch fTy xTy
           case fTy of
-
-            -- Expression of some regular type cannot be applied to things
-            Type _
-              -> errAppMismatch
-
-            -- Expression of a sum type cannot be applied to things
-            SumT _
-              -> errAppMismatch
-
-            -- 1. Regular function application attempt
+            -- Regular function application attempt
             Arrow aTy bTy
               | aTy == xTy -> Right bTy
               | otherwise  -> errAppMismatch
+
+            _ -> errAppMismatch
 
 
   -- | A term is looked up in the nameCtx and is typed to accept all of its parameters and produce the type is belongs to.
@@ -205,12 +333,12 @@ exprType varCtx nameCtx e = case e of
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
   -- has that sum type.
-  Sum expr index inTypr
+  Sum expr ix inTypr
     -> do -- Expression must type check
           exprTy <- exprType varCtx nameCtx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
-          _ <- if exprTy /= (inTypr !! index) then Left $ EMsg "Expression doesnt have the type of the position in a sum type it claims it has" else Right ()
+          _ <- if exprTy /= (inTypr !! ix) then Left $ EMsg "Expression doesnt have the type of the position in a sum type it claims it has" else Right ()
 
           -- Allow the other types in the sum to not exist...
           _ <- Right ()
@@ -227,12 +355,15 @@ exprType varCtx nameCtx e = case e of
           Right $ ProdT prodExprTys
 
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
-  Union unionExpr unionTypes
+  Union unionExpr unionTypeIndex unionTypes
     -> do -- type check injected expression
-          unionExprTy <- exprType varCtx nameCtx unionExpr
+          exprTy <- exprType varCtx nameCtx unionExpr
 
-          --type of expression must be somewhere within the set
-          _ <- if unionExprTy `Set.member` unionTypes then Right () else Left $ EMsg "Expressions type is not within the union"
+          -- Type must be what we claim it is...
+          _ <- if exprTy /= unionTypeIndex then Left $ EMsg "Expresiion doesnt have the type within the union it claims to have" else Right ()
+
+          -- Type must be in the set somewhere...
+          _ <- if exprTy `Set.member` unionTypes then Right () else Left $ EMsg "Expressions type is not within the union"
 
           -- the type is the claimed union
           Right $ UnionT unionTypes
@@ -337,7 +468,7 @@ checkMatchWith match expectTy nameCtx = case match of
             TermInfo termParamTys termBelongs <- maybe (Left $ EMsg "pattern matches on unknown term literal") Right $ Map.lookup termLit nameCtx
 
             -- Lit Must have the expected type Type
-            _ <- if (Type termBelongs) /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
+            _ <- if Type termBelongs /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
 
             -- Lit must be applied to the correct number of pattern args which must themselves be correctly typed and may bind nested vars
             checkMatchesWith nestedMatchArgs termParamTys nameCtx
@@ -375,8 +506,7 @@ checkMatchWith match expectTy nameCtx = case match of
 checkMatchesWith :: [MatchArg] -> [Type] -> NameCtx -> Either Error [Type]
 checkMatchesWith matches types nameCtx = case (matches,types) of
   ([],[]) -> Right []
-  ([],ts) -> Left $ EMsg "Expected more patterns in match"
-  (ms,[]) -> Left $ EMsg "Too many patterns in match"
-  ((m:ms),(t:ts))
+  ([],_)  -> Left $ EMsg "Expected more patterns in match"
+  (_,[])  -> Left $ EMsg "Too many patterns in match"
+  (m:ms,t:ts)
     -> checkMatchWith m t nameCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx >>= Right . (boundTs ++)
-

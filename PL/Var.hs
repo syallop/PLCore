@@ -5,7 +5,14 @@ import PL.Type
 -- | Debrujn index for referencing variables.
 -- A positive integer describing how many abstractions deep the var is found.
 data Var = VZ | VS Var
-  deriving Show
+  deriving (Show, Eq)
+
+vzero  = VZ
+vone   = VS vzero
+vtwo   = VS vone
+vthree = VS vtwo
+vfour  = VS vthree
+
 
 -- | Debrujn indexed context of variable types
 data VarCtx = VarCtx [Type]
@@ -31,3 +38,8 @@ addVars ts varCtx = foldl (flip addVar) varCtx ts
 varToInt :: Var -> Int
 varToInt VZ     = 0
 varToInt (VS v) = 1+varToInt v
+
+intToVar :: Int -> Var
+intToVar 0 = VZ
+intToVar n = VS (intToVar (n-1))
+

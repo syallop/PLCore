@@ -11,8 +11,8 @@ import qualified Data.Map as Map
 import Data.List (intercalate)
 import Control.Applicative
 
-todo :: a
-todo = error "TODO"
+todo :: String -> a
+todo str = error $ "TODO: " ++ str
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
 data Expr
@@ -66,7 +66,7 @@ data Expr
       ,_unionTypeIndex :: Type
       ,_unionType      :: Set.Set Type
       }
-    deriving Show
+    deriving (Show,Eq)
 
 
 -- | Body of a case expression. Is either:
@@ -92,11 +92,11 @@ data PossibleCaseBranches
     { _branches       :: SomeCaseBranches -- One to many
     , _defaultOnMatch :: Maybe Expr       -- Possible catch all default
     }
-    deriving Show
+    deriving (Show, Eq)
 
 -- | One or many 'CaseBranch'
 data SomeCaseBranches = SomeCaseBranches CaseBranch [CaseBranch]
-  deriving Show
+  deriving (Show,Eq)
 
 -- | A single branch in a case analysis of a type.
 -- case ... of
@@ -130,7 +130,7 @@ data CaseBranch
       ,_caseUnionMatch     :: MatchArg
       ,_caseUnionExpr      :: Expr
       }
-    deriving Show
+    deriving (Show,Eq)
 
 unCaseBranch :: CaseBranch -> (MatchArg,Expr)
 unCaseBranch = \case
@@ -145,6 +145,8 @@ rhs = \case
   CaseSum   _ _ rhs -> rhs
   CaseProd  _   rhs -> rhs
   CaseUnion _ _ rhs -> rhs
+
+
 
 -- Map a monadic function over all the sub expressions within an expression
 {-exprMapM :: Monad m => (Expr -> m Expr) -> Expr -> m Expr-}
@@ -165,13 +167,7 @@ mapSubExpressions f = \case
                                -> DefaultOnly (f branchExpr)
 
                              CaseBranches (SomeCaseBranches branch branches) mExpr
-                               -> let mapCaseRHSs :: CaseBranch -> CaseBranch
-                                      mapCaseRHSs = \case
-                                        CaseTerm  name    matches expr -> CaseTerm  name    matches (f expr)
-                                        CaseSum   ix      match   expr -> CaseSum   ix      match   (f expr)
-                                        CaseProd  matches         expr -> CaseProd  matches         (f expr)
-                                        CaseUnion tyIx    match   expr -> CaseUnion tyIx    match   (f expr)
-                                     in CaseBranches (SomeCaseBranches (mapCaseRHSs branch) (map mapCaseRHSs branches)) (f <$> mExpr)
+                               -> CaseBranches (SomeCaseBranches (mapCaseRHSs f branch) (map (mapCaseRHSs f) branches)) (f <$> mExpr)
                          )
 
   Sum expr ix ty
@@ -183,6 +179,14 @@ mapSubExpressions f = \case
   Union unionExpr tyIx ty
     -> Union (f unionExpr) tyIx ty
 
+mapCaseRHSs :: (Expr -> Expr) -> CaseBranch -> CaseBranch
+mapCaseRHSs f = \case
+    CaseTerm  name    matches expr -> CaseTerm  name    matches (f expr)
+    CaseSum   ix      match   expr -> CaseSum   ix      match   (f expr)
+    CaseProd  matches         expr -> CaseProd  matches         (f expr)
+    CaseUnion tyIx    match   expr -> CaseUnion tyIx    match   (f expr)
+
+
 
 -- | Argument pattern in a case statements match.
 -- case ... of
@@ -193,7 +197,7 @@ data MatchArg
   | MatchProd [MatchArg]          -- ^ Match against a product of many types (which may be applied to more patterns)
   | MatchUnion Type MatchArg      -- ^ Match against a union of alternatives
   | BindVar                       -- ^ Match anything and bind it as a variable
-  deriving Show
+  deriving (Show,Eq)
 
 -- | Describes some Term which takes zero or many typed params
 -- in order to construct a value of some type it belongs to.
@@ -226,7 +230,7 @@ showExpr = \case
           in showExpr sumExpr ++ " : " ++ (intercalate "|" $ showSumT sumIndex sumType)
 
   Prod prodExprs
-    -> "( " ++ (intercalate "," $ map (\e -> "( " ++ show e ++ ") ") prodExprs) ++ ") "
+    -> "( " ++ (intercalate "," $ map (\e -> "( " ++ showExpr e ++ ") ") prodExprs) ++ ") "
 
   Union unionExpr unionTypeIndex unionTy
     -> let showUnionT :: Type -> [Type] -> [String]
@@ -510,3 +514,13 @@ checkMatchesWith matches types nameCtx = case (matches,types) of
   (_,[])  -> Left $ EMsg "Too many patterns in match"
   (m:ms,t:ts)
     -> checkMatchWith m t nameCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx >>= Right . (boundTs ++)
+
+-- Bind a list of expression with claimed types within an expression
+-- by transforming to an application to lambda abstractions.
+-- I.E. each subsequent expression
+{-lets :: [(Expr,Type)] -> Expr -> Expr-}
+{-lets bind exp = foldr (flip App) (foldr Lam exp $ reverse types) exprs-}
+  {-where-}
+    {-exprs = map fst bind-}
+    {-types = map snd bind-}
+

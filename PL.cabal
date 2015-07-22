@@ -22,6 +22,7 @@ library
                      , PL.Execute
                      , PL.Error
                      , PL.Expr
+                     , PL.Bindings
   -- other-modules:       
   other-extensions:    OverloadedStrings
                      , GeneralizedNewtypeDeriving

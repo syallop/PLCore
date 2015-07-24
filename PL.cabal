@@ -24,6 +24,7 @@ library
                      , PL.Expr
                      , PL.Bindings
                      , PL.Parser
+                     , PL.Parser.Lispy
   -- other-modules:       
   other-extensions:    OverloadedStrings
                      , GeneralizedNewtypeDeriving

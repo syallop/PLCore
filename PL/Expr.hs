@@ -148,6 +148,13 @@ rhs = \case
   CaseProd  _   rhs -> rhs
   CaseUnion _ _ rhs -> rhs
 
+mkCaseBranch :: (MatchArg,Expr) -> CaseBranch
+mkCaseBranch (m,rhs) = case m of
+  MatchTerm  name    matches -> CaseTerm  name    matches rhs
+  MatchSum   ix      match   -> CaseSum   ix      match   rhs
+  MatchProd  matches         -> CaseProd  matches         rhs
+  MatchUnion tyIx    match   -> CaseUnion tyIx    match   rhs
+  _ -> error "Partial on BindVar::MatchArg"
 
 
 -- Map a monadic function over all the sub expressions within an expression
@@ -528,4 +535,9 @@ checkMatchesWith matches types nameCtx = case (matches,types) of
 
 appise :: [Expr] -> Expr
 appise (e:[])    = e
-appise (e:e':es) = App (App e e') (appise es)
+appise (e:e':es) = appise ((App e e'):es)
+
+lamise :: [Type] -> Expr -> Expr
+lamise (t:[])    e = Lam t e
+lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
+

@@ -42,14 +42,17 @@ module PL.Parser
   ,textIs
   ,takeWhile
   ,takeWhile1
+  ,dropWhile
+  ,dropWhile1
 
   -- Misc
   ,natural
   ,between
   ,betweenParens
+  ,whitespace
   ) where
 
-import Prelude hiding (takeWhile,exp)
+import Prelude hiding (takeWhile,dropWhile,exp)
 
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -67,6 +70,7 @@ import PL.Expr
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
 -- Instances for Monad & Applicative sequence Parsers together left-to-right, propogating failure.
 -- Instances for MonadPlus & Alternative sequence left-to-right when successful but have backtracking behaviour on failure.
+-- Both instances implicity consume any trailing whitespace after a successful parse.
 newtype Parser a = Parser {_unParser :: Text -> Maybe (a,Text)}
 
 instance Monoid a => Monoid (Parser a) where
@@ -81,7 +85,6 @@ instance Functor Parser where
     Nothing       -> Nothing
     Just (a,txt') -> Just (f a,txt')
 
-
 instance Applicative Parser where
   pure  = return
   (<*>) = ap
@@ -90,8 +93,12 @@ instance Monad Parser where
 
   (Parser pa) >>= f = Parser $ \txt -> case pa txt of
     Nothing       -> Nothing
-    Just (a,txt') -> let Parser pb = f a in pb txt'
+    Just (a,txt') -> let Parser pb = f a
+                        in case pb (Text.dropWhile isSpace txt') of
+                               Nothing       -> Nothing
+                               Just (b,txt') -> Just (b,Text.dropWhile isSpace txt')
 
+--
 instance Alternative Parser where
   empty = mzero
   (<|>) = mplus
@@ -99,8 +106,10 @@ instance MonadPlus Parser where
   mzero = Parser $ \txt -> Nothing
 
   mplus (Parser pa0) (Parser pa1) = Parser $ \txt -> case pa0 txt of
-    Nothing        -> pa1 txt
-    Just (a0,txt') -> Just (a0,txt')
+    Nothing        -> case pa1 txt of
+        Nothing        -> Nothing
+        Just (a1,txt') -> Just (a1,Text.dropWhile isSpace txt')
+    Just (a0,txt') -> Just (a0,Text.dropWhile isSpace txt')
 
 -- | Execute a 'Parser' on some input Text, producing a possible result and leftover Text if successful.
 runParser :: Parser a -> Text -> Maybe (a,Text)
@@ -195,7 +204,15 @@ takeWhile1 pred = Parser $ \txt -> case Text.span pred txt of
   ("",_) -> Nothing
   r      -> Just r
 
+-- Drop the longest text that matches a predicate on the characters
+-- (possibly empty)
+dropWhile :: (Char -> Bool) -> Parser ()
+dropWhile = req . takeWhile
 
+-- | Drop the longest text that matches a predicate on the characters.
+-- Must succeed on at least one character.
+dropWhile1 :: (Char -> Bool) -> Parser ()
+dropWhile1 = req. takeWhile1
 
 
 -- A natural number: zero and positive integers
@@ -210,3 +227,4 @@ between pl pa pr = pl *> pa <* pr
 betweenParens :: Parser a -> Parser a
 betweenParens pa = between lparen pa rparen
 
+whitespace  = dropWhile isSpace

@@ -23,6 +23,7 @@ library
                      , PL.Error
                      , PL.Expr
                      , PL.Bindings
+                     , PL.Parser
   -- other-modules:       
   other-extensions:    OverloadedStrings
                      , GeneralizedNewtypeDeriving

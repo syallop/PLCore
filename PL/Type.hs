@@ -53,19 +53,25 @@ instance Show Type where
   show t = case t of
 
     Arrow from to
-      -> show from ++ " -> " ++ show to
+      -> parens $ show from ++ " -> " ++ show to
 
     Type belongs
-      -> unTypeName belongs
+      -> show belongs
 
     SumT types
-      -> intercalate "|" $ map show types
+      -> parens $ intercalate "|" $ map show types
 
     ProdT types
-      -> intercalate "*" $ map show types
+      -> parens $ intercalate "*" $ map show types
 
     UnionT types
-      -> "<" ++ (intercalate "|" $ map show $ Set.toList types) ++ ">"
+      -> parens $ "<" ++ (intercalate "|" $ map show $ Set.toList types) ++ ">"
+
+parensS :: Show a => a -> String
+parensS = parens . show
+
+parens :: String -> String
+parens s = "(" ++ s ++ ")"
 
 -- PARTIAL
 -- [a]   ~> Type a

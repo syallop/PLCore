@@ -66,8 +66,10 @@ data Expr
       ,_unionTypeIndex :: Type
       ,_unionType      :: Set.Set Type
       }
-    deriving (Show,Eq)
+    deriving (Eq)
 
+instance Show Expr where
+  show = showExpr
 
 -- | Body of a case expression. Is either:
 -- - Just a catch all match
@@ -215,7 +217,7 @@ showExpr = \case
     -> "( " ++ showExpr f ++ " )" ++ "( " ++ showExpr x ++ " )"
 
   Term termName
-    -> "#" ++ unTermName termName
+    -> "#" ++ show termName
 
   Var v
     -> show $ varToInt v
@@ -271,7 +273,7 @@ showMatchArgs = intercalate " " . map showMatchArg
 showMatchArg :: MatchArg -> String
 showMatchArg = \case
   MatchTerm name matches
-    -> "#" ++ unTermName name ++ " " ++ showMatchArgs matches
+    -> "#" ++ show name ++ " " ++ showMatchArgs matches
 
   MatchSum ix matchArg
     -> show ix ++ "| " ++ showMatchArg matchArg
@@ -524,3 +526,6 @@ checkMatchesWith matches types nameCtx = case (matches,types) of
     {-exprs = map fst bind-}
     {-types = map snd bind-}
 
+appise :: [Expr] -> Expr
+appise (e:[])    = e
+appise (e:e':es) = App (App e e') (appise es)

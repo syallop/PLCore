@@ -89,7 +89,7 @@ possibleCaseBranches = caseBranches <|> defaultOnly
 defaultOnly          = DefaultOnly  <$> expr
 caseBranches         = CaseBranches <$> someCaseBranches <*> ((Just <$> expr) <|> pure Nothing)
 someCaseBranches     = SomeCaseBranches <$> (grouped caseBranch) <*> (many (grouped caseBranch))
-caseBranch           = (curry mkCaseBranch) <$> caseLHS <*> expr -- {LHS} {Expr}
+caseBranch           = CaseBranch <$> caseLHS <*> expr -- {LHS} {Expr}
 caseLHS              = alternatives $ map betweenParens [matchTerm,matchSum,matchProd,matchUnion]
 
 matchArg   = bindVar

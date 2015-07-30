@@ -100,61 +100,12 @@ data PossibleCaseBranches
 data SomeCaseBranches = SomeCaseBranches CaseBranch [CaseBranch]
   deriving (Show,Eq)
 
--- | A single branch in a case analysis of a type.
--- case ... of
---   {T A b (C d E) -> exp}
-data CaseBranch
-
-    -- | Match against a fully applied term
-    -- (where parameters are implicitly bound with de brujn indices)
-    = CaseTerm
-      {_caseTermName    :: TermName   -- ^ The term literal matched upon
-      ,_caseTermMatches :: [MatchArg] -- ^ Argument pattern
-      ,_caseTermExpr    :: Expr       -- ^ Result of a successful match
-      }
-
-    -- | Match against an indexed alternative in a sum
-    | CaseSum
-      {_caseSumIndex :: Int
-      ,_caseSumMatch :: MatchArg
-      ,_caseSumExpr  :: Expr
-      }
-
-    -- | Match against a product of types
-    | CaseProd
-      {_caseProdMatches :: [MatchArg]
-      ,_caseProdExpr    :: Expr
-      }
-
-    -- | Match against a union of types
-    | CaseUnion
-      {_caseUnionTypeIndex :: Type
-      ,_caseUnionMatch     :: MatchArg
-      ,_caseUnionExpr      :: Expr
-      }
-    deriving (Show,Eq)
-
-unCaseBranch :: CaseBranch -> (MatchArg,Expr)
-unCaseBranch = \case
-  CaseTerm  name    matches rhs -> (MatchTerm  name    matches, rhs)
-  CaseSum   ix      match   rhs -> (MatchSum   ix      match  , rhs)
-  CaseProd  matches         rhs -> (MatchProd  matches        , rhs)
-  CaseUnion tyIx    match   rhs -> (MatchUnion tyIx    match  , rhs)
-
-rhs :: CaseBranch -> Expr
-rhs = \case
-  CaseTerm  _ _ rhs -> rhs
-  CaseSum   _ _ rhs -> rhs
-  CaseProd  _   rhs -> rhs
-  CaseUnion _ _ rhs -> rhs
-
-mkCaseBranch :: (MatchArg,Expr) -> CaseBranch
-mkCaseBranch (m,rhs) = case m of
-  MatchTerm  name    matches -> CaseTerm  name    matches rhs
-  MatchSum   ix      match   -> CaseSum   ix      match   rhs
-  MatchProd  matches         -> CaseProd  matches         rhs
-  MatchUnion tyIx    match   -> CaseUnion tyIx    match   rhs
-  _ -> error "Partial on BindVar::MatchArg"
+-- | A single branch in a case analysis of a type
+data CaseBranch = CaseBranch
+  {_caseLHS :: MatchArg
+  ,_caseRHS :: Expr
+  }
+  deriving (Show,Eq)
 
 
 -- Map a monadic function over all the sub expressions within an expression
@@ -189,11 +140,7 @@ mapSubExpressions f = \case
     -> Union (f unionExpr) tyIx ty
 
 mapCaseRHSs :: (Expr -> Expr) -> CaseBranch -> CaseBranch
-mapCaseRHSs f = \case
-    CaseTerm  name    matches expr -> CaseTerm  name    matches (f expr)
-    CaseSum   ix      match   expr -> CaseSum   ix      match   (f expr)
-    CaseProd  matches         expr -> CaseProd  matches         (f expr)
-    CaseUnion tyIx    match   expr -> CaseUnion tyIx    match   (f expr)
+mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 
 
 
@@ -260,19 +207,7 @@ showSomeCaseBranches :: SomeCaseBranches -> String
 showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n\n" $ map showCaseBranch (caseBranch : caseBranches)
 
 showCaseBranch :: CaseBranch -> String
-showCaseBranch = \case
-    CaseTerm name matches expr
-      -> "#" ++ show name ++ " " ++ showMatchArgs matches
-             ++ " -> " ++ showExpr expr
-
-    CaseSum ix match expr
-      -> showMatchArg (MatchSum ix match) ++ " -> " ++ showExpr expr
-
-    CaseProd matches expr
-      -> showMatchArg (MatchProd matches) ++ " -> " ++ showExpr expr
-
-    CaseUnion ty match expr
-      -> showMatchArg (MatchUnion ty match) ++ " -> " ++ showExpr expr
+showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " -> " ++ showExpr rhs
 
 showMatchArgs :: [MatchArg] -> String
 showMatchArgs = intercalate " " . map showMatchArg
@@ -438,34 +373,37 @@ exprType varCtx nameCtx e = case e of
 -- Type check a case branch, requring it match the expected type under a namectx
 -- if so, type checking the result expression which is returned
 branchType :: CaseBranch -> Type -> VarCtx -> NameCtx -> Either Error Type
-branchType caseBranch caseExprTy varCtx nameCtx = case caseBranch of
-    CaseTerm caseTermName caseTermMatches caseTermExpr
-       -> do -- must be well-typed and have the same type as the case expression
-             bindVars <- checkMatchWith (MatchTerm caseTermName caseTermMatches) caseExprTy nameCtx
+{-branchType caseBranch caseExprTy varCtx nameCtx = case caseBranch of-}
+    {-CaseTerm caseTermName caseTermMatches caseTermExpr-}
+       {--> do -- must be well-typed and have the same type as the case expression-}
+             {-bindVars <- checkMatchWith (MatchTerm caseTermName caseTermMatches) caseExprTy nameCtx-}
 
-             -- Type check the RHS under any newly bound vars
-             exprType (addVars bindVars varCtx) nameCtx caseTermExpr
+             {--- Type check the RHS under any newly bound vars-}
+             {-exprType (addVars bindVars varCtx) nameCtx caseTermExpr-}
 
-    CaseSum caseSumIndex caseSumMatch caseSumExpr
-      -> do -- must be well-typed and have the same type as the case expression
-            bindVars <- checkMatchWith (MatchSum caseSumIndex caseSumMatch) caseExprTy nameCtx
+    {-CaseSum caseSumIndex caseSumMatch caseSumExpr-}
+      {--> do -- must be well-typed and have the same type as the case expression-}
+            {-bindVars <- checkMatchWith (MatchSum caseSumIndex caseSumMatch) caseExprTy nameCtx-}
 
-            -- Type check the RHS under any newly bound vars
-            exprType (addVars bindVars varCtx) nameCtx caseSumExpr
+            {--- Type check the RHS under any newly bound vars-}
+            {-exprType (addVars bindVars varCtx) nameCtx caseSumExpr-}
 
-    CaseProd caseProdMatches caseProdExpr
-      -> do -- must be well-typed and have the same type as the case expression
-            bindVars <- checkMatchWith (MatchProd caseProdMatches) caseExprTy nameCtx
+    {-CaseProd caseProdMatches caseProdExpr-}
+      {--> do -- must be well-typed and have the same type as the case expression-}
+            {-bindVars <- checkMatchWith (MatchProd caseProdMatches) caseExprTy nameCtx-}
 
-            -- Type check the RHS under any newly bound vars
-            exprType (addVars bindVars varCtx) nameCtx caseProdExpr
+            {--- Type check the RHS under any newly bound vars-}
+            {-exprType (addVars bindVars varCtx) nameCtx caseProdExpr-}
 
-    CaseUnion caseUnionTypeIndex caseUnionMatch caseUnionExpr
-      -> do -- must be well-typed and have the same type as the case expression
-            bindVars <- checkMatchWith (MatchUnion caseUnionTypeIndex caseUnionMatch) caseExprTy nameCtx
+    {-CaseUnion caseUnionTypeIndex caseUnionMatch caseUnionExpr-}
+      {--> do -- must be well-typed and have the same type as the case expression-}
+            {-bindVars <- checkMatchWith (MatchUnion caseUnionTypeIndex caseUnionMatch) caseExprTy nameCtx-}
 
-            -- Type check the RHS under any newly bound vars
-            exprType (addVars bindVars varCtx) nameCtx caseUnionExpr
+            {--- Type check the RHS under any newly bound vars-}
+            {-exprType (addVars bindVars varCtx) nameCtx caseUnionExpr-}
+branchType (CaseBranch lhs rhs) expectedTy varCtx nameCtx = do
+  bindVars <- checkMatchWith lhs expectedTy nameCtx
+  exprType (addVars bindVars varCtx) nameCtx rhs
 
 -- | Check that a MatchArg matches the expected Type under a NameCtx.
 -- If so, return a list of types of any bound variables.

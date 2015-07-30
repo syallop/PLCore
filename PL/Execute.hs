@@ -101,7 +101,7 @@ reduce = reduce' emptyBindings
   -- upon, and all patterns are completly valid.
   tryBranch :: Bindings -> NameCtx -> Expr -> CaseBranch -> Maybe ([Expr],Expr)
   tryBranch bindings nameCtx caseExpr caseBranch =
-      let (matchArg,rhsExpr) = unCaseBranch caseBranch
+      let CaseBranch matchArg rhsExpr = caseBranch
          in (,rhsExpr) <$> patternBinding bindings nameCtx caseExpr matchArg
 
   -- Try matching all of these expressions against these patterns, return the list of bindings if successful.
@@ -169,16 +169,17 @@ reduce = reduce' emptyBindings
     SomeCaseBranches <$> (reduceBranchRHS bindings nameCtx caseBranch) <*> (mapM (reduceBranchRHS bindings nameCtx) caseBranches)
 
   reduceBranchRHS :: Bindings -> NameCtx -> CaseBranch -> Either Error CaseBranch
-  reduceBranchRHS bindings nameCtx = \case
-    CaseTerm name matches rhsExpr
-      -> CaseTerm <$> pure name <*> pure matches <*> (reduce' bindings nameCtx rhsExpr)
+  {-reduceBranchRHS bindings nameCtx = \case-}
+    {-CaseTerm name matches rhsExpr-}
+      {--> CaseTerm <$> pure name <*> pure matches <*> (reduce' bindings nameCtx rhsExpr)-}
 
-    CaseSum ix match rhsExpr
-      -> CaseSum <$> pure ix <*> pure match <*> reduce' bindings nameCtx rhsExpr
+    {-CaseSum ix match rhsExpr-}
+      {--> CaseSum <$> pure ix <*> pure match <*> reduce' bindings nameCtx rhsExpr-}
 
-    CaseProd matches rhsExpr
-      -> CaseProd <$> pure matches <*> reduce' bindings nameCtx rhsExpr
+    {-CaseProd matches rhsExpr-}
+      {--> CaseProd <$> pure matches <*> reduce' bindings nameCtx rhsExpr-}
 
-    CaseUnion tyIx match rhsExpr
-      -> CaseUnion <$> pure tyIx <*> pure match <*> reduce' bindings nameCtx rhsExpr
+    {-CaseUnion tyIx match rhsExpr-}
+      {--> CaseUnion <$> pure tyIx <*> pure match <*> reduce' bindings nameCtx rhsExpr-}
 
+  reduceBranchRHS bindings nameCtx (CaseBranch lhs rhs) = CaseBranch <$> pure lhs <*> reduce' bindings nameCtx rhs

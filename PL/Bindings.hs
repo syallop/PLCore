@@ -18,53 +18,54 @@ module PL.Bindings
 import Control.Applicative
 
 import PL.Expr
-import PL.Var  hiding (index)
+import PL.Binds
+{-import PL.Var  hiding (index)-}
 
 -- | A positive integer indicating how many lambda abstractions a bound expression has been moved under.
 newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
 
-data Bindings
-  = EmptyBindings                -- ^ No bindings
-  | ConsBinding Binding Bindings -- ^ A new binding
-  | Buried Bindings              -- ^ Bury many bindings beneath a lambda abstraction
+data Bindings b
+  = EmptyBindings                        -- ^ No bindings
+  | ConsBinding (Binding b) (Bindings b) -- ^ A new binding
+  | Buried (Bindings b)                  -- ^ Bury many bindings beneath a lambda abstraction
   deriving Show
 
-data Binding
-  = Unbound    -- No expression bound yet
-  | Bound Expr -- This expression is bound
+data Binding b
+  = Unbound        -- No expression bound yet
+  | Bound (Expr b) -- This expression is bound
   deriving Show
 
-emptyBindings :: Bindings
+emptyBindings :: Bindings b
 emptyBindings = EmptyBindings
 
 -- | Bury bindings under a lambda abstraction
-bury :: Bindings -> Bindings
+bury :: Bindings b -> Bindings b
 bury = Buried
 
 -- | Introduce an unbound variable
-unbound :: Bindings -> Bindings
+unbound :: Bindings b -> Bindings b
 unbound = ConsBinding Unbound
 
 -- | Introduce a new bound variable
-bind :: Expr -> Bindings -> Bindings
+bind :: Expr b -> Bindings b -> Bindings b
 bind = ConsBinding . Bound
 
 -- append a list of bound expressions to a bindings
-append :: [Expr] -> Bindings -> Bindings
+append :: [Expr b] -> Bindings b -> Bindings b
 append []     bs = bs
 append (x:xs) bs = ConsBinding (Bound x) (append xs bs)
 
 -- | Transform a list of expressions to bind into a bindings
-bindingsFromList :: [Expr] -> Bindings
+bindingsFromList :: [Expr b] -> Bindings b
 bindingsFromList []     = EmptyBindings
 bindingsFromList (b:bs) = ConsBinding (Bound b) (bindingsFromList bs)
 
 -- | If the index exists, extract the bound expression, itself adjusted for it's depth in the bindings.
-safeIndex :: Bindings -> Int -> Maybe Binding
+safeIndex :: Binds b => Bindings b -> Int -> Maybe (Binding b)
 safeIndex EmptyBindings _ = Nothing
 safeIndex bs           ix = safeIndex' 0 bs ix
   where
-    safeIndex' :: BuryDepth -> Bindings -> Int -> Maybe Binding
+    safeIndex' :: Binds b => BuryDepth -> Bindings b -> Int -> Maybe (Binding b)
     safeIndex' buryDepth bs ix = case (bs,ix) of
       (EmptyBindings    , _) -> Nothing
 
@@ -76,7 +77,7 @@ safeIndex bs           ix = safeIndex' 0 bs ix
       (Buried        bs', _) -> safeIndex' (buryDepth+1) bs' ix
 
 -- | 'safeIndex' assuming the index is contained in the bindings.
-index :: Bindings -> Int -> Binding
+index :: Binds b => Bindings b -> Int -> Binding b
 index bs ix = let Just r = safeIndex bs ix in r
 
 -- bury any escaping variables in an expression by given depth.
@@ -92,12 +93,13 @@ index bs ix = let Just r = safeIndex bs ix in r
 --
 -- TODO: Refactor code, please..
 -- - can probably merge all code into the aux definition/ use mapSubExpr
-buryBy :: Expr -> BuryDepth -> Expr
+buryBy :: Binds b => Expr b -> BuryDepth -> Expr b
 buryBy expr 0         = expr
 buryBy expr buryDepth = case expr of
 
-  Var v
-    -> Var $ intToVar $ (varToInt v) + _unBurryDepth buryDepth
+  Var b
+    {--> Var $ intToVar $ (varToInt v) + _unBurryDepth buryDepth-}
+    -> Var $ b `addBindIx` (_unBurryDepth buryDepth)
 
   Lam ty e
     -> Lam ty (buryBy' 0 e buryDepth)
@@ -129,17 +131,17 @@ buryBy expr buryDepth = case expr of
     -> Union (buryBy unionExpr buryDepth) tyIx tys
 
   where
-    buryBy' :: Int -> Expr -> BuryDepth -> Expr
+    buryBy' :: Binds b => Int -> Expr b -> BuryDepth -> Expr b
     buryBy' ourTop expr buryDepth = case expr of
 
-      Var v
+      Var b
         -- Variable is within our height
-        | (varToInt v) <= ourTop
-          -> Var v
+        | (bindIx b) <= ourTop
+          -> Var b
 
         -- Variable escapes our height, so compensate for the greater depth.
         | otherwise
-          -> Var $ intToVar $ (varToInt v) + _unBurryDepth buryDepth
+          -> Var $ b `addBindIx` (_unBurryDepth buryDepth)
 
       Lam ty e
         -> Lam ty (buryBy' (ourTop+1) e buryDepth)

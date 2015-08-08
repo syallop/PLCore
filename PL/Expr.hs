@@ -1,10 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 module PL.Expr where
 
 import PL.Type
 import PL.Name
 import PL.Error
-import PL.Var
+
+import PL.Binds
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -15,18 +18,18 @@ todo :: String -> a
 todo str = error $ "TODO: " ++ str
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
-data Expr
+data Expr b
 
     -- | Lambda abstraction
     = Lam
       {_take :: Type
-      ,_expr :: Expr
+      ,_expr :: Expr b
       }
 
     -- | Application
     | App
-      {_f :: Expr
-      ,_x :: Expr
+      {_f :: Expr b
+      ,_x :: Expr b
       }
 
     -- | Term literal
@@ -36,13 +39,13 @@ data Expr
 
     -- | Variable
     | Var
-      {_var :: Var
+      {_var :: b
       }
 
     -- | Case analysis of an expression
     | Case
-      {_caseExpr     :: Expr
-      ,_caseBranches :: PossibleCaseBranches
+      {_caseExpr     :: Expr b
+      ,_caseBranches :: PossibleCaseBranches b
       }
 
     -- | An expression is indexed within a Sum type
@@ -50,37 +53,38 @@ data Expr
     -- Currently assuming type guarantees index is within bounds of sumType
     -- (Not unless type-checked that that the expr has that type)
     | Sum
-      {_sumExpr  :: Expr
+      {_sumExpr  :: Expr b
       ,_sumIndex :: Int
       ,_sumType  :: [Type]
       }
 
     -- | An expression is a product of many expressions
     | Prod
-      {_prodExprs :: [Expr]
+      {_prodExprs :: [Expr b]
       }
 
     -- | An expression has one of many unique types
     | Union
-      {_unionExpr      :: Expr
+      {_unionExpr      :: Expr b
       ,_unionTypeIndex :: Type
       ,_unionType      :: Set.Set Type
       }
-    deriving (Eq)
 
-instance Show Expr where
+deriving instance Binds b => Eq (Expr b)
+
+instance Binds b => Show (Expr b) where
   show = showExpr
 
 -- | Body of a case expression. Is either:
 -- - Just a catch all match
 -- - One or many branches and a possible default catch all
-data PossibleCaseBranches
+data PossibleCaseBranches b
 
   -- | No proper matches, only a default catch all
   -- case ... of
   --   {_ -> exp}
   = DefaultOnly
-    { _onMatch :: Expr
+    { _onMatch :: Expr b
     }
 
   -- | One or many branches and a possible default catch all
@@ -91,19 +95,19 @@ data PossibleCaseBranches
   --    _   -> ...
   --   }
   | CaseBranches
-    { _branches       :: SomeCaseBranches -- One to many
-    , _defaultOnMatch :: Maybe Expr       -- Possible catch all default
+    { _branches       :: SomeCaseBranches b -- One to many
+    , _defaultOnMatch :: Maybe (Expr b) -- Possible catch all default
     }
     deriving (Show, Eq)
 
 -- | One or many 'CaseBranch'
-data SomeCaseBranches = SomeCaseBranches CaseBranch [CaseBranch]
+data SomeCaseBranches b = SomeCaseBranches (CaseBranch b) [CaseBranch b]
   deriving (Show,Eq)
 
 -- | A single branch in a case analysis of a type
-data CaseBranch = CaseBranch
+data CaseBranch b = CaseBranch
   {_caseLHS :: MatchArg
-  ,_caseRHS :: Expr
+  ,_caseRHS :: Expr b
   }
   deriving (Show,Eq)
 
@@ -113,7 +117,7 @@ data CaseBranch = CaseBranch
 
 -- Map a function over all contained subexpressions.
 -- The function should preserve the type of the expression.
-mapSubExpressions :: (Expr -> Expr) -> Expr -> Expr
+mapSubExpressions :: (Expr b -> Expr b) -> Expr b -> Expr b
 mapSubExpressions f = \case
   Lam ty expr
     -> Lam ty $ f expr
@@ -139,7 +143,7 @@ mapSubExpressions f = \case
   Union unionExpr tyIx ty
     -> Union (f unionExpr) tyIx ty
 
-mapCaseRHSs :: (Expr -> Expr) -> CaseBranch -> CaseBranch
+mapCaseRHSs :: (Expr b -> Expr b) -> CaseBranch b -> CaseBranch b
 mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 
 
@@ -162,7 +166,7 @@ data TermInfo = TermInfo
   , _termBelongs :: TypeName -- ^ In order to construct a type called
   }
 
-showExpr :: Expr -> String
+showExpr :: Binds b => Expr b -> String
 showExpr = \case
   Lam takeTy expr
     -> "\\" ++ show takeTy ++ "." ++ showExpr expr
@@ -173,8 +177,11 @@ showExpr = \case
   Term termName
     -> "#" ++ show termName
 
+  {-Var v-}
+    {--> show $ varToInt v-}
+
   Var v
-    -> show $ varToInt v
+    -> show v
 
   Case caseExpr caseBranches
     -> "(CASE " ++ showExpr caseExpr ++ " OF\n" ++ showPossibleCaseBranches caseBranches ++ ")"
@@ -195,7 +202,7 @@ showExpr = \case
             | otherwise = show t : showUnionT tyIx ts
           in showExpr unionExpr ++ " : <" ++ (intercalate "|" $ showUnionT unionTypeIndex (Set.toList unionTy)) ++ ">"
 
-showPossibleCaseBranches :: PossibleCaseBranches -> String
+showPossibleCaseBranches :: Binds b => PossibleCaseBranches b -> String
 showPossibleCaseBranches = \case
   DefaultOnly onMatch
     -> "DEFAULT -> " ++ showExpr onMatch
@@ -203,10 +210,10 @@ showPossibleCaseBranches = \case
   CaseBranches someCaseBranches maybeDefaultOnMatch
     -> showSomeCaseBranches someCaseBranches ++ "\n\n" ++ (maybe "" (("DEFAULT -> " ++) . showExpr) maybeDefaultOnMatch)
 
-showSomeCaseBranches :: SomeCaseBranches -> String
+showSomeCaseBranches :: Binds b => SomeCaseBranches b -> String
 showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n\n" $ map showCaseBranch (caseBranch : caseBranches)
 
-showCaseBranch :: CaseBranch -> String
+showCaseBranch :: Binds b => CaseBranch b -> String
 showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " -> " ++ showExpr rhs
 
 showMatchArgs :: [MatchArg] -> String
@@ -233,12 +240,13 @@ showMatchArg = \case
 type NameCtx = Map.Map TermName TermInfo
 
 -- | A top-level expression is an expression without a variable context.
-topExprType :: NameCtx -> Expr -> Either Error Type
-topExprType = exprType emptyVarCtx
+topExprType :: Binds b => NameCtx -> Expr b -> Either Error Type
+topExprType = exprType emptyCtx
 
 -- | Under a given variable context, type check an expression.
-exprType :: VarCtx -> NameCtx -> Expr -> Either Error Type
+exprType :: Binds b => BindCtx b -> NameCtx -> Expr b -> Either Error Type
 exprType varCtx nameCtx e = case e of
+
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
   --                 They therefore can never be applied.
@@ -323,7 +331,8 @@ exprType varCtx nameCtx e = case e of
   -- -----------------
   --      var : t
   Var var
-    -> Right $ var `index` varCtx
+    {--> Right $ var `index` varCtx-}
+    -> Right $ var `bindTy` varCtx
 
   -- | A case expression with only a defaut branch.
   --
@@ -372,35 +381,7 @@ exprType varCtx nameCtx e = case e of
 
 -- Type check a case branch, requring it match the expected type under a namectx
 -- if so, type checking the result expression which is returned
-branchType :: CaseBranch -> Type -> VarCtx -> NameCtx -> Either Error Type
-{-branchType caseBranch caseExprTy varCtx nameCtx = case caseBranch of-}
-    {-CaseTerm caseTermName caseTermMatches caseTermExpr-}
-       {--> do -- must be well-typed and have the same type as the case expression-}
-             {-bindVars <- checkMatchWith (MatchTerm caseTermName caseTermMatches) caseExprTy nameCtx-}
-
-             {--- Type check the RHS under any newly bound vars-}
-             {-exprType (addVars bindVars varCtx) nameCtx caseTermExpr-}
-
-    {-CaseSum caseSumIndex caseSumMatch caseSumExpr-}
-      {--> do -- must be well-typed and have the same type as the case expression-}
-            {-bindVars <- checkMatchWith (MatchSum caseSumIndex caseSumMatch) caseExprTy nameCtx-}
-
-            {--- Type check the RHS under any newly bound vars-}
-            {-exprType (addVars bindVars varCtx) nameCtx caseSumExpr-}
-
-    {-CaseProd caseProdMatches caseProdExpr-}
-      {--> do -- must be well-typed and have the same type as the case expression-}
-            {-bindVars <- checkMatchWith (MatchProd caseProdMatches) caseExprTy nameCtx-}
-
-            {--- Type check the RHS under any newly bound vars-}
-            {-exprType (addVars bindVars varCtx) nameCtx caseProdExpr-}
-
-    {-CaseUnion caseUnionTypeIndex caseUnionMatch caseUnionExpr-}
-      {--> do -- must be well-typed and have the same type as the case expression-}
-            {-bindVars <- checkMatchWith (MatchUnion caseUnionTypeIndex caseUnionMatch) caseExprTy nameCtx-}
-
-            {--- Type check the RHS under any newly bound vars-}
-            {-exprType (addVars bindVars varCtx) nameCtx caseUnionExpr-}
+branchType :: Binds b => CaseBranch b -> Type -> BindCtx b -> NameCtx -> Either Error Type
 branchType (CaseBranch lhs rhs) expectedTy varCtx nameCtx = do
   bindVars <- checkMatchWith lhs expectedTy nameCtx
   exprType (addVars bindVars varCtx) nameCtx rhs
@@ -471,11 +452,11 @@ checkMatchesWith matches types nameCtx = case (matches,types) of
     {-exprs = map fst bind-}
     {-types = map snd bind-}
 
-appise :: [Expr] -> Expr
+appise :: [Expr b] -> Expr b
 appise (e:[])    = e
 appise (e:e':es) = appise ((App e e'):es)
 
-lamise :: [Type] -> Expr -> Expr
+lamise :: [Type] -> Expr b -> Expr b
 lamise (t:[])    e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
 

@@ -1,14 +1,16 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 module PL.Execute where
 
+import PL.Binds
 import PL.Bindings
 import PL.Expr
 import PL.Error
 import PL.Type
 import PL.Name
-import PL.Var hiding (VarCtx,index)
+{-import PL.Var hiding (VarCtx,index)-}
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -16,10 +18,10 @@ import Control.Arrow (second)
 import Data.Maybe
 
 -- | Within a 'NameCtx', reduce an 'Expr'.
-reduce :: NameCtx -> Expr -> Either Error Expr
+reduce :: forall b. Binds b => NameCtx -> Expr b -> Either Error (Expr b)
 reduce = reduce' emptyBindings
   where
-  reduce' :: Bindings -> NameCtx -> Expr -> Either Error Expr
+  reduce' :: Bindings b -> NameCtx -> Expr b -> Either Error (Expr b)
   reduce' bindings nameCtx expr = case expr of
 
       -- Terms dont reduce
@@ -27,9 +29,9 @@ reduce = reduce' emptyBindings
         -> Right $ Term termName
 
       -- Vars reduce to whatever they've been bound to, if they've been bound that is.
-      Var var
-        -> pure $ case bindings `index` (varToInt var) of
-              Unbound -> Var var
+      Var b
+        -> pure $ case bindings `index` (bindIx b) of
+              Unbound -> Var b
               Bound e -> e -- maybe should reduce again?
 
       -- Reduce the sums expression
@@ -68,7 +70,7 @@ reduce = reduce' emptyBindings
 
 
   -- The expression is not a variable and so we can reduce the case expession, finding the matching branch and returning the reduced RHS.
-  reducePossibleCaseBranches :: Bindings -> NameCtx -> Expr -> PossibleCaseBranches -> Either Error Expr
+  reducePossibleCaseBranches :: Bindings b -> NameCtx -> Expr b -> PossibleCaseBranches b -> Either Error (Expr b)
   reducePossibleCaseBranches bindings nameCtx caseExpr = \case
       DefaultOnly defaultExpr
         -> reduce' bindings nameCtx defaultExpr
@@ -84,7 +86,7 @@ reduce = reduce' emptyBindings
               (Just (bindExprs,rhsExpr),_)
                 -> reduce' (append (reverse bindExprs) bindings) nameCtx rhsExpr
 
-  tryBranches :: Bindings -> NameCtx -> Expr -> SomeCaseBranches -> Maybe ([Expr],Expr)
+  tryBranches :: Bindings b -> NameCtx -> Expr b -> SomeCaseBranches b -> Maybe ([Expr b],Expr b)
   tryBranches bindings nameCtx caseExpr (SomeCaseBranches caseBranch caseBranches) =
       firstMatch $ tryBranch bindings nameCtx caseExpr <$> (caseBranch : caseBranches)
 
@@ -99,7 +101,7 @@ reduce = reduce' emptyBindings
   --
   -- We assume the input is type-checked which ensures patterns have the same type as the caseexpr matched
   -- upon, and all patterns are completly valid.
-  tryBranch :: Bindings -> NameCtx -> Expr -> CaseBranch -> Maybe ([Expr],Expr)
+  tryBranch :: Bindings b -> NameCtx -> Expr b -> CaseBranch b -> Maybe ([Expr b],Expr b)
   tryBranch bindings nameCtx caseExpr caseBranch =
       let CaseBranch matchArg rhsExpr = caseBranch
          in (,rhsExpr) <$> patternBinding bindings nameCtx caseExpr matchArg
@@ -107,11 +109,11 @@ reduce = reduce' emptyBindings
   -- Try matching all of these expressions against these patterns, return the list of bindings if successful.
   --
   -- (Type checking ensures same length lists and valid patterns)
-  patternBindings :: Bindings -> NameCtx -> [Expr] -> [MatchArg] -> Maybe [Expr]
+  patternBindings :: Bindings b -> NameCtx -> [Expr b] -> [MatchArg] -> Maybe [Expr b]
   patternBindings bindings nameCtx exprs matchArgs = fmap concat $ mapM (uncurry $ patternBinding bindings nameCtx) $ zip exprs matchArgs
 
   -- This expression can be matched by this matchArgs. Return the list of bindings.
-  patternBinding :: Bindings -> NameCtx -> Expr -> MatchArg -> Maybe [Expr]
+  patternBinding :: Bindings b -> NameCtx -> Expr b -> MatchArg -> Maybe [Expr b]
   patternBinding bindings nameCtx expr matchArg = case (expr,matchArg) of
 
       (termExpr,MatchTerm termName matchArgs)
@@ -138,7 +140,7 @@ reduce = reduce' emptyBindings
 
   -- The given expression must be either a Term or a Term applied to one or many args.
   -- Return the termName and all args.
-  collectTermArgs :: Bindings -> NameCtx -> Expr -> (TermName,[Expr])
+  collectTermArgs :: Bindings b -> NameCtx -> Expr b -> (TermName,[Expr b])
   collectTermArgs bindings nameCtx termExpr = second reverse $ collectTermArgs' [] termExpr
     where collectTermArgs' accArgs termArg = let Right reducedTermArg = reduce' bindings nameCtx termArg in case reducedTermArg of
       -- End of the application to a term
@@ -155,7 +157,7 @@ reduce = reduce' emptyBindings
 
 
   -- we cant evaluate the case expression yet, so we just reduce all the possible RHSs as much as possible.
-  reducePossibleCaseRHSs :: Bindings -> NameCtx -> PossibleCaseBranches -> Either Error PossibleCaseBranches
+  reducePossibleCaseRHSs :: Bindings b -> NameCtx -> PossibleCaseBranches b -> Either Error (PossibleCaseBranches b)
   reducePossibleCaseRHSs bindings nameCtx = \case
     DefaultOnly onMatchExpr
       -> DefaultOnly <$> reduce' bindings nameCtx onMatchExpr
@@ -164,22 +166,10 @@ reduce = reduce' emptyBindings
       -> CaseBranches <$> (reduceSomeBranchRHSs bindings nameCtx branches)
                       <*> maybe (pure Nothing) (Just <$>) (reduce' bindings nameCtx <$> mDefaultExpr)
 
-  reduceSomeBranchRHSs :: Bindings -> NameCtx -> SomeCaseBranches -> Either Error SomeCaseBranches
+  reduceSomeBranchRHSs :: Bindings b -> NameCtx -> SomeCaseBranches b -> Either Error (SomeCaseBranches b)
   reduceSomeBranchRHSs bindings nameCtx (SomeCaseBranches caseBranch caseBranches) =
     SomeCaseBranches <$> (reduceBranchRHS bindings nameCtx caseBranch) <*> (mapM (reduceBranchRHS bindings nameCtx) caseBranches)
 
-  reduceBranchRHS :: Bindings -> NameCtx -> CaseBranch -> Either Error CaseBranch
-  {-reduceBranchRHS bindings nameCtx = \case-}
-    {-CaseTerm name matches rhsExpr-}
-      {--> CaseTerm <$> pure name <*> pure matches <*> (reduce' bindings nameCtx rhsExpr)-}
-
-    {-CaseSum ix match rhsExpr-}
-      {--> CaseSum <$> pure ix <*> pure match <*> reduce' bindings nameCtx rhsExpr-}
-
-    {-CaseProd matches rhsExpr-}
-      {--> CaseProd <$> pure matches <*> reduce' bindings nameCtx rhsExpr-}
-
-    {-CaseUnion tyIx match rhsExpr-}
-      {--> CaseUnion <$> pure tyIx <*> pure match <*> reduce' bindings nameCtx rhsExpr-}
-
+  reduceBranchRHS :: Bindings b -> NameCtx -> CaseBranch b -> Either Error (CaseBranch b)
   reduceBranchRHS bindings nameCtx (CaseBranch lhs rhs) = CaseBranch <$> pure lhs <*> reduce' bindings nameCtx rhs
+

@@ -1,5 +1,7 @@
+{-# LANGUAGE TypeFamilies #-}
 module PL.Var where
 
+import PL.Binds
 import PL.Type
 
 -- | Debrujn index for referencing variables.
@@ -13,33 +15,24 @@ vtwo   = VS vone
 vthree = VS vtwo
 vfour  = VS vthree
 
+instance Binds Var where
 
--- | Debrujn indexed context of variable types
-data VarCtx = VarCtx [Type]
+  ixBind 0 = VZ
+  ixBind n = VS (ixBind (n-1))
 
--- | Initial empty context
-emptyVarCtx :: VarCtx
-emptyVarCtx = VarCtx []
+  bindIx VZ     = 0
+  bindIx (VS v) = 1+bindIx v
 
--- | Index the type of a var
-index :: Var -> VarCtx -> Type
-index VZ     (VarCtx (l:_)) = l
-index (VS v) (VarCtx (_:ls)) = index v (VarCtx ls)
-index _ _ = error "VarCtx too small"
+  addBindIx b 0 = b
+  addBindIx b n = addBindIx (VS b) (n-1)
 
--- | Add a newly bound var to a context
-addVar :: Type -> VarCtx -> VarCtx
-addVar t (VarCtx ts) = VarCtx (t:ts)
 
--- | Add many newly bound vars to a context
-addVars :: [Type] -> VarCtx -> VarCtx
-addVars ts varCtx = foldl (flip addVar) varCtx ts
+  data BindCtx Var = VarCtx [Type]
 
-varToInt :: Var -> Int
-varToInt VZ     = 0
-varToInt (VS v) = 1+varToInt v
+  emptyCtx = VarCtx []
 
-intToVar :: Int -> Var
-intToVar 0 = VZ
-intToVar n = VS (intToVar (n-1))
+  bindTy b (VarCtx ts)  =  ts !! (bindIx b)
+
+  addVar t (VarCtx ts) = VarCtx (t:ts)
+  addVars ts varCtx = foldl (flip addVar) varCtx ts
 

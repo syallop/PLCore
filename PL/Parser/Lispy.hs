@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 module PL.Parser.Lispy where
 
 import Prelude hiding (takeWhile,exp)
@@ -14,6 +15,10 @@ import PL.Var
 import PL.Name
 import PL.Type
 
+import PL.Binds
+
+type ExprV = Expr Var
+
 -- Utils
 consP :: Parser a -> Parser [a] -> Parser [a]
 consP = liftA2 (:)
@@ -21,10 +26,10 @@ consP = liftA2 (:)
 arrowiseP :: Parser Type -> Parser [Type] -> Parser Type
 arrowiseP = liftA2 (\t ts -> arrowise (t:ts))
 
-appiseP :: Parser Expr -> Parser [Expr] -> Parser Expr
+appiseP :: Parser ExprV -> Parser [ExprV] -> Parser ExprV
 appiseP = liftA2 (\e es -> appise (e:es))
 
-lamiseP :: Parser [Type] -> Parser Expr -> Parser Expr
+lamiseP :: Parser [Type] -> Parser ExprV -> Parser ExprV
 lamiseP = liftA2 lamise
 
 grouped :: Parser a -> Parser a
@@ -35,7 +40,7 @@ grouped p = lparen *> p <* rparen
 name     = Text.cons <$> upper <*> (takeWhile isLower)
 termName = charIs '#' >> TermName <$> name
 typeName = TypeName <$> name
-var      = intToVar <$> natural
+var      = ixBind <$> natural
 
 -- Type signatures
 typeSig     = typeNameSig
@@ -64,7 +69,8 @@ expr   =  (alternatives [varE,termE,lamEs,caseE,sumE,prodE,unionE])
        ,prodE
        ,unionE
        ])
-varE   = Var  <$> var                                        -- {Natural}
+
+varE   = Var <$> var
 termE  = Term <$> termName                                   -- {TermName}
 lamEs  = lamiseP (lambda *> some typeSig) expr  -- \{Type1} [{Type} ]{Expr}
 appEs  = appiseP expr (some expr)                 -- {Expr}1>[ {Expr}]

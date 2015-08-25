@@ -16,11 +16,7 @@ vtwo   = VS vone
 vthree = VS vtwo
 vfour  = VS vthree
 
-instance Binds Var Type where
-
-  absTy = id
-
-
+instance Binds Var where
   ixBind 0 = VZ
   ixBind n = VS (ixBind (n-1))
 

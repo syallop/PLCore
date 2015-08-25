@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ConstraintKinds #-}
 module PL.Execute where
 
 import PL.Binds
@@ -18,7 +19,7 @@ import Control.Arrow (second)
 import Data.Maybe
 
 -- | Within a 'NameCtx', reduce an 'Expr'.
-reduce :: forall b abs. Binds b abs => NameCtx -> Expr b abs -> Either Error (Expr b abs)
+reduce :: forall b abs. BindAbs b abs => NameCtx -> Expr b abs -> Either Error (Expr b abs)
 reduce = reduce' emptyBindings
   where
   reduce' :: Bindings b abs -> NameCtx -> Expr b abs -> Either Error (Expr b abs)

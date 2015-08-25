@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ConstraintKinds #-}
 module PL.Bindings
   ( BuryDepth()
   , Bindings()
@@ -61,11 +62,11 @@ bindingsFromList []     = EmptyBindings
 bindingsFromList (b:bs) = ConsBinding (Bound b) (bindingsFromList bs)
 
 -- | If the index exists, extract the bound expression, itself adjusted for it's depth in the bindings.
-safeIndex :: Binds b abs => Bindings b abs -> Int -> Maybe (Binding b abs)
+safeIndex :: BindAbs b abs => Bindings b abs -> Int -> Maybe (Binding b abs)
 safeIndex EmptyBindings _ = Nothing
 safeIndex bs           ix = safeIndex' 0 bs ix
   where
-    safeIndex' :: Binds b abs => BuryDepth -> Bindings b abs -> Int -> Maybe (Binding b abs)
+    safeIndex' :: BindAbs b abs => BuryDepth -> Bindings b abs -> Int -> Maybe (Binding b abs)
     safeIndex' buryDepth bs ix = case (bs,ix) of
       (EmptyBindings    , _) -> Nothing
 
@@ -77,7 +78,7 @@ safeIndex bs           ix = safeIndex' 0 bs ix
       (Buried        bs', _) -> safeIndex' (buryDepth+1) bs' ix
 
 -- | 'safeIndex' assuming the index is contained in the bindings.
-index :: Binds b abs => Bindings b abs -> Int -> Binding b abs
+index :: BindAbs b abs => Bindings b abs -> Int -> Binding b abs
 index bs ix = let Just r = safeIndex bs ix in r
 
 -- bury any escaping variables in an expression by given depth.
@@ -93,7 +94,7 @@ index bs ix = let Just r = safeIndex bs ix in r
 --
 -- TODO: Refactor code, please..
 -- - can probably merge all code into the aux definition/ use mapSubExpr
-buryBy :: Binds b abs => Expr b abs -> BuryDepth -> Expr b abs
+buryBy :: BindAbs b abs => Expr b abs -> BuryDepth -> Expr b abs
 buryBy expr 0         = expr
 buryBy expr buryDepth = case expr of
 
@@ -131,7 +132,7 @@ buryBy expr buryDepth = case expr of
     -> Union (buryBy unionExpr buryDepth) tyIx tys
 
   where
-    buryBy' :: Binds b abs => Int -> Expr b abs -> BuryDepth -> Expr b abs
+    buryBy' :: BindAbs b abs => Int -> Expr b abs -> BuryDepth -> Expr b abs
     buryBy' ourTop expr buryDepth = case expr of
 
       Var b

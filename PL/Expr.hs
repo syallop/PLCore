@@ -2,6 +2,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds #-}
 module PL.Expr where
 
 import PL.Type
@@ -9,6 +10,7 @@ import PL.Name
 import PL.Error
 
 import PL.Binds
+import PL.Abstracts
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -17,6 +19,10 @@ import Control.Applicative
 
 todo :: String -> a
 todo str = error $ "TODO: " ++ str
+
+
+type BindAbs b abs = (Binds b, Abstracts abs)
+type ExprOf b abs =  BindAbs b abs => Expr b abs
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
 -- 'b' type refering to a bound var
@@ -73,9 +79,9 @@ data Expr b abs
       ,_unionType      :: Set.Set Type
       }
 
-deriving instance Binds b abs => Eq (Expr b abs)
+deriving instance (Binds b, Abstracts abs) => Eq (Expr b abs)
 
-instance Binds b abs => Show (Expr b abs) where
+instance (Binds b,Abstracts abs) => Show (Expr b abs) where
   show = showExpr
 
 -- | Body of a case expression. Is either:
@@ -169,7 +175,7 @@ data TermInfo = TermInfo
   , _termBelongs :: TypeName -- ^ In order to construct a type called
   }
 
-showExpr :: Binds b abs => Expr b abs -> String
+showExpr :: BindAbs b abs => Expr b abs -> String
 showExpr = \case
   Lam takeTy expr
     -> "\\" ++ show (absTy takeTy) ++ "." ++ showExpr expr
@@ -205,7 +211,7 @@ showExpr = \case
             | otherwise = show t : showUnionT tyIx ts
           in showExpr unionExpr ++ " : <" ++ (intercalate "|" $ showUnionT unionTypeIndex (Set.toList unionTy)) ++ ">"
 
-showPossibleCaseBranches :: Binds b abs => PossibleCaseBranches b abs -> String
+showPossibleCaseBranches :: BindAbs b abs => PossibleCaseBranches b abs -> String
 showPossibleCaseBranches = \case
   DefaultOnly onMatch
     -> "DEFAULT -> " ++ showExpr onMatch
@@ -213,10 +219,10 @@ showPossibleCaseBranches = \case
   CaseBranches someCaseBranches maybeDefaultOnMatch
     -> showSomeCaseBranches someCaseBranches ++ "\n\n" ++ (maybe "" (("DEFAULT -> " ++) . showExpr) maybeDefaultOnMatch)
 
-showSomeCaseBranches :: Binds b abs => SomeCaseBranches b abs -> String
+showSomeCaseBranches :: BindAbs b abs => SomeCaseBranches b abs -> String
 showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n\n" $ map showCaseBranch (caseBranch : caseBranches)
 
-showCaseBranch :: Binds b abs => CaseBranch b abs -> String
+showCaseBranch :: BindAbs b abs => CaseBranch b abs -> String
 showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " -> " ++ showExpr rhs
 
 showMatchArgs :: [MatchArg] -> String
@@ -243,11 +249,11 @@ showMatchArg = \case
 type NameCtx = Map.Map TermName TermInfo
 
 -- | A top-level expression is an expression without a variable context.
-topExprType :: Binds b abs => NameCtx -> Expr b abs -> Either Error Type
+topExprType :: BindAbs b abs => NameCtx -> Expr b abs -> Either Error Type
 topExprType = exprType emptyCtx
 
 -- | Under a given variable context, type check an expression.
-exprType :: forall b abs. Binds b abs => BindCtx b -> NameCtx -> Expr b abs -> Either Error Type
+exprType :: forall b abs. BindAbs b abs => BindCtx b -> NameCtx -> Expr b abs -> Either Error Type
 exprType varCtx nameCtx e = case e of
 
 
@@ -384,7 +390,7 @@ exprType varCtx nameCtx e = case e of
 
 -- Type check a case branch, requring it match the expected type under a namectx
 -- if so, type checking the result expression which is returned
-branchType :: Binds b abs => CaseBranch b abs -> Type -> BindCtx b -> NameCtx -> Either Error Type
+branchType :: BindAbs b abs => CaseBranch b abs -> Type -> BindCtx b -> NameCtx -> Either Error Type
 branchType (CaseBranch lhs rhs) expectedTy varCtx nameCtx = do
   bindVars <- checkMatchWith lhs expectedTy nameCtx
   exprType (addVars bindVars varCtx) nameCtx rhs
@@ -459,7 +465,7 @@ appise :: [Expr b abs] -> Expr b abs
 appise (e:[])    = e
 appise (e:e':es) = appise ((App e e'):es)
 
-lamise :: Binds b abs => [abs] -> Expr b abs -> Expr b abs
+lamise :: BindAbs b abs => [abs] -> Expr b abs -> Expr b abs
 lamise (t:[])    e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
 

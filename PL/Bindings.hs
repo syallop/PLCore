@@ -24,48 +24,48 @@ import PL.Binds
 -- | A positive integer indicating how many lambda abstractions a bound expression has been moved under.
 newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
 
-data Bindings b
+data Bindings b abs
   = EmptyBindings                        -- ^ No bindings
-  | ConsBinding (Binding b) (Bindings b) -- ^ A new binding
-  | Buried (Bindings b)                  -- ^ Bury many bindings beneath a lambda abstraction
+  | ConsBinding (Binding b abs) (Bindings b abs) -- ^ A new binding
+  | Buried (Bindings b abs)                  -- ^ Bury many bindings beneath a lambda abstraction
   deriving Show
 
-data Binding b
+data Binding b abs
   = Unbound        -- No expression bound yet
-  | Bound (Expr b) -- This expression is bound
+  | Bound (Expr b abs) -- This expression is bound
   deriving Show
 
-emptyBindings :: Bindings b
+emptyBindings :: Bindings b abs
 emptyBindings = EmptyBindings
 
 -- | Bury bindings under a lambda abstraction
-bury :: Bindings b -> Bindings b
+bury :: Bindings b abs -> Bindings b abs
 bury = Buried
 
 -- | Introduce an unbound variable
-unbound :: Bindings b -> Bindings b
+unbound :: Bindings b abs -> Bindings b abs
 unbound = ConsBinding Unbound
 
 -- | Introduce a new bound variable
-bind :: Expr b -> Bindings b -> Bindings b
+bind :: Expr b abs -> Bindings b abs -> Bindings b abs
 bind = ConsBinding . Bound
 
 -- append a list of bound expressions to a bindings
-append :: [Expr b] -> Bindings b -> Bindings b
+append :: [Expr b abs] -> Bindings b abs -> Bindings b abs
 append []     bs = bs
 append (x:xs) bs = ConsBinding (Bound x) (append xs bs)
 
 -- | Transform a list of expressions to bind into a bindings
-bindingsFromList :: [Expr b] -> Bindings b
+bindingsFromList :: [Expr b abs] -> Bindings b abs
 bindingsFromList []     = EmptyBindings
 bindingsFromList (b:bs) = ConsBinding (Bound b) (bindingsFromList bs)
 
 -- | If the index exists, extract the bound expression, itself adjusted for it's depth in the bindings.
-safeIndex :: Binds b => Bindings b -> Int -> Maybe (Binding b)
+safeIndex :: Binds b abs => Bindings b abs -> Int -> Maybe (Binding b abs)
 safeIndex EmptyBindings _ = Nothing
 safeIndex bs           ix = safeIndex' 0 bs ix
   where
-    safeIndex' :: Binds b => BuryDepth -> Bindings b -> Int -> Maybe (Binding b)
+    safeIndex' :: Binds b abs => BuryDepth -> Bindings b abs -> Int -> Maybe (Binding b abs)
     safeIndex' buryDepth bs ix = case (bs,ix) of
       (EmptyBindings    , _) -> Nothing
 
@@ -77,7 +77,7 @@ safeIndex bs           ix = safeIndex' 0 bs ix
       (Buried        bs', _) -> safeIndex' (buryDepth+1) bs' ix
 
 -- | 'safeIndex' assuming the index is contained in the bindings.
-index :: Binds b => Bindings b -> Int -> Binding b
+index :: Binds b abs => Bindings b abs -> Int -> Binding b abs
 index bs ix = let Just r = safeIndex bs ix in r
 
 -- bury any escaping variables in an expression by given depth.
@@ -93,7 +93,7 @@ index bs ix = let Just r = safeIndex bs ix in r
 --
 -- TODO: Refactor code, please..
 -- - can probably merge all code into the aux definition/ use mapSubExpr
-buryBy :: Binds b => Expr b -> BuryDepth -> Expr b
+buryBy :: Binds b abs => Expr b abs -> BuryDepth -> Expr b abs
 buryBy expr 0         = expr
 buryBy expr buryDepth = case expr of
 
@@ -131,7 +131,7 @@ buryBy expr buryDepth = case expr of
     -> Union (buryBy unionExpr buryDepth) tyIx tys
 
   where
-    buryBy' :: Binds b => Int -> Expr b -> BuryDepth -> Expr b
+    buryBy' :: Binds b abs => Int -> Expr b abs -> BuryDepth -> Expr b abs
     buryBy' ourTop expr buryDepth = case expr of
 
       Var b

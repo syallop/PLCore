@@ -17,7 +17,7 @@ import PL.Type
 
 import PL.Binds
 
-type ExprV = Expr Var
+type ExprV = Expr Var Type
 
 -- Utils
 consP :: Parser a -> Parser [a] -> Parser [a]

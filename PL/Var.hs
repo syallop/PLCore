@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 module PL.Var where
 
@@ -15,7 +16,10 @@ vtwo   = VS vone
 vthree = VS vtwo
 vfour  = VS vthree
 
-instance Binds Var where
+instance Binds Var Type where
+
+  absTy = id
+
 
   ixBind 0 = VZ
   ixBind n = VS (ixBind (n-1))

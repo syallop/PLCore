@@ -19,7 +19,9 @@ import Data.Maybe
 
 -- | Within a 'NameCtx', reduce an 'Expr'.
 reduce :: forall b abs. BindAbs b abs => NameCtx -> Expr b abs -> Either Error (Expr b abs)
-reduce = reduce' emptyBindings
+reduce nameCtx expr = do
+  redExpr <- reduce' emptyBindings nameCtx expr
+  if redExpr == expr then pure expr else reduce' emptyBindings nameCtx redExpr
   where
   reduce' :: Bindings b abs -> NameCtx -> Expr b abs -> Either Error (Expr b abs)
   reduce' bindings nameCtx expr = case expr of

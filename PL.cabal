@@ -23,6 +23,7 @@ library
                      , PL.Error
                      , PL.Expr
                      , PL.Binds
+                     , PL.Abstracts
                      , PL.Bindings
                      , PL.Parser
                      , PL.Parser.Lispy

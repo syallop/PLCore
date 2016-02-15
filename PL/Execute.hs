@@ -11,7 +11,6 @@ import PL.Expr
 import PL.Error
 import PL.Type
 import PL.Name
-{-import PL.Var hiding (VarCtx,index)-}
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -29,10 +28,10 @@ reduce = reduce' emptyBindings
       Term termName
         -> Right $ Term termName
 
-      -- Vars reduce to whatever they've been bound to, if they've been bound that is.
-      Var b
-        -> pure $ case bindings `index` (bindIx b) of
-              Unbound -> Var b
+      -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
+      Binding b
+        -> pure $ case bindings `index` (bindDepth b) of
+              Unbound -> Binding b
               Bound e -> e -- maybe should reduce again?
 
       -- Reduce the sums expression
@@ -66,8 +65,8 @@ reduce = reduce' emptyBindings
       Case caseExpr caseBranches
         -> do caseExpr' <- reduce' bindings nameCtx caseExpr
               case caseExpr' of
-                 Var _ -> Case <$> pure caseExpr' <*> reducePossibleCaseRHSs bindings nameCtx caseBranches
-                 _     -> reducePossibleCaseBranches bindings nameCtx caseExpr' caseBranches
+                 Binding _ -> Case <$> pure caseExpr' <*> reducePossibleCaseRHSs bindings nameCtx caseBranches
+                 _         -> reducePossibleCaseBranches bindings nameCtx caseExpr' caseBranches
 
 
   -- The expression is not a variable and so we can reduce the case expession, finding the matching branch and returning the reduced RHS.
@@ -136,7 +135,7 @@ reduce = reduce' emptyBindings
         | otherwise       -> Nothing                           -- matches another type in the union
 
       -- The entire expression is to be bound
-      (expr,BindVar)
+      (expr,Bind)
         -> Just [expr]
 
   -- The given expression must be either a Term or a Term applied to one or many args.

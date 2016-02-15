@@ -20,7 +20,6 @@ import Control.Applicative
 
 import PL.Expr
 import PL.Binds
-{-import PL.Var  hiding (index)-}
 
 -- | A positive integer indicating how many lambda abstractions a bound expression has been moved under.
 newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
@@ -43,11 +42,11 @@ emptyBindings = EmptyBindings
 bury :: Bindings b abs -> Bindings b abs
 bury = Buried
 
--- | Introduce an unbound variable
+-- | Introduce an unbound binding
 unbound :: Bindings b abs -> Bindings b abs
 unbound = ConsBinding Unbound
 
--- | Introduce a new bound variable
+-- | Introduce a new bound binding
 bind :: Expr b abs -> Bindings b abs -> Bindings b abs
 bind = ConsBinding . Bound
 
@@ -81,14 +80,14 @@ safeIndex bs           ix = safeIndex' 0 bs ix
 index :: BindAbs b abs => Bindings b abs -> Int -> Binding b abs
 index bs ix = let Just r = safeIndex bs ix in r
 
--- bury any escaping variables in an expression by given depth.
+-- bury any escaping bindings in an expression by given depth.
 --
 -- E.G.
--- Unaffected as no variables escape.
+-- Unaffected as no bindings escape.
 -- \.0        ~> \.0    --id
 -- \.\.1      ~> \.\.1  --const
 --
--- Escaping variables are effected.
+-- Escaping bindings are effected.
 -- \.1        ~> \.(1+depth)
 -- \.\.0 1 2  ~> \.\. 0 1 (2+depth)
 --
@@ -98,9 +97,8 @@ buryBy :: BindAbs b abs => Expr b abs -> BuryDepth -> Expr b abs
 buryBy expr 0         = expr
 buryBy expr buryDepth = case expr of
 
-  Var b
-    {--> Var $ intToVar $ (varToInt v) + _unBurryDepth buryDepth-}
-    -> Var $ b `addBindIx` (_unBurryDepth buryDepth)
+  Binding b
+    -> Binding $ buryBinding b (_unBurryDepth buryDepth)
 
   Lam ty e
     -> Lam ty (buryBy' 0 e buryDepth)
@@ -135,17 +133,17 @@ buryBy expr buryDepth = case expr of
     buryBy' :: BindAbs b abs => Int -> Expr b abs -> BuryDepth -> Expr b abs
     buryBy' ourTop expr buryDepth = case expr of
 
-      Var b
-        -- Variable is within our height
-        | (bindIx b) <= ourTop
-          -> Var b
+      Binding b
+        -- Binding is within our height
+        | bindDepth b <= ourTop
+          -> Binding b
 
-        -- Variable escapes our height, so compensate for the greater depth.
+        -- Binding escapes our height, so compensate for the greater depth.
         | otherwise
-          -> Var $ b `addBindIx` (_unBurryDepth buryDepth)
+          -> Binding $ b `buryBinding` (_unBurryDepth buryDepth)
 
-      Lam ty e
-        -> Lam ty (buryBy' (ourTop+1) e buryDepth)
+      Lam abs e
+        -> Lam abs (buryBy' (ourTop+1) e buryDepth)
 
       App f x
         -> App (buryBy' ourTop f buryDepth) (buryBy' ourTop x buryDepth)

@@ -40,7 +40,7 @@ grouped p = lparen *> p <* rparen
 name     = Text.cons <$> upper <*> (takeWhile isLower)
 termName = charIs '#' >> TermName <$> name
 typeName = TypeName <$> name
-var      = ixBind <$> natural
+var      = mkVar <$> natural
 
 -- Type signatures
 typeSig     = typeNameSig
@@ -70,7 +70,7 @@ expr   =  (alternatives [varE,termE,lamEs,caseE,sumE,prodE,unionE])
        ,unionE
        ])
 
-varE   = Var <$> var
+varE   = Binding <$> var
 termE  = Term <$> termName                                   -- {TermName}
 lamEs  = lamiseP (lambda *> some typeSig) expr  -- \{Type1} [{Type} ]{Expr}
 appEs  = appiseP expr (some expr)                 -- {Expr}1>[ {Expr}]
@@ -98,20 +98,20 @@ someCaseBranches     = SomeCaseBranches <$> (grouped caseBranch) <*> (many (grou
 caseBranch           = CaseBranch <$> caseLHS <*> expr -- {LHS} {Expr}
 caseLHS              = alternatives $ map betweenParens [matchTerm,matchSum,matchProd,matchUnion]
 
-matchArg   = bindVar
+matchArg   = bind
           <|> matchTerm
           <|> (alternatives $ map betweenParens
            [matchTerm
            ,matchSum
            ,matchProd
            ,matchUnion
-           ,bindVar
+           ,bind
            ])
 matchTerm  = MatchTerm  <$> termName <*> (many matchArg)
 matchSum   = MatchSum   <$> natural <*> matchArg
 matchProd  = MatchProd  <$> liftA2 (:) matchArg (some matchArg)
 matchUnion = MatchUnion <$> typeSig <*> matchArg
-bindVar  = pure BindVar <*  charIs '@'
+bind       = pure Bind  <*  charIs '@'
 
 andExprText :: Text
 andExprText = Text.unlines

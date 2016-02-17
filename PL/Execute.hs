@@ -40,9 +40,9 @@ reduce nameCtx expr = do
       Sum sumExpr sumIx sumTy
         -> Sum <$> reduce' bindings nameCtx sumExpr <*> pure sumIx <*> pure sumTy
 
-      -- Reduce all prod expressions
-      Prod prodExprs
-        -> Prod <$> mapM (reduce' bindings nameCtx) prodExprs
+      -- Reduce all product expressions
+      Product productExprs
+        -> Product <$> mapM (reduce' bindings nameCtx) productExprs
 
       -- Reduce the unionExpr
       Union unionExpr unionTyIx unionTy
@@ -129,8 +129,8 @@ reduce nameCtx expr = do
         | otherwise   -> Nothing                         -- matches another index
 
       --
-      (Prod prodExprs, MatchProd matchArgs)
-        -> patternBindings bindings nameCtx prodExprs matchArgs -- curry isomorphism?
+      (Product productExprs, MatchProduct matchArgs)
+        -> patternBindings bindings nameCtx productExprs matchArgs -- curry isomorphism?
 
       (Union unionExpr unionTyIx unionTy, MatchUnion ty matchArg)
         | unionTyIx == ty -> patternBinding bindings nameCtx unionExpr matchArg -- matches this ty. Try match further.

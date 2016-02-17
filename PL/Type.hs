@@ -25,11 +25,11 @@ data Type
     }
 
   -- | Ordered product types
-  | ProdT
-    {_prodTypes :: [Type]
+  | ProductT
+    {_productTypes :: [Type]
     }
 
-
+  -- | Set of union types
   | UnionT
     {_unionTypes :: Set.Set Type
     }
@@ -61,7 +61,7 @@ instance Show Type where
     SumT types
       -> parens $ intercalate "|" $ map show types
 
-    ProdT types
+    ProductT types
       -> parens $ intercalate "*" $ map show types
 
     UnionT types

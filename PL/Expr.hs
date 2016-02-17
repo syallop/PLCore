@@ -68,7 +68,7 @@ data Expr b abs
       }
 
     -- | An expression is a product of many expressions
-    | Prod
+    | Product
       {_prodExprs :: [Expr b abs]
       }
 
@@ -146,8 +146,8 @@ mapSubExpressions f = \case
   Sum expr ix ty
     -> Sum (f expr) ix ty
 
-  Prod prodExprs
-    -> Prod (map f prodExprs)
+  Product prodExprs
+    -> Product (map f prodExprs)
 
   Union unionExpr tyIx ty
     -> Union (f unionExpr) tyIx ty
@@ -161,11 +161,11 @@ mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 -- case ... of
 --  T {A b (C d E)} -> ...
 data MatchArg
-  = MatchTerm TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
-  | MatchSum  Int      MatchArg   -- ^ Match against a sum alternative (which may be applied to more patterns)
-  | MatchProd [MatchArg]          -- ^ Match against a product of many types (which may be applied to more patterns)
-  | MatchUnion Type MatchArg      -- ^ Match against a union of alternatives
-  | Bind                          -- ^ Match anything and bind it
+  = MatchTerm    TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
+  | MatchSum     Int       MatchArg  -- ^ Match against a sum alternative (which may be applied to more patterns)
+  | MatchProduct          [MatchArg] -- ^ Match against a product of many types (which may be applied to more patterns)
+  | MatchUnion   Type      MatchArg  -- ^ Match against a union of alternatives
+  | Bind                             -- ^ Match anything and bind it
   deriving (Show,Eq)
 
 -- | Describes some Term which takes zero or many typed params
@@ -198,7 +198,7 @@ showExpr = \case
            showSumT n (t:ts) = show t : showSumT (n-1) ts
           in showExpr sumExpr ++ " : " ++ (intercalate "|" $ showSumT sumIndex sumType)
 
-  Prod prodExprs
+  Product prodExprs
     -> "( " ++ (intercalate "," $ map (\e -> "( " ++ showExpr e ++ ") ") prodExprs) ++ ") "
 
   Union unionExpr unionTypeIndex unionTy
@@ -233,7 +233,7 @@ showMatchArg = \case
   MatchSum ix matchArg
     -> show ix ++ "| " ++ showMatchArg matchArg
 
-  MatchProd matchArgs
+  MatchProduct matchArgs
     -> intercalate "," $ map showMatchArg matchArgs
 
   MatchUnion ty matchArg
@@ -309,12 +309,12 @@ exprType bindCtx nameCtx e = case e of
           Right $ SumT inTypr
 
   -- A product is typed by the order of each expression it contains
-  Prod prodExprs
+  Product prodExprs
     -> do -- type check each successive expression
           prodExprTys <- mapM (exprType bindCtx nameCtx) prodExprs
 
           -- the type is the product of those types
-          Right $ ProdT prodExprTys
+          Right $ ProductT prodExprTys
 
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
   Union unionExpr unionTypeIndex unionTypes
@@ -421,9 +421,9 @@ checkMatchWith match expectTy nameCtx = case match of
             -- must have the expected index type
             checkMatchWith nestedMatchArg matchedTy nameCtx
 
-    MatchProd nestedMatchArgs
+    MatchProduct nestedMatchArgs
       -> do prodTypes <- case expectTy of
-                             ProdT prodTypes -> Right prodTypes
+                             ProductT prodTypes -> Right prodTypes
                              _               -> Left $ EMsg "Expected product type in pattern match"
 
             checkMatchesWith nestedMatchArgs prodTypes nameCtx

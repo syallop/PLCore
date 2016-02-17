@@ -123,8 +123,8 @@ buryBy expr buryDepth = case expr of
   Sum sumExpr sumIx sumTys
     -> Sum (buryBy sumExpr buryDepth) sumIx sumTys
 
-  Prod prodExprs
-    -> Prod (map (`buryBy` buryDepth) prodExprs)
+  Product productExprs
+    -> Product $ map (`buryBy` buryDepth) productExprs
 
   Union unionExpr tyIx tys
     -> Union (buryBy unionExpr buryDepth) tyIx tys
@@ -165,8 +165,8 @@ buryBy expr buryDepth = case expr of
       Sum sumExpr sumIx sumTys
         -> Sum (buryBy' ourTop sumExpr buryDepth) sumIx sumTys
 
-      Prod prodExprs
-        -> Prod (map (\e -> buryBy' ourTop e buryDepth) prodExprs)
+      Product productExprs
+        -> Product $ map (\e -> buryBy' ourTop e buryDepth) productExprs
 
       Union unionExpr tyIx tys
         -> Union (buryBy' ourTop unionExpr buryDepth) tyIx tys

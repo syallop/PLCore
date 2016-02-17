@@ -19,7 +19,7 @@ library
   exposed-modules:     PL.Var
                      , PL.Name
                      , PL.Type
-                     , PL.Execute
+                     , PL.Reduce
                      , PL.Error
                      , PL.Expr
                      , PL.Binds

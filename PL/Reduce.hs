@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ConstraintKinds #-}
-module PL.Execute where
+module PL.Reduce where
 
 import PL.Binds
 import PL.Bindings

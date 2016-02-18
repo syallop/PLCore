@@ -113,17 +113,3 @@ matchProduct = MatchProduct <$> liftA2 (:) matchArg (some matchArg)
 matchUnion   = MatchUnion   <$> typeSig <*> matchArg
 bind         = pure Bind    <*  charIs '@'
 
-andExprText :: Text
-andExprText = Text.unlines
-  ["\\Bool Bool (CASE0"
-  ,"               ((#False) #False)"
-  ,""
-  ,"               (CASE1"
-  ,"                   ((#False) #False)"
-  ,""
-  ,"                   #True"
-  ,""
-  ,"               )"
-  ,"            )"
-  ]
-

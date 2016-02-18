@@ -51,7 +51,7 @@ typeSig     = typeNameSig
             ,arrowSig
             ,typeNameSig
             ])
-typeNameSig = Type <$> typeName
+typeNameSig = Named <$> typeName
 sumSig      = SumT                    <$> consP typeSig (some (plus  *> typeSig))
 productSig  = ProductT                <$> consP typeSig (some (star  *> typeSig))
 unionSig    = (UnionT . Set.fromList) <$> consP typeSig (some (comma *> typeSig))

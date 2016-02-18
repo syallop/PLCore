@@ -9,7 +9,7 @@ import qualified Data.Set as Set
 data Type
 
   -- | Some name
-  = Type
+  = Named
     {_hasType :: TypeName
     }
 
@@ -38,8 +38,8 @@ data Type
 -- | Is a Type a simple named type
 isType :: Type -> Bool
 isType t = case t of
-  Type _ -> True
-  _      -> False
+  Named _ -> True
+  _       -> False
 
 -- | Infix Arrow
 (-->) :: Type -> Type -> Type
@@ -47,7 +47,7 @@ a --> b = Arrow a b
 
 -- | Construct a simple named type
 ty :: TypeName -> Type
-ty b = Type b
+ty b = Named b
 
 instance Show Type where
   show t = case t of
@@ -55,7 +55,7 @@ instance Show Type where
     Arrow from to
       -> parens $ show from ++ " -> " ++ show to
 
-    Type belongs
+    Named belongs
       -> show belongs
 
     SumT types

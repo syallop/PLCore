@@ -6,6 +6,7 @@
 module PL.Expr where
 
 import PL.Type
+import PL.TypeCtx
 import PL.Name
 import PL.Error
 
@@ -405,7 +406,7 @@ checkMatchWith match expectTy nameCtx = case match of
             TermInfo termParamTys termBelongs <- maybe (Left $ EMsg "pattern matches on unknown term literal") Right $ Map.lookup termLit nameCtx
 
             -- Lit Must have the expected type Type
-            _ <- if Type termBelongs /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
+            _ <- if Named termBelongs /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
 
             -- Lit must be applied to the correct number of pattern args which must themselves be correctly typed and may bind nested bindings
             checkMatchesWith nestedMatchArgs termParamTys nameCtx

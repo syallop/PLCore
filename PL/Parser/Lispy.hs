@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 module PL.Parser.Lispy where
 
 import Prelude hiding (takeWhile,exp)
@@ -58,9 +59,9 @@ unionSig    = (UnionT . Set.fromList) <$> consP typeSig (some (comma *> typeSig)
 arrowSig    = arrowiseP                         typeSig (some (up    *> typeSig))
 
 -- Expressions
-expr   =  (alternatives [varE,termE,lamEs,caseE,sumE,prodE,unionE])
+expr   =  (alternatives [bindingE,termE,lamEs,caseE,sumE,prodE,unionE])
       <|> (alternatives $ map betweenParens
-       [varE
+       [bindingE
        ,termE
        ,lamEs
        ,appEs
@@ -70,23 +71,23 @@ expr   =  (alternatives [varE,termE,lamEs,caseE,sumE,prodE,unionE])
        ,unionE
        ])
 
-varE   = Binding <$> var
-termE  = Term <$> termName                                   -- {TermName}
-lamEs  = lamiseP (lambda *> some typeSig) expr               -- \{Type1} [{Type} ]{Expr}
-appEs  = appiseP expr (some expr)                            -- {Expr}1>[ {Expr}]
-sumE   = (\e ix t ts -> Sum e ix (t:ts))                     -- +{Expr} {Natural} 1>[ {Type}]
-      <$> (plus *> expr)
-      <*> natural
-      <*> typeSig
-      <*> some typeSig
-prodE  = (\e es -> Product (e:es))                           -- *{Expr}1>[ {Expr}]
-      <$> (star *> expr)
-      <*> (some expr)
-unionE = (\e tyIx t ts -> Union e tyIx $ Set.fromList (t:ts))-- ,{Expr} 1>[ {Type}]
-      <$> (comma *> expr)
-      <*> typeSig
-      <*> typeSig
-      <*> (some typeSig)
+bindingE = Binding <$> var
+termE    = Term <$> termName                                   -- {TermName}
+lamEs    = lamiseP (lambda *> some typeSig) expr               -- \{Type1} [{Type} ]{Expr}
+appEs    = appiseP expr (some expr)                            -- {Expr}1>[ {Expr}]
+sumE     = (\e ix t ts -> Sum e ix (t:ts))                     -- +{Expr} {Natural} 1>[ {Type}]
+        <$> (plus *> expr)
+        <*> natural
+        <*> typeSig
+        <*> some typeSig
+prodE    = (\e es -> Product (e:es))                           -- *{Expr}1>[ {Expr}]
+        <$> (star *> expr)
+        <*> (some expr)
+unionE   = (\e tyIx t ts -> Union e tyIx $ Set.fromList (t:ts))-- ,{Expr} 1>[ {Type}]
+        <$> (comma *> expr)
+        <*> typeSig
+        <*> typeSig
+        <*> (some typeSig)
 
 -- Case expressions
 caseE  = Case <$> (textIs "CASE" *> expr) <*> possibleCaseBranches
@@ -96,18 +97,24 @@ defaultOnly          = DefaultOnly  <$> expr
 caseBranches         = CaseBranches <$> someCaseBranches <*> ((Just <$> expr) <|> pure Nothing)
 someCaseBranches     = SomeCaseBranches <$> (grouped caseBranch) <*> (many (grouped caseBranch))
 caseBranch           = CaseBranch <$> caseLHS <*> expr -- {LHS} {Expr}
-caseLHS              = alternatives $ map betweenParens [matchTerm,matchSum,matchProduct,matchUnion]
+caseLHS              = alternatives $ map betweenParens [matchBinding,matchTerm,matchSum,matchProduct,matchUnion]
 
-matchArg   = bind
-          <|> matchTerm
-          <|> (alternatives $ map betweenParens
-           [matchTerm
-           ,matchSum
-           ,matchProduct
-           ,matchUnion
-           ,bind
-           ])
+matchArg = bind
+        <|> matchBinding
+        <|> matchTerm
+        <|> (alternatives $ map betweenParens
+              [
+               matchBinding
+              ,matchTerm
+              ,matchSum
+              ,matchProduct
+              ,matchUnion
+              ,bind
+              ]
+            )
+
 matchTerm    = MatchTerm    <$> termName <*> (many matchArg)
+matchBinding = MatchBinding <$> (charIs '=' *> var)
 matchSum     = MatchSum     <$> natural <*> matchArg
 matchProduct = MatchProduct <$> liftA2 (:) matchArg (some matchArg)
 matchUnion   = MatchUnion   <$> typeSig <*> matchArg

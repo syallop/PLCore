@@ -11,6 +11,7 @@ module PL.Bindings
   , safeIndex
   , index
 
+  , buryN
   , bindingsFromList
   , append
   ) where
@@ -24,6 +25,10 @@ import PL.Binds
 -- | A positive integer indicating how many lambda abstractions a bound expression has been moved under.
 newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
 
+-- A context of bound 'Expr b abs' in which you may:
+-- - 'bind'    : E.G. when an expr is Applied to a Lambda.
+-- - 'unbound' : E.G. when you want to manipulate expressions under a Lambda abstraction whose binding hasnt been applied yet.
+-- - 'bury'    : E.G. when all of the bindings are lifted under an abstraction, any escaping bindings should be burried.
 data Bindings b abs
   = EmptyBindings                        -- ^ No bindings
   | ConsBinding (Binding b abs) (Bindings b abs) -- ^ A new binding
@@ -31,7 +36,7 @@ data Bindings b abs
   deriving Show
 
 data Binding b abs
-  = Unbound        -- No expression bound yet
+  = Unbound            -- No expression bound yet
   | Bound (Expr b abs) -- This expression is bound
   deriving Show
 
@@ -41,6 +46,10 @@ emptyBindings = EmptyBindings
 -- | Bury bindings under a lambda abstraction
 bury :: Bindings b abs -> Bindings b abs
 bury = Buried
+
+buryN :: Int -> Bindings b abs -> Bindings b abs
+buryN 0 b = b
+buryN n b = buryN (n-1) (Buried b)
 
 -- | Introduce an unbound binding
 unbound :: Bindings b abs -> Bindings b abs

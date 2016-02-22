@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE GADTs #-}
 module PL.Expr where
 
 import PL.Type
@@ -116,7 +117,7 @@ data SomeCaseBranches b abs = SomeCaseBranches (CaseBranch b abs) [CaseBranch b 
 
 -- | A single branch in a case analysis of a type
 data CaseBranch b abs = CaseBranch
-  {_caseLHS :: MatchArg
+  {_caseLHS :: MatchArg b
   ,_caseRHS :: Expr b abs
   }
   deriving (Show,Eq)
@@ -161,12 +162,13 @@ mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 -- | Argument pattern in a case statements match.
 -- case ... of
 --  T {A b (C d E)} -> ...
-data MatchArg
-  = MatchTerm    TermName [MatchArg] -- ^ Match a term literal (which may be applied to more patterns)
-  | MatchSum     Int       MatchArg  -- ^ Match against a sum alternative (which may be applied to more patterns)
-  | MatchProduct          [MatchArg] -- ^ Match against a product of many types (which may be applied to more patterns)
-  | MatchUnion   Type      MatchArg  -- ^ Match against a union of alternatives
-  | Bind                             -- ^ Match anything and bind it
+data MatchArg b
+  = MatchTerm    TermName [MatchArg b] -- ^ Match a term literal (which may be applied to more patterns)
+  | MatchSum     Int      (MatchArg b) -- ^ Match against a sum alternative (which may be applied to more patterns)
+  | MatchProduct          [MatchArg b] -- ^ Match against a product of many types (which may be applied to more patterns)
+  | MatchUnion   Type     (MatchArg b) -- ^ Match against a union of alternatives
+  | MatchBinding b                     -- ^ Match for exact structural equality
+  | Bind                               -- ^ Match anything and bind it
   deriving (Show,Eq)
 
 -- | Describes some Term which takes zero or many typed params
@@ -223,10 +225,10 @@ showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\
 showCaseBranch :: BindAbs b abs => CaseBranch b abs -> String
 showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " -> " ++ showExpr rhs
 
-showMatchArgs :: [MatchArg] -> String
+showMatchArgs :: Binds b => [MatchArg b] -> String
 showMatchArgs = intercalate " " . map showMatchArg
 
-showMatchArg :: MatchArg -> String
+showMatchArg :: Binds b => MatchArg b -> String
 showMatchArg = \case
   MatchTerm name matches
     -> "#" ++ show name ++ " " ++ showMatchArgs matches
@@ -239,6 +241,9 @@ showMatchArg = \case
 
   MatchUnion ty matchArg
     -> show ty ++ "| " ++ showMatchArg matchArg
+
+  MatchBinding b
+    -> "=" ++ show b
 
   Bind
     -> "b"
@@ -323,7 +328,7 @@ exprType bindCtx nameCtx e = case e of
           exprTy <- exprType bindCtx nameCtx unionExpr
 
           -- Type must be what we claim it is...
-          _ <- if exprTy /= unionTypeIndex then Left $ EMsg "Expresiion doesnt have the type within the union it claims to have" else Right ()
+          _ <- if exprTy /= unionTypeIndex then Left $ EMsg "Expression doesnt have the type within the union it claims to have" else Right ()
 
           -- Type must be in the set somewhere...
           _ <- if exprTy `Set.member` unionTypes then Right () else Left $ EMsg "Expressions type is not within the union"
@@ -338,7 +343,9 @@ exprType bindCtx nameCtx e = case e of
   -- -----------------
   --      b : t
   Binding b
-    -> Right $ b `bindTy` bindCtx
+    -> case b `bindTy` bindCtx of
+          Nothing -> Left $ EMsg "Expression refers to a non-existant binding"
+          Just ty -> Right ty
 
   -- | A case expression with only a defaut branch.
   --
@@ -389,17 +396,22 @@ exprType bindCtx nameCtx e = case e of
 -- if so, type checking the result expression which is returned
 branchType :: BindAbs b abs => CaseBranch b abs -> Type -> BindCtx b -> NameCtx -> Either Error Type
 branchType (CaseBranch lhs rhs) expectedTy bindCtx nameCtx = do
-  bindings <- checkMatchWith lhs expectedTy nameCtx
+  bindings <- checkMatchWith lhs expectedTy nameCtx bindCtx
   exprType (addBindings bindings bindCtx) nameCtx rhs
 
 -- | Check that a MatchArg matches the expected Type under a NameCtx.
 -- If so, return a list of types of any bound bindings.
-checkMatchWith :: MatchArg -> Type -> NameCtx -> Either Error [Type]
-checkMatchWith match expectTy nameCtx = case match of
+checkMatchWith :: Binds b => MatchArg b -> Type -> NameCtx -> BindCtx b -> Either Error [Type]
+checkMatchWith match expectTy nameCtx bindCtx = case match of
 
     -- Bind the value
     Bind
       -> Right [expectTy]
+
+    MatchBinding b
+      -> do -- the type of the binding
+            bTy <- maybe (Left $ EMsg "pattern match on a non-existant binding") Right $ bindTy b bindCtx
+            if bTy == expectTy then pure [] else Left $ EMsg "pattern match on a binding from a different type"
 
     MatchTerm termLit nestedMatchArgs
       -> do -- The expected param and type of the given term name
@@ -409,7 +421,7 @@ checkMatchWith match expectTy nameCtx = case match of
             _ <- if Named termBelongs /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
 
             -- Lit must be applied to the correct number of pattern args which must themselves be correctly typed and may bind nested bindings
-            checkMatchesWith nestedMatchArgs termParamTys nameCtx
+            checkMatchesWith nestedMatchArgs termParamTys nameCtx bindCtx
 
     MatchSum sumIndex nestedMatchArg
       -> do sumTypes <- case expectTy of
@@ -420,14 +432,14 @@ checkMatchWith match expectTy nameCtx = case match of
             matchedTy <- if length sumTypes < sumIndex then Left $ EMsg "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
 
             -- must have the expected index type
-            checkMatchWith nestedMatchArg matchedTy nameCtx
+            checkMatchWith nestedMatchArg matchedTy nameCtx bindCtx
 
     MatchProduct nestedMatchArgs
       -> do prodTypes <- case expectTy of
                              ProductT prodTypes -> Right prodTypes
                              _               -> Left $ EMsg "Expected product type in pattern match"
 
-            checkMatchesWith nestedMatchArgs prodTypes nameCtx
+            checkMatchesWith nestedMatchArgs prodTypes nameCtx bindCtx
 
     MatchUnion unionIndexTy nestedMatchArg
       -> do unionTypes <- case expectTy of
@@ -438,16 +450,16 @@ checkMatchWith match expectTy nameCtx = case match of
             _ <- if Set.member unionIndexTy unionTypes then Right () else Left $ EMsg "Matching on a type which isnt a member of the union"
 
             -- must actually match on the expected type
-            checkMatchWith nestedMatchArg unionIndexTy nameCtx
+            checkMatchWith nestedMatchArg unionIndexTy nameCtx bindCtx
 
 
-checkMatchesWith :: [MatchArg] -> [Type] -> NameCtx -> Either Error [Type]
-checkMatchesWith matches types nameCtx = case (matches,types) of
+checkMatchesWith :: Binds b => [MatchArg b] -> [Type] -> NameCtx -> BindCtx b -> Either Error [Type]
+checkMatchesWith matches types nameCtx bindCtx = case (matches,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg "Expected more patterns in match"
   (_,[])  -> Left $ EMsg "Too many patterns in match"
   (m:ms,t:ts)
-    -> checkMatchWith m t nameCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx >>= Right . (boundTs ++)
+    -> checkMatchWith m t nameCtx bindCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx bindCtx >>= Right . (boundTs ++)
 
 -- Bind a list of expression with claimed types within an expression
 -- by transforming to an application to lambda abstractions.

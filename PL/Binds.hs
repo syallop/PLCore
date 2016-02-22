@@ -21,7 +21,7 @@ class (Show b,Eq b) => Binds b where
   -- Associate bindings to their types
   data BindCtx b
   emptyCtx    :: BindCtx b
-  bindTy      :: b -> BindCtx b -> Type
+  bindTy      :: b -> BindCtx b -> Maybe Type
   addBinding  :: Type -> BindCtx b -> BindCtx b
   addBindings :: [Type] -> BindCtx b -> BindCtx b
 

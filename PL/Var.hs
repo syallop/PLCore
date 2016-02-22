@@ -31,7 +31,7 @@ instance Binds Var where
 
   emptyCtx = VarCtx []
 
-  bindTy b (VarCtx ts) =  ts !! (bindDepth b)
+  bindTy b (VarCtx ts) =  Just $ ts !! (bindDepth b)
 
   addBinding t (VarCtx ts) = VarCtx (t:ts)
   addBindings ts varCtx = foldl (flip addBinding) varCtx ts

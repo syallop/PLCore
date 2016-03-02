@@ -126,9 +126,6 @@ buryBy expr buryDepth = case expr of
                         (SomeCaseBranches (mapCaseRHSs (`buryBy` buryDepth) caseBranch) (map (mapCaseRHSs (`buryBy` buryDepth)) caseBranches))
                         ((`buryBy` buryDepth) <$> mExpr)
 
-  Term termName
-    -> Term termName
-
   Sum sumExpr sumIx sumTys
     -> Sum (buryBy sumExpr buryDepth) sumIx sumTys
 
@@ -163,13 +160,11 @@ buryBy expr buryDepth = case expr of
                       DefaultOnly defExpr
                         -> DefaultOnly (buryBy' ourTop defExpr buryDepth)
 
+                      -- TODO LHS which contain MatchBinding's should probably be buried
                       CaseBranches (SomeCaseBranches caseBranch caseBranches) mExpr
                         -> CaseBranches
                             (SomeCaseBranches (mapCaseRHSs (\e -> buryBy' ourTop e buryDepth) caseBranch) (map (mapCaseRHSs (\e -> buryBy' ourTop e buryDepth)) caseBranches))
                             ((\e -> buryBy' ourTop e buryDepth) <$> mExpr)
-
-      Term termName
-        -> Term termName
 
       Sum sumExpr sumIx sumTys
         -> Sum (buryBy' ourTop sumExpr buryDepth) sumIx sumTys

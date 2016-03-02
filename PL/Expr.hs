@@ -43,11 +43,6 @@ data Expr b abs
       ,_x :: Expr b abs
       }
 
-    -- | Term literal
-    | Term
-      {_term :: TermName
-      }
-
     -- | Binding
     | Binding
       {_binding :: b
@@ -163,101 +158,77 @@ mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 -- case ... of
 --  T {A b (C d E)} -> ...
 data MatchArg b
-  = MatchTerm    TermName [MatchArg b] -- ^ Match a term literal (which may be applied to more patterns)
-  | MatchSum     Int      (MatchArg b) -- ^ Match against a sum alternative (which may be applied to more patterns)
+  = MatchSum     Int      (MatchArg b) -- ^ Match against a sum alternative (which may be applied to more patterns)
   | MatchProduct          [MatchArg b] -- ^ Match against a product of many types (which may be applied to more patterns)
   | MatchUnion   Type     (MatchArg b) -- ^ Match against a union of alternatives
   | MatchBinding b                     -- ^ Match for exact structural equality
   | Bind                               -- ^ Match anything and bind it
   deriving (Show,Eq)
 
--- | Describes some Term which takes zero or many typed params
--- in order to construct a value of some type it belongs to.
-data TermInfo = TermInfo
-  { _termParams  :: [Type]   -- ^ A term takes zero or many types
-  , _termBelongs :: TypeName -- ^ In order to construct a type called
-  }
-
-showExpr :: BindAbs b abs => Expr b abs -> String
+showExpr :: (BindAbs b abs,Show b,Show abs) => Expr b abs -> String
 showExpr = \case
   Lam takeTy expr
-    -> "\\" ++ show (absTy takeTy) ++ "." ++ showExpr expr
+    -> "(\\" ++ show (absTy takeTy) ++ " " ++ showExpr expr ++ ")"
 
   App f x
-    -> "( " ++ showExpr f ++ " )" ++ "( " ++ showExpr x ++ " )"
-
-  Term termName
-    -> "#" ++ show termName
+    -> "(@" ++ showExpr f ++ " " ++ showExpr x ++ ")"
 
   Binding b
     -> show b
 
   Case caseExpr caseBranches
-    -> "(CASE " ++ showExpr caseExpr ++ " OF\n" ++ showPossibleCaseBranches caseBranches ++ ")"
+    -> "(CASE" ++ showExpr caseExpr ++ "\n" ++ showPossibleCaseBranches caseBranches ++ ")"
 
   Sum sumExpr sumIndex sumType
-    -> let showSumT :: Int -> [Type] -> [String]
-           showSumT 0 (t:ts) = ("_" ++ show t ++ "_") : map show ts
-           showSumT n (t:ts) = show t : showSumT (n-1) ts
-          in showExpr sumExpr ++ " : " ++ (intercalate "|" $ showSumT sumIndex sumType)
+    -> "(+" ++ show sumIndex ++ " " ++ show sumExpr ++ " " ++ (intercalate " " $ map showType sumType) ++ ")"
 
   Product prodExprs
-    -> "( " ++ (intercalate "," $ map (\e -> "( " ++ showExpr e ++ ") ") prodExprs) ++ ") "
+    -> "(*" ++ (intercalate " " $ map showExpr prodExprs) ++ ")"
 
   Union unionExpr unionTypeIndex unionTy
-    -> let showUnionT :: Type -> [Type] -> [String]
-           showUnionT tyIx (t:ts)
-            | tyIx == t = ("_" ++ show t ++ "_") : map show ts
-            | otherwise = show t : showUnionT tyIx ts
-          in showExpr unionExpr ++ " : <" ++ (intercalate "|" $ showUnionT unionTypeIndex (Set.toList unionTy)) ++ ">"
+    -> "(U" ++ showType unionTypeIndex ++ " " ++ showExpr unionExpr ++ (intercalate " " $ map showType $ Set.toList unionTy) ++ ")"
 
 showPossibleCaseBranches :: BindAbs b abs => PossibleCaseBranches b abs -> String
 showPossibleCaseBranches = \case
   DefaultOnly onMatch
-    -> "DEFAULT -> " ++ showExpr onMatch
+    -> showExpr onMatch
 
   CaseBranches someCaseBranches maybeDefaultOnMatch
-    -> showSomeCaseBranches someCaseBranches ++ "\n\n" ++ (maybe "" (("DEFAULT -> " ++) . showExpr) maybeDefaultOnMatch)
+    -> showSomeCaseBranches someCaseBranches ++ "\n" ++ (maybe "" showExpr maybeDefaultOnMatch)
 
 showSomeCaseBranches :: BindAbs b abs => SomeCaseBranches b abs -> String
-showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n\n" $ map showCaseBranch (caseBranch : caseBranches)
+showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n" $ map showCaseBranch (caseBranch : caseBranches)
 
 showCaseBranch :: BindAbs b abs => CaseBranch b abs -> String
-showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " -> " ++ showExpr rhs
+showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " " ++ showExpr rhs
 
 showMatchArgs :: Binds b => [MatchArg b] -> String
 showMatchArgs = intercalate " " . map showMatchArg
 
 showMatchArg :: Binds b => MatchArg b -> String
 showMatchArg = \case
-  MatchTerm name matches
-    -> "#" ++ show name ++ " " ++ showMatchArgs matches
-
   MatchSum ix matchArg
-    -> show ix ++ "| " ++ showMatchArg matchArg
+    -> "+" ++ show ix ++ " " ++ showMatchArg matchArg
 
   MatchProduct matchArgs
-    -> intercalate "," $ map showMatchArg matchArgs
+    -> "*" ++ (intercalate " " $ map showMatchArg matchArgs)
 
   MatchUnion ty matchArg
-    -> show ty ++ "| " ++ showMatchArg matchArg
+    -> "U" ++ showType ty ++ " " ++ showMatchArg matchArg
 
   MatchBinding b
-    -> "=" ++ show b
+    -> show b
 
   Bind
-    -> "b"
-
--- | Map term names to their params and the type they belong to.
-type NameCtx = Map.Map TermName TermInfo
+    -> "?"
 
 -- | A top-level expression is an expression without a bindings context.
-topExprType :: BindAbs b abs => NameCtx -> Expr b abs -> Either Error Type
+topExprType :: BindAbs b abs => TypeCtx -> Expr b abs -> Either Error Type
 topExprType = exprType emptyCtx
 
 -- | Under a given bindings context, type check an expression.
-exprType :: forall b abs. BindAbs b abs => BindCtx b -> NameCtx -> Expr b abs -> Either Error Type
-exprType bindCtx nameCtx e = case e of
+exprType :: forall b abs. BindAbs b abs => BindCtx b -> TypeCtx -> Expr b abs -> Either Error Type
+exprType bindCtx typeCtx e = case e of
 
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
@@ -268,7 +239,7 @@ exprType bindCtx nameCtx e = case e of
   --   Lam absTy expr : absTy -> exprTy
   Lam abs expr
     -> do let newBindCtx = addBinding (absTy abs) bindCtx
-          exprTy <- exprType newBindCtx nameCtx expr
+          exprTy <- exprType newBindCtx typeCtx expr
           Right $ Arrow (absTy abs) exprTy
 
   -- |
@@ -276,37 +247,33 @@ exprType bindCtx nameCtx e = case e of
   -- -----------------------
   --       App f x : b
   App f x
-    -> do fTy <- exprType bindCtx nameCtx f -- Both f and x must type check
-          xTy <- exprType bindCtx nameCtx x
+    -> do fTy <- exprType bindCtx typeCtx f -- Both f and x must type check
+          xTy <- exprType bindCtx typeCtx x
+
+          resFTy <- maybe (Left $ EMsg "Unknown named type in function application") Right $ resolveInitialType fTy typeCtx
 
           let errAppMismatch = Left $ EAppMismatch fTy xTy
-          case fTy of
+          case resFTy of
             -- Regular function application attempt
-            Arrow aTy bTy
-              | aTy == xTy -> Right bTy
-              | otherwise  -> errAppMismatch
-
+            Arrow aTy bTy -> case typeEq aTy xTy typeCtx of
+                                 Nothing -> errAppMismatch
+                                 Just isSameType
+                                   | isSameType -> Right bTy
+                                   | otherwise  -> errAppMismatch
             _ -> errAppMismatch
-
-
-  -- | A term is looked up in the nameCtx and is typed to accept all of its parameters and produce the type is belongs to.
-  -- It is assumed the nameCtx has been type checked => each of these parameters have been type checked
-  --
-  -- termName:t IN nameCtx
-  -- -----------------------
-  --      termName : t
-  Term termName
-    -> do TermInfo params belongs <- maybe (Left $ ETermNotDefined termName) Right $ Map.lookup termName nameCtx
-          Right $ arrowise (params ++ [ty belongs])
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
   -- has that sum type.
   Sum expr ix inTypr
     -> do -- Expression must type check
-          exprTy <- exprType bindCtx nameCtx expr
+          exprTy <- exprType bindCtx typeCtx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
-          _ <- if exprTy /= (inTypr !! ix) then Left $ EMsg "Expression doesnt have the type of the position in a sum type it claims it has" else Right ()
+          _ <- case typeEq exprTy (inTypr !! ix) typeCtx of
+                   Nothing -> Left $ EMsg "An expressions indexed type in a sum is an unknown type name"
+                   Just isSameType
+                     | isSameType -> Right ()
+                     | otherwise  -> Left $ EMsg "Expression doesnt have the type of the position in a sum type it claims it has"
 
           -- Allow the other types in the sum to not exist...
           _ <- Right ()
@@ -317,7 +284,7 @@ exprType bindCtx nameCtx e = case e of
   -- A product is typed by the order of each expression it contains
   Product prodExprs
     -> do -- type check each successive expression
-          prodExprTys <- mapM (exprType bindCtx nameCtx) prodExprs
+          prodExprTys <- mapM (exprType bindCtx typeCtx) prodExprs
 
           -- the type is the product of those types
           Right $ ProductT prodExprTys
@@ -325,7 +292,7 @@ exprType bindCtx nameCtx e = case e of
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
   Union unionExpr unionTypeIndex unionTypes
     -> do -- type check injected expression
-          exprTy <- exprType bindCtx nameCtx unionExpr
+          exprTy <- exprType bindCtx typeCtx unionExpr
 
           -- Type must be what we claim it is...
           _ <- if exprTy /= unionTypeIndex then Left $ EMsg "Expression doesnt have the type within the union it claims to have" else Right ()
@@ -355,10 +322,10 @@ exprType bindCtx nameCtx e = case e of
   --      defExpr        : t
   Case caseExpr (DefaultOnly defExpr)
     -> do -- caseExpr should be well typed (but we don't care about anything else)
-          _ <- exprType bindCtx nameCtx caseExpr
+          _ <- exprType bindCtx typeCtx caseExpr
 
           -- The case expression is then typed by the default branch assuming its well typed
-          exprType bindCtx nameCtx defExpr
+          exprType bindCtx typeCtx defExpr
 
 
   -- | A case expression with one or many branches and a possible default branch.
@@ -371,38 +338,51 @@ exprType bindCtx nameCtx e = case e of
   --                     mDefExpr
   Case caseExpr (CaseBranches (SomeCaseBranches branch0 branches) mDefExpr)
     -> do -- The expression case-analysed on must type-check
-          caseExprTy <- exprType bindCtx nameCtx caseExpr
+          caseExprTy <- exprType bindCtx typeCtx caseExpr
 
           -- Check the first and any other branches
-          branch0Ty <- branchType branch0 caseExprTy bindCtx nameCtx
-          branchTys <- mapM (\branch -> branchType branch caseExprTy bindCtx nameCtx) branches
+          branch0Ty <- branchType branch0 caseExprTy bindCtx typeCtx
+          branchTys <- mapM (\branch -> branchType branch caseExprTy bindCtx typeCtx) branches
 
           -- Check the default branch if it exists
-          mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType bindCtx nameCtx defExpr) mDefExpr
+          mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType bindCtx typeCtx defExpr) mDefExpr
 
           -- Check all branches have the same result type
           -- If the default branch exists, its type must be the same as the first branch
-          _<- maybe (Right ())
-                    (\defExprTy -> if defExprTy == branch0Ty then Right () else Left $ EMsg "Default branch and first case branch have different result types")
-                    mDefExprTy
+          _ <- maybe (Right ())
+                     (\defExprTy -> case typeEq defExprTy branch0Ty typeCtx of
+                                        Nothing -> Left $ EMsg "First branch has a unresolvable type name"
+                                        Just isSameType
+                                          | isSameType -> Right ()
+                                          | otherwise  -> Left $ EMsg "Default branch and first case branch have different result types"
+                     )
+                     mDefExprTy
+
           -- Any other branches must have the same type as the first
-          _<- mapM (\branchTy -> if branchTy == branch0Ty then Right () else Left $ EMsg "Branch and first branch have different result types")
-                   branchTys
+          _ <- mapM (\branchTy -> case typeEq branchTy branch0Ty typeCtx of
+                                      Nothing -> Left $ EMsg "Branch has an unresolvable type name"
+                                      Just isSameType
+                                        | isSameType -> Right ()
+                                        | otherwise  -> Left $ EMsg "Branch and first branch have different result types"
+                    )
+                    branchTys
 
           Right branch0Ty
           -- TODO: maybe check coverage...
 
--- Type check a case branch, requring it match the expected type under a namectx
+-- Type check a case branch, requring it match the expected type
 -- if so, type checking the result expression which is returned
-branchType :: BindAbs b abs => CaseBranch b abs -> Type -> BindCtx b -> NameCtx -> Either Error Type
-branchType (CaseBranch lhs rhs) expectedTy bindCtx nameCtx = do
-  bindings <- checkMatchWith lhs expectedTy nameCtx bindCtx
-  exprType (addBindings bindings bindCtx) nameCtx rhs
+branchType :: BindAbs b abs => CaseBranch b abs -> Type -> BindCtx b -> TypeCtx -> Either Error Type
+branchType (CaseBranch lhs rhs) expectedTy bindCtx typeCtx = do
+  bindings <- checkMatchWith lhs expectedTy bindCtx typeCtx
+  exprType (addBindings bindings bindCtx) typeCtx rhs
 
--- | Check that a MatchArg matches the expected Type under a NameCtx.
+-- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.
-checkMatchWith :: Binds b => MatchArg b -> Type -> NameCtx -> BindCtx b -> Either Error [Type]
-checkMatchWith match expectTy nameCtx bindCtx = case match of
+checkMatchWith :: Binds b => MatchArg b -> Type -> BindCtx b -> TypeCtx -> Either Error [Type]
+checkMatchWith match expectTy bindCtx typeCtx = do
+  rExpectTy <- maybe (Left $ EMsg "The expected type in a pattern is a type name with no definition.") Right $ resolveInitialType expectTy typeCtx
+  case match of
 
     -- Bind the value
     Bind
@@ -411,38 +391,30 @@ checkMatchWith match expectTy nameCtx bindCtx = case match of
     MatchBinding b
       -> do -- the type of the binding
             bTy <- maybe (Left $ EMsg "pattern match on a non-existant binding") Right $ bindTy b bindCtx
-            if bTy == expectTy then pure [] else Left $ EMsg "pattern match on a binding from a different type"
-
-    MatchTerm termLit nestedMatchArgs
-      -> do -- The expected param and type of the given term name
-            TermInfo termParamTys termBelongs <- maybe (Left $ EMsg "pattern matches on unknown term literal") Right $ Map.lookup termLit nameCtx
-
-            -- Lit Must have the expected type Type
-            _ <- if Named termBelongs /= expectTy then Left $ EMsg "pattern matches on a term from a different type" else Right ()
-
-            -- Lit must be applied to the correct number of pattern args which must themselves be correctly typed and may bind nested bindings
-            checkMatchesWith nestedMatchArgs termParamTys nameCtx bindCtx
+            case typeEq bTy expectTy typeCtx of
+                Nothing         -> Left $ EMsg "pattern match on a Named type which does not exist"
+                Just isSameType -> if isSameType then pure [] else Left $ EMsg "pattern match on a binding from a different type"
 
     MatchSum sumIndex nestedMatchArg
-      -> do sumTypes <- case expectTy of
+      -> do sumTypes <- case rExpectTy of
                       SumT sumTypes -> Right sumTypes
-                      _             -> Left $ EMsg "Expected sum type in pattern match"
+                      _             -> Left $ EMsg $ "Expected sum type in pattern match"
 
             -- index must be within the number of alternative in the sum type
             matchedTy <- if length sumTypes < sumIndex then Left $ EMsg "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
 
             -- must have the expected index type
-            checkMatchWith nestedMatchArg matchedTy nameCtx bindCtx
+            checkMatchWith nestedMatchArg matchedTy bindCtx typeCtx
 
     MatchProduct nestedMatchArgs
-      -> do prodTypes <- case expectTy of
+      -> do prodTypes <- case rExpectTy of
                              ProductT prodTypes -> Right prodTypes
                              _               -> Left $ EMsg "Expected product type in pattern match"
 
-            checkMatchesWith nestedMatchArgs prodTypes nameCtx bindCtx
+            checkMatchesWith nestedMatchArgs prodTypes bindCtx typeCtx
 
     MatchUnion unionIndexTy nestedMatchArg
-      -> do unionTypes <- case expectTy of
+      -> do unionTypes <- case rExpectTy of
                         UnionT unionTypes -> Right unionTypes
                         _                 -> Left $ EMsg "Expected union type in pattern match"
 
@@ -450,16 +422,16 @@ checkMatchWith match expectTy nameCtx bindCtx = case match of
             _ <- if Set.member unionIndexTy unionTypes then Right () else Left $ EMsg "Matching on a type which isnt a member of the union"
 
             -- must actually match on the expected type
-            checkMatchWith nestedMatchArg unionIndexTy nameCtx bindCtx
+            checkMatchWith nestedMatchArg unionIndexTy bindCtx typeCtx
 
 
-checkMatchesWith :: Binds b => [MatchArg b] -> [Type] -> NameCtx -> BindCtx b -> Either Error [Type]
-checkMatchesWith matches types nameCtx bindCtx = case (matches,types) of
+checkMatchesWith :: Binds b => [MatchArg b] -> [Type] -> BindCtx b -> TypeCtx -> Either Error [Type]
+checkMatchesWith matches types bindCtx typeCtx = case (matches,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg "Expected more patterns in match"
   (_,[])  -> Left $ EMsg "Too many patterns in match"
   (m:ms,t:ts)
-    -> checkMatchWith m t nameCtx bindCtx >>= \boundTs -> checkMatchesWith ms ts nameCtx bindCtx >>= Right . (boundTs ++)
+    -> checkMatchWith m t bindCtx typeCtx >>= \boundTs -> checkMatchesWith ms ts bindCtx typeCtx >>= Right . (boundTs ++)
 
 -- Bind a list of expression with claimed types within an expression
 -- by transforming to an application to lambda abstractions.

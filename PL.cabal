@@ -27,6 +27,7 @@ library
                      , PL.Bindings
                      , PL.Parser
                      , PL.Parser.Lispy
+                     , PL.TypeCtx
   -- other-modules:       
   other-extensions:    OverloadedStrings
                      , GeneralizedNewtypeDeriving

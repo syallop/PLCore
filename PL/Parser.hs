@@ -28,13 +28,16 @@ module PL.Parser
   ,star
   ,plus
   ,comma
-  ,up
+  ,upArrow
   ,lambda
   ,langle
   ,rangle
   ,lparen
   ,rparen
   ,underscore
+  ,union
+  ,question
+  ,at
 
   -- Functions on Text/ many characters
   ,takeN
@@ -165,13 +168,16 @@ bar        = charIs '|'
 star       = charIs '*'
 plus       = charIs '+'
 comma      = charIs ','
-up         = charIs '^'
+upArrow    = charIs '^'
 lambda     = charIs '\\'
 langle     = charIs '<'
 rangle     = charIs '>'
 lparen     = charIs '('
 rparen     = charIs ')'
 underscore = charIs '_'
+union      = charIs 'U'
+question   = charIs '?'
+at         = charIs '@'
 
 
 

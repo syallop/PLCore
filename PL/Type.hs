@@ -50,22 +50,25 @@ ty :: TypeName -> Type
 ty b = Named b
 
 instance Show Type where
-  show t = case t of
+  show = showType
+
+showType :: Type -> String
+showType t = case t of
 
     Arrow from to
-      -> parens $ show from ++ " -> " ++ show to
+      -> parens $ "^" ++ show from ++ " " ++ show to
 
     Named belongs
       -> show belongs
 
     SumT types
-      -> parens $ intercalate "|" $ map show types
+      -> parens $ ("+" ++) $ intercalate " " $ map show types
 
     ProductT types
-      -> parens $ intercalate "*" $ map show types
+      -> parens $ ("*" ++) $ intercalate " " $ map show types
 
     UnionT types
-      -> parens $ "<" ++ (intercalate "|" $ map show $ Set.toList types) ++ ">"
+      -> parens $ ("U" ++) $ intercalate " " $ map show $ Set.toList types
 
 parensS :: Show a => a -> String
 parensS = parens . show

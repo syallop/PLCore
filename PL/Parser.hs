@@ -3,7 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module PL.Parser
   (-- Core parser functions
-   Parser()
+   ParseResult(..)
+  ,Parser()
   ,runParser
   ,pFail
   ,pSucceed
@@ -57,7 +58,6 @@ module PL.Parser
 
 import Prelude hiding (takeWhile,dropWhile,exp)
 
-import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Control.Applicative
@@ -65,16 +65,15 @@ import Control.Monad
 import Data.Monoid
 import Data.Char
 
-import PL.Name
-import PL.Var
-import PL.Type
-import PL.Expr
-
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
 -- Instances for Monad & Applicative sequence Parsers together left-to-right, propogating failure.
 -- Instances for MonadPlus & Alternative sequence left-to-right when successful but have backtracking behaviour on failure.
 -- Both instances implicity consume any trailing whitespace after a successful parse.
-newtype Parser a = Parser {_unParser :: Text -> Maybe (a,Text)}
+newtype Parser a = Parser {_unParser :: Text -> ParseResult a}
+
+data ParseResult a
+  = ParseSuccess a Text -- Parsed 'a' with leftovers
+  | ParseFailure
 
 instance Monoid a => Monoid (Parser a) where
   mempty = return mempty
@@ -85,47 +84,59 @@ instance Monoid a => Monoid (Parser a) where
 
 instance Functor Parser where
   fmap f (Parser pa) = Parser $ \txt -> case pa txt of
-    Nothing       -> Nothing
-    Just (a,txt') -> Just (f a,txt')
+    ParseFailure -> ParseFailure
+    ParseSuccess a txt' -> ParseSuccess (f a) txt'
 
 instance Applicative Parser where
   pure  = return
   (<*>) = ap
 instance Monad Parser where
-  return a = Parser $ \txt -> Just (a,txt)
+  return a = Parser $ \txt -> ParseSuccess a txt
 
   (Parser pa) >>= f = Parser $ \txt -> case pa txt of
-    Nothing       -> Nothing
-    Just (a,txt') -> let Parser pb = f a
-                        in case pb (Text.dropWhile isSpace txt') of
-                               Nothing       -> Nothing
-                               Just (b,txt') -> Just (b,Text.dropWhile isSpace txt')
+    ParseFailure
+      -> ParseFailure
+
+    ParseSuccess a txt'
+      -> let Parser pb = f a
+            in case pb (Text.dropWhile isSpace txt') of
+                 ParseFailure
+                   -> ParseFailure
+
+                 ParseSuccess b txt'
+                   -> ParseSuccess b (Text.dropWhile isSpace txt')
 
 --
 instance Alternative Parser where
   empty = mzero
   (<|>) = mplus
 instance MonadPlus Parser where
-  mzero = Parser $ \txt -> Nothing
+  mzero = pFail
 
   mplus (Parser pa0) (Parser pa1) = Parser $ \txt -> case pa0 txt of
-    Nothing        -> case pa1 txt of
-        Nothing        -> Nothing
-        Just (a1,txt') -> Just (a1,Text.dropWhile isSpace txt')
-    Just (a0,txt') -> Just (a0,Text.dropWhile isSpace txt')
+    ParseFailure
+      -> case pa1 txt of
+           ParseFailure
+             -> ParseFailure
+
+           ParseSuccess a1 txt'
+             -> ParseSuccess a1 (Text.dropWhile isSpace txt')
+
+    ParseSuccess a0 txt'
+      -> ParseSuccess a0 (Text.dropWhile isSpace txt')
 
 -- | Execute a 'Parser' on some input Text, producing a possible result and leftover Text if successful.
-runParser :: Parser a -> Text -> Maybe (a,Text)
+runParser :: Parser a -> Text -> ParseResult a
 runParser (Parser p) txt = p txt
 
 
 -- | Fail without consuming anything
 pFail :: Parser a
-pFail = Parser $ const Nothing
+pFail = Parser $ const ParseFailure
 
 -- | Succeed without consuming anything
 pSucceed :: Parser ()
-pSucceed = Parser $ \txt -> Just ((),txt)
+pSucceed = Parser $ \txt -> ParseSuccess () txt
 
 -- | Require a parse must succeed, but any result is discarded
 req :: Parser a -> Parser ()
@@ -144,7 +155,9 @@ alternatives (p:ps) = p <|> alternatives ps
 
 -- Take a single character (if there are any left that is..)
 takeChar :: Parser Char
-takeChar = Parser $ Text.uncons
+takeChar = Parser $ \txt -> case Text.uncons txt of
+  Nothing -> ParseFailure
+  Just (a,txt') -> ParseSuccess a txt'
 
 -- Take a character that must satisfy a predicate
 takeCharIf :: (Char -> Bool) -> Parser Char
@@ -187,8 +200,9 @@ takeN i
   | i < 0     = error "Cant take a negative number of characters"
   | i == 0    = return ""
   | otherwise = Parser $ \txt -> case Text.compareLength txt i of
-      LT -> Nothing
-      _  -> Just $ Text.splitAt i txt
+      LT -> ParseFailure
+      _  -> case Text.splitAt i txt of
+              (a,txt') -> ParseSuccess a txt'
 
 -- Take a number of chars if the resulting text passes a predicate
 takeNIf :: (Text -> Bool) -> Int -> Parser Text
@@ -202,13 +216,14 @@ textIs t = req $ takeNIf (== t) (Text.length t)
 -- Take the longest text that matches a predicate on the characters
 -- (possibly empty)
 takeWhile :: (Char -> Bool) -> Parser Text
-takeWhile pred = Parser $ Just . Text.span pred
+takeWhile pred = Parser $ \txt -> case Text.span pred txt of
+  (a,txt') -> ParseSuccess a txt'
 
 -- Takewhile, but must take at least one character => not the empty text
 takeWhile1 :: (Char -> Bool) -> Parser Text
 takeWhile1 pred = Parser $ \txt -> case Text.span pred txt of
-  ("",_) -> Nothing
-  r      -> Just r
+  ("",_) -> ParseFailure
+  (a,txt') -> ParseSuccess a txt'
 
 -- Drop the longest text that matches a predicate on the characters
 -- (possibly empty)
@@ -233,4 +248,5 @@ between pl pa pr = pl *> pa <* pr
 betweenParens :: Parser a -> Parser a
 betweenParens pa = between lparen pa rparen
 
+whitespace :: Parser ()
 whitespace  = dropWhile isSpace

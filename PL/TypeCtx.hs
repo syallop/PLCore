@@ -153,6 +153,9 @@ typeEq t0 t1 tCtx = case (t0,t1) of
   (UnionT ts0,UnionT ts1)
     -> typeEqs (Set.toList ts0) (Set.toList ts1) tCtx
 
+  -- A non-Named, non identical type
+  _ -> Just False
+
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs :: [Type] -> [Type] -> TypeCtx -> Maybe Bool
 typeEqs ts0 ts1 tCtx

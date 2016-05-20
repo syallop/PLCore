@@ -290,15 +290,22 @@ exprType bindCtx typeCtx e = case e of
           Right $ ProductT prodExprTys
 
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
+  -- TODO: Unused types in the union are not themselves checked for consistency
+  -- TODO: The same type appearing more than once should be an error?
   Union unionExpr unionTypeIndex unionTypes
     -> do -- type check injected expression
           exprTy <- exprType bindCtx typeCtx unionExpr
 
           -- Type must be what we claim it is...
-          _ <- if exprTy /= unionTypeIndex then Left $ EMsg "Expression doesnt have the type within the union it claims to have" else Right ()
+          _ <- case typeEq exprTy unionTypeIndex typeCtx of
+                   Just True  -> Right ()
+                   Just False -> Left $ EMsg "Expression doesnt have the type within the union it claims to have"
+                   Nothing    -> Left $ EMsg "A named type in a union doesnt exist"
 
           -- Type must be in the set somewhere...
-          _ <- if exprTy `Set.member` unionTypes then Right () else Left $ EMsg "Expressions type is not within the union"
+          _ <- if Set.member (Just True) . Set.map (\unionTy -> typeEq exprTy unionTy typeCtx) $ unionTypes
+                 then Right ()
+                 else Left $ EMsg "Expressions type is not within the union"
 
           -- the type is the claimed union
           Right $ UnionT unionTypes

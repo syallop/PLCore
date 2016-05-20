@@ -69,11 +69,13 @@ import Data.Char
 -- Instances for Monad & Applicative sequence Parsers together left-to-right, propogating failure.
 -- Instances for MonadPlus & Alternative sequence left-to-right when successful but have backtracking behaviour on failure.
 -- Both instances implicity consume any trailing whitespace after a successful parse.
-newtype Parser a = Parser {_unParser :: Text -> ParseResult a}
+newtype Parser a = Parser {_unParser :: Pos -> Text -> ParseResult a}
+
+type Pos = Int
 
 data ParseResult a
-  = ParseSuccess a Text   -- Parsed 'a' with leftovers
-  | ParseFailure Expected -- List of alternate expected strings
+  = ParseSuccess a Text Pos -- Parsed 'a' with leftovers
+  | ParseFailure Expected Pos -- List of alternate expected strings
   deriving Show
 
 data Expected
@@ -124,28 +126,32 @@ instance Monoid a => Monoid (Parser a) where
     return (a <> a')
 
 instance Functor Parser where
-  fmap f (Parser pa) = Parser $ \txt -> case pa txt of
-    ParseFailure es -> ParseFailure es
-    ParseSuccess a txt' -> ParseSuccess (f a) txt'
+  fmap f (Parser pa) = Parser $ \pos txt -> case pa pos txt of
+    ParseFailure es pos' -> ParseFailure es pos'
+    ParseSuccess a txt' pos' -> ParseSuccess (f a) txt' pos'
 
 instance Applicative Parser where
   pure  = return
   (<*>) = ap
 instance Monad Parser where
-  return a = Parser $ \txt -> ParseSuccess a txt
+  return a = Parser $ \pos txt -> ParseSuccess a txt pos
 
-  (Parser pa) >>= f = Parser $ \txt -> case pa txt of
-    ParseFailure es
-      -> ParseFailure es
+  (Parser pa) >>= f = Parser $ \pos txt -> case pa pos txt of
+    ParseFailure es pos1
+      -> ParseFailure es pos1
 
-    ParseSuccess a txt'
-      -> let Parser pb = f a
-            in case pb (Text.dropWhile isSpace txt') of
-                 ParseFailure es
-                   -> ParseFailure es
+    ParseSuccess a txt1 pos1
+      -> let Parser pb      = f a
+             (nSpaces,txt2) = dropSpaces txt1
+             pos2           = pos1 + nSpaces
+            in case pb pos2 txt2 of
+                 ParseFailure es pos3
+                   -> ParseFailure es pos3
 
-                 ParseSuccess b txt'
-                   -> ParseSuccess b (Text.dropWhile isSpace txt')
+                 ParseSuccess b txt3 pos3
+                   -> let (nSpaces,txt4) = dropSpaces txt3
+                          pos4           = pos3 + nSpaces
+                         in ParseSuccess b txt4 pos4
 
 --
 instance Alternative Parser where
@@ -154,30 +160,39 @@ instance Alternative Parser where
 instance MonadPlus Parser where
   mzero = pFail expectNothing
 
-  mplus (Parser pa0) (Parser pa1) = Parser $ \txt -> case pa0 txt of
-    ParseFailure es0
-      -> case pa1 txt of
-           ParseFailure es1
-             -> ParseFailure (ExpectEither es0 es1)
+  mplus (Parser pa0) (Parser pa1) = Parser $ \pos txt -> case pa0 pos txt of
+    ParseFailure es0 pos1
+      -> case pa1 pos1 txt of
+           ParseFailure es1 pos2
+             -> ParseFailure (ExpectEither es0 es1) pos2
 
-           ParseSuccess a1 txt'
-             -> ParseSuccess a1 (Text.dropWhile isSpace txt')
+           ParseSuccess a1 txt1 pos2
+             -> let (nSpaces,txt2) = dropSpaces txt1
+                    pos3           = pos2 + nSpaces
+                   in ParseSuccess a1 txt2 pos3
 
-    ParseSuccess a0 txt'
-      -> ParseSuccess a0 (Text.dropWhile isSpace txt')
+    ParseSuccess a0 txt1 pos1
+      -> let (nSpaces,txt2) = dropSpaces txt1
+             pos2           = pos1 + nSpaces
+            in ParseSuccess a0 txt2 pos2
+
+dropSpaces :: Text -> (Int,Text)
+dropSpaces txt =
+  let (spaces,txt') = Text.span isSpace txt
+     in (Text.length spaces,txt')
 
 -- | Execute a 'Parser' on some input Text, producing a possible result and leftover Text if successful.
 runParser :: Parser a -> Text -> ParseResult a
-runParser (Parser p) txt = p txt
+runParser (Parser p) txt = p 0 txt
 
 
 -- | Fail without consuming anything
 pFail :: Expected -> Parser a
-pFail = Parser . const . ParseFailure
+pFail e = Parser $ \pos _ -> ParseFailure e pos
 
 -- | Succeed without consuming anything
 pSucceed :: Parser ()
-pSucceed = Parser $ \txt -> ParseSuccess () txt
+pSucceed = Parser $ \pos txt -> ParseSuccess () txt pos
 
 -- | Require a parse must succeed, but any result is discarded
 req :: Parser a -> Parser ()
@@ -196,9 +211,9 @@ alternatives (p:ps) = p <|> alternatives ps
 
 -- Take a single character (if there are any left that is..)
 takeChar :: Parser Char
-takeChar = Parser $ \txt -> case Text.uncons txt of
-  Nothing -> ParseFailure ExpectAnything
-  Just (a,txt') -> ParseSuccess a txt'
+takeChar = Parser $ \pos txt -> case Text.uncons txt of
+  Nothing -> ParseFailure ExpectAnything pos
+  Just (a,txt') -> ParseSuccess a txt' (pos+1)
 
 -- Take a character that must satisfy a predicate
 takeCharIf :: Predicate Char -> Parser Char
@@ -240,10 +255,10 @@ takeN :: Int -> Parser Text
 takeN i
   | i < 0     = error "Cant take a negative number of characters"
   | i == 0    = return ""
-  | otherwise = Parser $ \txt -> case Text.compareLength txt i of
-      LT -> ParseFailure (ExpectN i ExpectAnything)
+  | otherwise = Parser $ \pos txt -> case Text.compareLength txt i of
+      LT -> ParseFailure (ExpectN i ExpectAnything) pos
       _  -> case Text.splitAt i txt of
-              (a,txt') -> ParseSuccess a txt'
+              (a,txt') -> ParseSuccess a txt' (pos+i)
 
 -- Take a number of chars if the resulting text passes a predicate
 takeNIf :: Predicate Text -> Int -> Parser Text
@@ -258,14 +273,14 @@ textIs t = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
 -- Take the longest text that matches a predicate on the characters
 -- (possibly empty)
 takeWhile :: (Char -> Bool) -> Parser Text
-takeWhile pred = Parser $ \txt -> case Text.span pred txt of
-  (a,txt') -> ParseSuccess a txt'
+takeWhile pred = Parser $ \pos txt -> case Text.span pred txt of
+  (a,txt') -> ParseSuccess a txt' (pos + (Text.length txt - Text.length txt'))
 
 -- Takewhile, but must take at least one character => not the empty text
 takeWhile1 :: Predicate Char -> Parser Text
-takeWhile1 pred = Parser $ \txt -> case Text.span (_predicate pred) txt of
-  ("",_)   -> ParseFailure (_predicateExpect pred)
-  (a,txt') -> ParseSuccess a txt'
+takeWhile1 pred = Parser $ \pos txt -> case Text.span (_predicate pred) txt of
+  ("",_)   -> ParseFailure (_predicateExpect pred) pos
+  (a,txt') -> ParseSuccess a txt' (pos + (Text.length txt - Text.length txt'))
 
 -- Drop the longest text that matches a predicate on the characters
 -- (possibly empty)

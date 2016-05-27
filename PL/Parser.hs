@@ -71,7 +71,37 @@ import Data.Char
 -- Both instances implicity consume any trailing whitespace after a successful parse.
 newtype Parser a = Parser {_unParser :: Pos -> Text -> ParseResult a}
 
-type Pos = Int
+data Pos
+  = Pos
+    {_posTotal    :: Int -- Total number of characters into a parse
+
+    ,_posLine     :: Int -- Number of new lines
+    ,_posLineChar :: Int -- Number characters into line
+    }
+  deriving Show
+
+
+-- Increment a number of character along a line
+incAlongLine :: Int -> Pos -> Pos
+incAlongLine i (Pos t l s) = Pos (t+i) l (s+i)
+
+-- Increment to a new line, reseting to position zero within the line.
+-- A newline character takes up one total character.
+incLine :: Int -> Pos -> Pos
+incLine i (Pos t l s) = Pos (t+1) (l+1) 0
+
+-- Increment a position by a string of Text moved past
+incPast :: Text -> Pos -> Pos
+incPast txt p = case Text.uncons txt of
+  Nothing       -> p
+  Just (c,txt') -> incPast txt' $ incPastChar c p
+
+incPastChar :: Char -> Pos -> Pos
+incPastChar c 
+  | c == '\n' = incLine 1
+  | otherwise = incAlongLine 1
+
+
 
 data ParseResult a
   = ParseSuccess a Text Pos -- Parsed 'a' with leftovers
@@ -141,16 +171,14 @@ instance Monad Parser where
       -> ParseFailure es pos1
 
     ParseSuccess a txt1 pos1
-      -> let Parser pb      = f a
-             (nSpaces,txt2) = dropSpaces txt1
-             pos2           = pos1 + nSpaces
+      -> let Parser pb   = f a
+             (pos2,txt2) = dropSpaceLikes (pos1,txt1)
             in case pb pos2 txt2 of
                  ParseFailure es pos3
                    -> ParseFailure es pos3
 
                  ParseSuccess b txt3 pos3
-                   -> let (nSpaces,txt4) = dropSpaces txt3
-                          pos4           = pos3 + nSpaces
+                   -> let (pos4,txt4) = dropSpaceLikes (pos3,txt3)
                          in ParseSuccess b txt4 pos4
 
 --
@@ -167,23 +195,26 @@ instance MonadPlus Parser where
              -> ParseFailure (ExpectEither es0 es1) pos2
 
            ParseSuccess a1 txt1 pos2
-             -> let (nSpaces,txt2) = dropSpaces txt1
-                    pos3           = pos2 + nSpaces
+             -> let (pos3,txt2) = dropSpaceLikes (pos2,txt1)
                    in ParseSuccess a1 txt2 pos3
 
     ParseSuccess a0 txt1 pos1
-      -> let (nSpaces,txt2) = dropSpaces txt1
-             pos2           = pos1 + nSpaces
+      -> let (pos2,txt2) = dropSpaceLikes (pos1,txt1)
             in ParseSuccess a0 txt2 pos2
 
-dropSpaces :: Text -> (Int,Text)
-dropSpaces txt =
-  let (spaces,txt') = Text.span isSpace txt
-     in (Text.length spaces,txt')
+-- Given a position within some Text, advance the position by dropping any space
+-- like characters until the first non-space character.
+dropSpaceLikes :: (Pos,Text) -> (Pos,Text)
+dropSpaceLikes (p,txt) = case Text.uncons txt of
+  Nothing -> (p,txt)
+  Just (c,txt')
+    | c == ' '  -> (incAlongLine 1 p,txt')
+    | c == '\n' -> (incLine 1 p,txt')
+    | otherwise -> (p,txt)
 
 -- | Execute a 'Parser' on some input Text, producing a possible result and leftover Text if successful.
 runParser :: Parser a -> Text -> ParseResult a
-runParser (Parser p) txt = p 0 txt
+runParser (Parser p) txt = p (Pos 0 0 0) txt
 
 
 -- | Fail without consuming anything
@@ -213,7 +244,7 @@ alternatives (p:ps) = p <|> alternatives ps
 takeChar :: Parser Char
 takeChar = Parser $ \pos txt -> case Text.uncons txt of
   Nothing -> ParseFailure ExpectAnything pos
-  Just (a,txt') -> ParseSuccess a txt' (pos+1)
+  Just (a,txt') -> ParseSuccess a txt' (incPastChar a pos)
 
 -- Take a character that must satisfy a predicate
 takeCharIf :: Predicate Char -> Parser Char
@@ -248,17 +279,48 @@ union      = charIs 'U'
 question   = charIs '?'
 at         = charIs '@'
 
+-- number of characters until one is a space or a newline
+spaceLikeDistance :: Text -> Int
+spaceLikeDistance txt = spaceLikeDistance' (0,txt)
+  where
+    spaceLikeDistance' :: (Int,Text) -> Int
+    spaceLikeDistance' (accD,txt) = case Text.uncons txt of
+      Nothing -> accD
+      Just (c,txt')
+        | c == ' ' || c == '\n' -> accD
+        | otherwise             -> spaceLikeDistance' (accD+1,txt')
+
+-- Is the given length less than, equal or greater than the distance to the next
+-- space or newline?
+compareLengthUntilSpaceLike :: Int -> Text -> Ordering
+compareLengthUntilSpaceLike i txt
+  | i < 0     = LT
+  | otherwise = compareLengthUntilSpaceLike' i txt
+  where
+    compareLengthUntilSpaceLike' :: Int -> Text -> Ordering
+    compareLengthUntilSpaceLike' 0 txt = case Text.uncons txt of
+      Nothing                   -> EQ
+      Just (c,txt')
+        | c == ' ' || c == '\n' -> EQ
+        | otherwise             -> LT
+    compareLengthUntilSpaceLike' n txt = case Text.uncons txt of
+      Nothing                   -> GT
+      Just (c,txt')
+        | c == ' ' || c == '\n' -> GT
+        | otherwise             -> compareLengthUntilSpaceLike' (n-1) txt'
+        
 
 
 -- | Take a number of chars, if the input is long enough
 takeN :: Int -> Parser Text
 takeN i
-  | i < 0     = error "Cant take a negative number of characters"
+  | i < 0     = error "Can't take a negative number of characters"
   | i == 0    = return ""
-  | otherwise = Parser $ \pos txt -> case Text.compareLength txt i of
-      LT -> ParseFailure (ExpectN i ExpectAnything) pos
-      _  -> case Text.splitAt i txt of
-              (a,txt') -> ParseSuccess a txt' (pos+i)
+  | otherwise = Parser $ \pos txt -> case compareLengthUntilSpaceLike i txt of
+    LT -> ParseFailure (ExpectN i ExpectAnything) pos
+    _  -> case Text.splitAt i txt of
+            (a,txt') -> ParseSuccess a txt' (incPast a pos) 
+
 
 -- Take a number of chars if the resulting text passes a predicate
 takeNIf :: Predicate Text -> Int -> Parser Text
@@ -274,13 +336,13 @@ textIs t = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
 -- (possibly empty)
 takeWhile :: (Char -> Bool) -> Parser Text
 takeWhile pred = Parser $ \pos txt -> case Text.span pred txt of
-  (a,txt') -> ParseSuccess a txt' (pos + (Text.length txt - Text.length txt'))
+  (a,txt') -> ParseSuccess a txt' (incPast a pos) 
 
 -- Takewhile, but must take at least one character => not the empty text
 takeWhile1 :: Predicate Char -> Parser Text
 takeWhile1 pred = Parser $ \pos txt -> case Text.span (_predicate pred) txt of
   ("",_)   -> ParseFailure (_predicateExpect pred) pos
-  (a,txt') -> ParseSuccess a txt' (pos + (Text.length txt - Text.length txt'))
+  (a,txt') -> ParseSuccess a txt' (incPast a pos) 
 
 -- Drop the longest text that matches a predicate on the characters
 -- (possibly empty)
@@ -307,3 +369,4 @@ betweenParens pa = between lparen pa rparen
 
 whitespace :: Parser ()
 whitespace  = dropWhile isSpace
+

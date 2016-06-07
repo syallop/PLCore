@@ -57,12 +57,17 @@ module PL.Parser
   ,between
   ,betweenParens
   ,whitespace
+
+  ,pointTo
+  ,remainder
+  ,showExpected
   ) where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
 
 import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.List as List
 import Control.Applicative
 import Control.Monad
 import Data.Monoid
@@ -83,13 +88,35 @@ data Pos
     }
   deriving Show
 
+showPos :: Pos -> Text
+showPos (Pos t l c) =
+  Text.concat ["["
+              ,Text.pack . show $ t
+              ,"] Line "
+              ,Text.pack . show $ l
+              ," : Character "
+              ,Text.pack . show $ c
+              ]
+
 -- A cursor is a position within some text, where we remember how much text we've passed,
 -- how many newlines and how much into the current line we are but not the prior text itself
 data Cursor = Cursor
-  {_cursorText :: Text
-  ,_cursorPos  :: Pos
+  {_cursorPrev :: [Text] -- chunks of text we've moved past, in reverse order
+  ,_cursorNext :: Text   -- cursor is currently pointing to
+  ,_cursorPos  :: Pos    -- cache the position within the text as a whole
   }
   deriving Show
+
+remainder :: Cursor -> Text
+remainder (Cursor _ next _) = next
+
+pointTo :: Cursor -> Text
+pointTo (Cursor prev next (Pos t l c))
+  = let (untilLineEnd,rest) = Text.span (/= '\n') next
+       in Text.concat prev <> untilLineEnd <> "\n"
+       <> Text.replicate c "-" <> "^ " <> showPos (Pos t l c) <> "\n"
+       <> rest
+
 
 -- Increment a number of character along a line
 incAlongLine :: Int -> Pos -> Pos
@@ -113,9 +140,9 @@ incPastChar c
 
 -- Increment the Cursor past the next character (if there is one), returning it
 incCursor :: Cursor -> Maybe (Char,Cursor)
-incCursor (Cursor txt pos) = do
-  (c,txt') <- Text.uncons txt
-  Just . (c,) . Cursor txt' $ case c of
+incCursor (Cursor prev next pos) = do
+  (c,next') <- Text.uncons next
+  Just . (c,) . Cursor (Text.singleton c : prev) next' $ case c of
      _
       | c == '\n' -> incLine      1 pos
       | otherwise -> incAlongLine 1 pos
@@ -135,25 +162,30 @@ data Expected
   | ExpectAnything                 -- Expected anything => got an EOF
   | ExpectN Int Expected           -- Expected a N repetitions
 
+instance Show Expected where show = Text.unpack . showExpected
+
 expectNothing :: Expected
 expectNothing = ExpectOneOf []
 
-instance Show Expected where
-  show e = case e of
-    ExpectEither es0 es1
-      -> "{" ++ show es0 ++ "} {" ++ show es1 ++ "}"
+showExpected :: Expected -> Text
+showExpected = Text.intercalate " " . List.nub . flattenExpected
 
-    ExpectOneOf ts
-      -> "Expected " ++ showOneOf ts
+flattenExpected :: Expected -> [Text]
+flattenExpected e = case e of
+  ExpectEither es0 es1
+    -> flattenExpected es0 ++ flattenExpected es1
 
-    ExpectPredicate t
-      -> "predicate " ++ Text.unpack t
+  ExpectOneOf ts
+    -> ts
 
-    ExpectAnything
-      -> "Expected ANYTHING"
+  ExpectPredicate t
+    -> ["Predicate " <> t]
 
-    ExpectN i e
-      -> "Expected exactly " ++ show i ++ " of " ++ show e
+  ExpectAnything
+    -> ["_ANYTHING_"]
+
+  ExpectN i e
+    -> ["Exactly " <> (Text.pack . show $ i) <> " {" <> showExpected e <> "} "]
 
 showOneOf :: [Text] -> String
 showOneOf []       = "NOTHING"
@@ -222,16 +254,16 @@ instance MonadPlus Parser where
 -- Given a position within some Text, advance the position by dropping any space
 -- like characters until the first non-space character.
 dropSpaceLikes :: Cursor -> Cursor
-dropSpaceLikes (Cursor txt p) = case Text.uncons txt of
-  Nothing -> Cursor txt p
-  Just (c,txt')
-    | c == ' '  -> Cursor txt' $ incAlongLine 1 p
-    | c == '\n' -> Cursor txt' $ incLine 1 p
-    | otherwise -> Cursor txt p
+dropSpaceLikes (Cursor prev next pos) = case Text.uncons next of
+  Nothing -> Cursor prev next pos
+  Just (c,next')
+    | c == ' '  -> dropSpaceLikes $ Cursor (Text.singleton c : prev) next' $ incAlongLine 1 pos
+    | c == '\n' -> dropSpaceLikes $ Cursor (Text.singleton c : prev) next' $ incLine 1 pos
+    | otherwise -> Cursor prev next pos
 
 -- | Execute a 'Parser' on some input Text, producing a possible result and leftover Text if successful.
 runParser :: Parser a -> Text -> ParseResult a
-runParser (Parser p) txt = p (Cursor txt $ Pos 0 0 0)
+runParser (Parser p) txt = p (Cursor [] txt $ Pos 0 0 0)
 
 
 -- | Fail without consuming anything
@@ -277,9 +309,12 @@ alternatives (p:ps) = p <|> alternatives ps
 
 -- Take a single character (if there are any left that is..)
 takeChar :: Parser Char
-takeChar = Parser $ \c -> case Text.uncons (_cursorText c) of
-  Nothing -> ParseFailure ExpectAnything c
-  Just (a,txt) -> ParseSuccess a (Cursor txt (incPastChar a (_cursorPos c)))
+takeChar = Parser $ \c -> case Text.uncons (_cursorNext c) of
+  Nothing
+    -> ParseFailure ExpectAnything c
+
+  Just (a,next)
+    -> ParseSuccess a (Cursor (Text.singleton a : (_cursorPrev c)) next (incPastChar a (_cursorPos c)))
 
 -- Take a character that must satisfy a predicate
 takeCharIf :: Predicate Char -> Parser Char
@@ -310,7 +345,7 @@ rangle     = charIs '>'
 lparen     = charIs '('
 rparen     = charIs ')'
 underscore = charIs '_'
-union      = charIs 'U'
+union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
 
@@ -350,12 +385,12 @@ takeN :: Int -> Parser Text
 takeN i
   | i < 0     = error "Can't take a negative number of characters"
   | i == 0    = return ""
-  | otherwise = Parser $ \c -> case compareLengthUntilSpaceLike i (_cursorText c) of
+  | otherwise = Parser $ \c -> case compareLengthUntilSpaceLike i (_cursorNext c) of
 
     -- Less than the required number of characters until a space
     LT -> ParseFailure (ExpectN i ExpectAnything) c
-    _  -> case Text.splitAt i (_cursorText c) of
-            (a,txt) -> ParseSuccess a (Cursor txt (incPast a (_cursorPos c)))
+    _  -> let (a,next) = Text.splitAt i (_cursorNext c)
+             in ParseSuccess a $ Cursor (a : (_cursorPrev c)) next $ incPast a $ _cursorPos c
 
 
 -- Take a number of chars if the resulting text passes a predicate
@@ -371,14 +406,14 @@ textIs t = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
 -- Take the longest text that matches a predicate on the characters
 -- (possibly empty)
 takeWhile :: (Char -> Bool) -> Parser Text
-takeWhile pred = Parser $ \c -> case Text.span pred (_cursorText c) of
-  (a,txt) -> ParseSuccess a $ Cursor txt $ incPast a $ _cursorPos c
+takeWhile pred = Parser $ \c -> let (a,next) = Text.span pred (_cursorNext c)
+                                   in ParseSuccess a $ Cursor (a : (_cursorPrev c)) next $ incPast a $ _cursorPos c
 
 -- Takewhile, but must take at least one character => not the empty text
 takeWhile1 :: Predicate Char -> Parser Text
-takeWhile1 pred = Parser $ \c -> case Text.span (_predicate pred) (_cursorText c) of
-  ("",_)  -> ParseFailure (_predicateExpect pred) c
-  (a,txt) -> ParseSuccess a $ Cursor txt $ incPast a $ _cursorPos c
+takeWhile1 pred = Parser $ \c -> case Text.span (_predicate pred) (_cursorNext c) of
+  ("",_)   -> ParseFailure (_predicateExpect pred) c
+  (a,next) -> ParseSuccess a $ Cursor (a : (_cursorPrev c)) next $ incPast a $ _cursorPos c
 
 -- Drop the longest text that matches a predicate on the characters
 -- (possibly empty)
@@ -406,3 +441,4 @@ betweenParens pa = between lparen pa rparen
 whitespace :: Parser ()
 whitespace  = dropWhile isSpace
 
+helloWorldP = textIs "Hello" *> textIs "World!"

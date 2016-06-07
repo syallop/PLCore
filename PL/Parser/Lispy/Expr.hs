@@ -19,7 +19,7 @@ lamExpr = lamise <$> (lambda *> typeAbs) <*> many typeAbs <*> expr
 -- Chain lambda
 lamise :: abs -> [abs] -> Expr b abs -> Expr b abs
 lamise a0 []     e = Lam a0 e
-lamise a0 (a:as) e = Lam a0 $ lamise a as e 
+lamise a0 (a:as) e = Lam a0 $ lamise a as e
 
 
 -- An '@' followed by two or more expressions
@@ -33,7 +33,7 @@ appise f x (y:ys) = appise (App f x) y ys
 -- A var used as a binding
 varBindingExpr = Binding <$> var
 
-var = mkVar <$> natural 
+var = mkVar <$> natural
 
 
 -- A '+' followed by an index, an expression and two or more types
@@ -51,7 +51,7 @@ productise = Product
 
 
 -- A 'U' followed by its type index, the expression and two or more types
-unionExpr = unionise <$> (charIs 'U' *> typ) <*> expr <*> typ <*> typ <*> many typ
+unionExpr = unionise <$> (union *> typ) <*> expr <*> typ <*> typ <*> many typ
 
 unionise :: Type -> Expr b abs -> Type -> Type -> [Type] -> Expr b abs
 unionise tIx e t0 t1 ts = Union e tIx (Set.fromList $ t0:t1:ts)
@@ -71,7 +71,7 @@ matchSum = MatchSum <$> (plus *> natural) <*> matchArg
 matchProduct = MatchProduct <$> (star *> many matchArg)
 
 -- A 'U' followed by a type index and a matchArg
-matchUnion = MatchUnion <$> (charIs 'U' *> typ) <*> matchArg
+matchUnion = MatchUnion <$> (union *> typ) <*> matchArg
 
 -- A var
 matchBinding = MatchBinding <$> var

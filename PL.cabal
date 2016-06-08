@@ -39,3 +39,21 @@ library
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
+test-suite hspec
+    hs-source-dirs:    PL/Test
+    main-is:           Spec.hs
+    type:              exitcode-stdio-1.0
+
+    build-depends:     base >=4.7 && <4.9
+                     , containers
+                     , text
+                     , hspec
+                     , PL
+
+    default-language:  Haskell2010
+
+    other-extensions:  OverloadedStrings
+                     , GeneralizedNewtypeDeriving
+                     , LambdaCase
+
+

@@ -1,24 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ExprSpec where
 
-import PL.Expr
 import PL.Error
-import PL.Type
-import PL.Var
-import PL.TypeCtx
+import PL.Expr
 import PL.Reduce
+import PL.Type
+import PL.TypeCtx
+import PL.Parser
+import PL.Var
+import PL.Parser.Lispy hiding (appise,lamise)
 
-import Data.Monoid hiding (Product,Sum)
+import Control.Applicative
 import Control.Monad
 import Data.Maybe
-import Control.Applicative
+import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 import Test.Hspec
 
 spec :: Spec
-spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec]
+spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parsesToSpec]
 
+-- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
 typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type" $ sequence_ . map (uncurry3 typeChecksTo) $
   [("booleans"     , andExpr         ,andExprType)
@@ -36,6 +40,7 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
                                                                                                          )
                                                                                    )
 
+-- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec :: Spec
 reducesToSpec = describe "An expression when applied to a list of arguments must reduce to an expected expression" $ sequence_ . map (uncurry3 manyAppliedReducesToSpec) $
   [("boolean and" ,andExpr                ,[andOneTrue
@@ -115,6 +120,27 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f = \(a,b,c) -> f a b c
 
+-- Test that Text strings parse to an expected expression
+parsesToSpec :: Spec
+parsesToSpec = describe "Strings should parse to expected expressions" $ sequence_ . map (uncurry3 parseToSpec) $
+  [("boolean and"       , andText         , andExpr)
+  ,("sutract two"       , subTwoText      , subTwoExpr)
+  ,("sum expression"    , sumThreeText    , sumThreeExpr)
+  ,("product expression", productThreeText, productThreeExpr)
+  ,("union expression"  , unionTwoText    , unionTwoExpr)
+  ]
+  where
+
+    parseToSpec :: String -> Text.Text -> Expr Var Type -> Spec
+    parseToSpec name txt expectExpr = it name $ case runParser expr txt of
+      ParseFailure e c
+        -> expectationFailure ("Unexpected parse failure: " ++ show e ++ "\n" ++ (Text.unpack $ pointTo c))
+
+      ParseSuccess expr c
+        -> if expr == expectExpr
+             then return ()
+             else expectationFailure ("Parses successfully, BUT not as expected. Got:\n" ++ show expr ++ "\n expected:\n" ++ show expectExpr)
+
 
 
 {- Booleans -}
@@ -185,6 +211,19 @@ andExpr = Lam boolTypeName $ Lam boolTypeName $     -- \x:Bool y:Bool ->
         )
 andExprType :: Type
 andExprType = Arrow boolType (Arrow boolType boolType)
+andText :: Text.Text
+andText = Text.unlines
+  ["\\Bool Bool (CASE 0"
+  ,"               (| "<>falsePatText<>" "<>falseTermText<>")"
+  ,""
+  ,"               (CASE 1"
+  ,"                   (| "<>falsePatText<>" "<>falseTermText<>")"
+  ,""
+  ,"                   "<>trueTermText<>""
+  ,""
+  ,"               )"
+  ,"            )"
+  ]
 
 -- Test nested pattern matching
 -- n > 2     ~> n-2
@@ -202,6 +241,13 @@ subTwoExpr = Lam natTypeName $                           -- \n : Nat ->
         )
 subTwoExprType :: Type
 subTwoExprType = Arrow natType natType
+subTwoText :: Text.Text
+subTwoText = Text.unlines
+  ["\\Nat (CASE 0"
+  ,"         (|"<>(sPatText $ sPatText "?")<>" 0)"
+  ,"         "<>zTermText
+  ,"     )"
+  ]
 
 -- Test case analysis on a sum type with overlapping members
 sumThreeExpr :: Expr Var Type
@@ -220,6 +266,17 @@ sumThreeExpr = Lam (SumT [natTypeName,boolTypeName,natTypeName]) $   -- \x : Nat
         Nothing
 sumThreeExprType :: Type
 sumThreeExprType = Arrow (SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
+sumThreeText :: Text.Text
+sumThreeText = Text.unlines
+  ["\\(+Nat Bool Nat) (CASE 0"
+  ,"                   (| (+0 +1 ?)    (0))"
+  ,"                   (| (+0 +0 (*))  (+0 (*) (*) Nat))"
+  ,"                   (| (+1 +0 (*))  (+0 (*) (*) Nat))"
+  ,"                   (| (+1 +1 (*))  (@ (\\Nat (+1 0 (*) Nat))  (+0 (*) (*) Nat) ))"
+  ,"                   (| (+2 +1 ?)    (+0 (*) (*) Nat))"
+  ,"                   (| (+2 +0 (*))  (@ (\\Nat (+1 0 (*) Nat))  (+0 (*) (*) Nat) ))"
+  ,"                 )"
+  ]
 
 -- Test product expressions
 productThreeExpr :: Expr Var Type
@@ -235,6 +292,15 @@ productThreeExpr = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x
         )
 productThreeExprType :: Type
 productThreeExprType = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
+productThreeText :: Text.Text
+productThreeText = Text.unlines
+  ["\\(* Nat Bool Nat) (CASE 0"
+  ,"                    (| (* (+0 (*)) (?) (+0 (*))) (0))"
+  ,"                    (| (* (?)      (?) (+0 (*))) (0))"
+  ,""
+  ,"                    (+0 (*) (*) (*))"
+  ,"                  )"
+  ]
 
 -- : <Nat|Bool> -> Bool
 unionTwoExpr :: Expr Var Type
@@ -252,4 +318,13 @@ unionTwoExpr = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ -- \x : 
         )
 unionTwoExprType :: Type
 unionTwoExprType = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
-
+unionTwoText :: Text.Text
+unionTwoText = Text.unlines
+  ["\\(∪ Bool Nat) (CASE 0"
+  ,"                (| (∪ Nat  (+0 (*))) (+0 (*) (*) (*)))"
+  ,"                (| (∪ Nat  (+1 ?))   (+1 (*) (*) (*)))"
+  ,"                (| (∪ Bool (+1 (*))) (+1 (*) (*) (*)))"
+  ,""
+  ,"                (+0 (*) (*) (*))"
+  ,"              )"
+  ]

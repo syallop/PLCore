@@ -27,6 +27,8 @@ library
                      , PL.Bindings
                      , PL.Parser
                      , PL.Parser.Lispy
+                     , PL.Parser.Lispy.Expr
+                     , PL.Parser.Lispy.Type
                      , PL.TypeCtx
   -- other-modules:       
   other-extensions:    OverloadedStrings
@@ -45,7 +47,7 @@ test-suite hspec
     type:              exitcode-stdio-1.0
 
     build-depends:     base >=4.7 && <4.9
-                     , containers
+                     , containers >= 0.5 && <0.6
                      , text
                      , hspec
                      , PL
@@ -55,5 +57,4 @@ test-suite hspec
     other-extensions:  OverloadedStrings
                      , GeneralizedNewtypeDeriving
                      , LambdaCase
-
 

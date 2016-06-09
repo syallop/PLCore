@@ -9,7 +9,7 @@ import PL.Type
 -- | Debrujn index for referencing variables.
 -- A positive integer describing how many abstractions deep the var is found.
 data Var = VZ | VS Var
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 mkVar :: Int -> Var
 mkVar 0 = VZ

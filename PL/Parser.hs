@@ -63,6 +63,7 @@ module PL.Parser
   ,pointTo
   ,remainder
   ,showExpected
+  ,parseResult
   ) where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
@@ -156,6 +157,11 @@ data ParseResult a
   = ParseSuccess a        Cursor -- Parsed 'a' with leftovers
   | ParseFailure Expected Cursor -- Expected something with leftovers
   deriving Show
+
+parseResult :: (a -> Cursor -> b) -> (Expected -> Cursor -> b) -> ParseResult a -> b
+parseResult sF fF r = case r of
+  ParseSuccess a c -> sF a c
+  ParseFailure e c -> fF e c
 
 data Expected
   = ExpectEither Expected Expected -- Expected either of
@@ -350,8 +356,8 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = textIs "/\\"
-bigAt      = textIs "@@"
+bigLambda  = charIs '/'
+bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline
 spaceLikeDistance :: Text -> Int

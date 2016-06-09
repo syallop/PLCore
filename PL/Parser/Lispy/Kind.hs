@@ -13,7 +13,7 @@ kind :: Parser Kind
 kind = simpleKind <|> arrowKind
 
 simpleKind :: Parser Kind
-simpleKind = textIs "Kind" *> pure Kind
+simpleKind = textIs "KIND" *> pure Kind
 
 arrowKind :: Parser Kind
 arrowKind = arrowise <$> (arrow *> kind) <*> kind <*> many kind

@@ -3,7 +3,7 @@ module PL.Error where
 import PL.Name
 import PL.Type
 
-data Error
+data Error tb
 
   -- ^ Generic error
   = EMsg String
@@ -13,13 +13,13 @@ data Error
   | ETermNotDefined TermName -- ^ No such term
 
   -- ^ Two typed things cannot be applied to each other
-  | EAppMismatch Type Type --
+  | EAppMismatch (Type tb) (Type tb) --
   deriving (Ord,Eq)
 
-instance Show Error where
+instance Show tb => Show (Error tb) where
     show = showError
 
-showError :: Error -> String
+showError :: Show tb => Error tb -> String
 showError e = let err m = "ERROR: " ++ m in err $ case e of
   EMsg msg
     -> show msg

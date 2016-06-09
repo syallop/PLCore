@@ -23,24 +23,24 @@ todo :: String -> a
 todo str = error $ "TODO: " ++ str
 
 
-type BindAbs b abs = (Binds b, Abstracts abs)
-type ExprOf b abs =  BindAbs b abs => Expr b abs
+type BindAbs b abs tb = (Binds b tb, Abstracts abs tb)
+type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
 -- 'abs' is the type of abstractions
 -- 'b' is the type of bindings
-data Expr b abs
+data Expr b abs tb
 
     -- | Lambda abstraction
     = Lam
       {_take :: abs
-      ,_expr :: Expr b abs
+      ,_expr :: Expr b abs tb
       }
 
     -- | Application
     | App
-      {_f :: Expr b abs
-      ,_x :: Expr b abs
+      {_f :: Expr b abs tb
+      ,_x :: Expr b abs tb
       }
 
     -- | Binding
@@ -50,8 +50,8 @@ data Expr b abs
 
     -- | Case analysis of an expression
     | Case
-      {_caseExpr     :: Expr b abs
-      ,_caseBranches :: PossibleCaseBranches b abs
+      {_caseExpr     :: Expr b abs tb
+      ,_caseBranches :: PossibleCaseBranches b abs tb
       }
 
     -- | An expression is indexed within a Sum type
@@ -59,38 +59,38 @@ data Expr b abs
     -- Currently assuming type guarantees index is within bounds of sumType
     -- (Not unless type-checked that that the expr has that type)
     | Sum
-      {_sumExpr  :: Expr b abs
+      {_sumExpr  :: Expr b abs tb
       ,_sumIndex :: Int
-      ,_sumType  :: [Type]
+      ,_sumType  :: [Type tb]
       }
 
     -- | An expression is a product of many expressions
     | Product
-      {_prodExprs :: [Expr b abs]
+      {_prodExprs :: [Expr b abs tb]
       }
 
     -- | An expression has one of many unique types
     | Union
-      {_unionExpr      :: Expr b abs
-      ,_unionTypeIndex :: Type
-      ,_unionType      :: Set.Set Type
+      {_unionExpr      :: Expr b abs tb
+      ,_unionTypeIndex :: Type tb
+      ,_unionType      :: Set.Set (Type tb)
       }
 
-deriving instance (Binds b, Abstracts abs) => Eq (Expr b abs)
+deriving instance (Binds b tb, Abstracts abs tb,Eq tb) => Eq (Expr b abs tb)
 
-instance (Binds b,Abstracts abs) => Show (Expr b abs) where
+instance (Binds b tb,Abstracts abs tb,Show tb) => Show (Expr b abs tb) where
   show = showExpr
 
 -- | Body of a case expression. Is either:
 -- - Just a catch all match
 -- - One or many branches and a possible default catch all
-data PossibleCaseBranches b abs
+data PossibleCaseBranches b abs tb
 
   -- | No proper matches, only a default catch all
   -- case ... of
   --   {_ -> exp}
   = DefaultOnly
-    { _onMatch :: Expr b abs
+    { _onMatch :: Expr b abs tb
     }
 
   -- | One or many branches and a possible default catch all
@@ -101,19 +101,19 @@ data PossibleCaseBranches b abs
   --    _   -> ...
   --   }
   | CaseBranches
-    { _branches       :: SomeCaseBranches b abs -- One to many
-    , _defaultOnMatch :: Maybe (Expr b abs) -- Possible catch all default
+    { _branches       :: SomeCaseBranches b abs tb -- One to many
+    , _defaultOnMatch :: Maybe (Expr b abs tb) -- Possible catch all default
     }
     deriving (Show, Eq)
 
 -- | One or many 'CaseBranch'
-data SomeCaseBranches b abs = SomeCaseBranches (CaseBranch b abs) [CaseBranch b abs]
+data SomeCaseBranches b abs tb = SomeCaseBranches (CaseBranch b abs tb) [CaseBranch b abs tb]
   deriving (Show,Eq)
 
 -- | A single branch in a case analysis of a type
-data CaseBranch b abs = CaseBranch
-  {_caseLHS :: MatchArg b
-  ,_caseRHS :: Expr b abs
+data CaseBranch b abs tb = CaseBranch
+  {_caseLHS :: MatchArg b tb
+  ,_caseRHS :: Expr b abs tb
   }
   deriving (Show,Eq)
 
@@ -123,7 +123,7 @@ data CaseBranch b abs = CaseBranch
 
 -- Map a function over all contained subexpressions.
 -- The function should preserve the type of the expression.
-mapSubExpressions :: (Expr b abs -> Expr b abs) -> Expr b abs -> Expr b abs
+mapSubExpressions :: (Expr b abs tb -> Expr b abs tb) -> Expr b abs tb -> Expr b abs tb
 mapSubExpressions f = \case
   Lam ty expr
     -> Lam ty $ f expr
@@ -152,7 +152,7 @@ mapSubExpressions f = \case
   Binding b
     -> Binding b
 
-mapCaseRHSs :: (Expr b abs -> Expr b abs) -> CaseBranch b abs -> CaseBranch b abs
+mapCaseRHSs :: (Expr b abs tb -> Expr b abs tb) -> CaseBranch b abs tb -> CaseBranch b abs tb
 mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 
 
@@ -160,18 +160,18 @@ mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 -- | Argument pattern in a case statements match.
 -- case ... of
 --  T {A b (C d E)} -> ...
-data MatchArg b
-  = MatchSum     Int      (MatchArg b) -- ^ Match against a sum alternative (which may be applied to more patterns)
-  | MatchProduct          [MatchArg b] -- ^ Match against a product of many types (which may be applied to more patterns)
-  | MatchUnion   Type     (MatchArg b) -- ^ Match against a union of alternatives
-  | MatchBinding b                     -- ^ Match for exact structural equality
-  | Bind                               -- ^ Match anything and bind it
+data MatchArg b tb
+  = MatchSum     Int      (MatchArg b tb)  -- ^ Match against a sum alternative (which may be applied to more patterns)
+  | MatchProduct          [MatchArg b tb]  -- ^ Match against a product of many types (which may be applied to more patterns)
+  | MatchUnion   (Type tb) (MatchArg b tb) -- ^ Match against a union of alternatives
+  | MatchBinding b                         -- ^ Match for exact structural equality
+  | Bind                                   -- ^ Match anything and bind it
   deriving (Show,Eq)
 
-showExpr :: (BindAbs b abs,Show b,Show abs) => Expr b abs -> String
+showExpr :: forall b abs tb. (BindAbs b abs tb,Show b,Show abs,Show tb) => Expr b abs tb -> String
 showExpr = \case
   Lam takeTy expr
-    -> "(\\" ++ show (absTy takeTy) ++ " " ++ showExpr expr ++ ")"
+    -> "(\\" ++ show (absTy takeTy :: Type tb) ++ " " ++ showExpr expr ++ ")"
 
   App f x
     -> "(@" ++ showExpr f ++ " " ++ showExpr x ++ ")"
@@ -191,7 +191,7 @@ showExpr = \case
   Union unionExpr unionTypeIndex unionTy
     -> "(U" ++ showType unionTypeIndex ++ " " ++ showExpr unionExpr ++ (intercalate " " $ map showType $ Set.toList unionTy) ++ ")"
 
-showPossibleCaseBranches :: BindAbs b abs => PossibleCaseBranches b abs -> String
+showPossibleCaseBranches :: BindAbs b abs tb => PossibleCaseBranches b abs tb -> String
 showPossibleCaseBranches = \case
   DefaultOnly onMatch
     -> showExpr onMatch
@@ -199,16 +199,16 @@ showPossibleCaseBranches = \case
   CaseBranches someCaseBranches maybeDefaultOnMatch
     -> showSomeCaseBranches someCaseBranches ++ "\n" ++ (maybe "" showExpr maybeDefaultOnMatch)
 
-showSomeCaseBranches :: BindAbs b abs => SomeCaseBranches b abs -> String
+showSomeCaseBranches :: BindAbs b abs tb => SomeCaseBranches b abs tb -> String
 showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n" $ map showCaseBranch (caseBranch : caseBranches)
 
-showCaseBranch :: BindAbs b abs => CaseBranch b abs -> String
+showCaseBranch :: BindAbs b abs tb => CaseBranch b abs tb -> String
 showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " " ++ showExpr rhs
 
-showMatchArgs :: Binds b => [MatchArg b] -> String
+showMatchArgs :: Binds b tb => [MatchArg b tb] -> String
 showMatchArgs = intercalate " " . map showMatchArg
 
-showMatchArg :: Binds b => MatchArg b -> String
+showMatchArg :: Binds b tb => MatchArg b tb -> String
 showMatchArg = \case
   MatchSum ix matchArg
     -> "+" ++ show ix ++ " " ++ showMatchArg matchArg
@@ -226,11 +226,11 @@ showMatchArg = \case
     -> "?"
 
 -- | A top-level expression is an expression without a bindings context.
-topExprType :: BindAbs b abs => TypeCtx -> Expr b abs -> Either Error Type
+topExprType :: (BindAbs b abs tb,Ord tb) => TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
 topExprType = exprType emptyCtx
 
 -- | Under a given bindings context, type check an expression.
-exprType :: forall b abs. BindAbs b abs => BindCtx b -> TypeCtx -> Expr b abs -> Either Error Type
+exprType :: forall b abs tb. (BindAbs b abs tb,Ord tb) => BindCtx b tb -> TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
 exprType bindCtx typeCtx e = case e of
 
 
@@ -382,14 +382,14 @@ exprType bindCtx typeCtx e = case e of
 
 -- Type check a case branch, requring it match the expected type
 -- if so, type checking the result expression which is returned
-branchType :: BindAbs b abs => CaseBranch b abs -> Type -> BindCtx b -> TypeCtx -> Either Error Type
+branchType :: (BindAbs b abs tb,Ord tb) => CaseBranch b abs tb -> Type tb -> BindCtx b tb -> TypeCtx tb -> Either (Error tb) (Type tb)
 branchType (CaseBranch lhs rhs) expectedTy bindCtx typeCtx = do
   bindings <- checkMatchWith lhs expectedTy bindCtx typeCtx
   exprType (addBindings bindings bindCtx) typeCtx rhs
 
 -- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.
-checkMatchWith :: Binds b => MatchArg b -> Type -> BindCtx b -> TypeCtx -> Either Error [Type]
+checkMatchWith :: (Binds b tb,Ord tb) => MatchArg b tb -> Type tb -> BindCtx b tb -> TypeCtx tb -> Either (Error tb) [Type tb]
 checkMatchWith match expectTy bindCtx typeCtx = do
   rExpectTy <- maybe (Left $ EMsg "The expected type in a pattern is a type name with no definition.") Right $ resolveInitialType expectTy typeCtx
   case match of
@@ -435,7 +435,7 @@ checkMatchWith match expectTy bindCtx typeCtx = do
             checkMatchWith nestedMatchArg unionIndexTy bindCtx typeCtx
 
 
-checkMatchesWith :: Binds b => [MatchArg b] -> [Type] -> BindCtx b -> TypeCtx -> Either Error [Type]
+checkMatchesWith :: (Binds b tb,Ord tb) => [MatchArg b tb] -> [Type tb] -> BindCtx b tb -> TypeCtx tb -> Either (Error tb) [Type tb]
 checkMatchesWith matches types bindCtx typeCtx = case (matches,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg "Expected more patterns in match"
@@ -452,12 +452,12 @@ checkMatchesWith matches types bindCtx typeCtx = case (matches,types) of
     {-exprs = map fst bind-}
     {-types = map snd bind-}
 
-appise :: [Expr b abs] -> Expr b abs
+appise :: [Expr b abs tb] -> Expr b abs tb
 appise []        = error "Cant appise empty list of expressions"
 appise (e:[])    = e
 appise (e:e':es) = appise ((App e e'):es)
 
-lamise :: BindAbs b abs => [abs] -> Expr b abs -> Expr b abs
+lamise :: BindAbs b abs tb => [abs] -> Expr b abs tb -> Expr b abs tb
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise (t:[])    e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)

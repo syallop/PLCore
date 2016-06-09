@@ -18,16 +18,16 @@ import Control.Arrow (second)
 import Data.Maybe
 
 -- | Reduce an 'Expr'.
-reduce :: forall b abs. BindAbs b abs => Expr b abs -> Either Error (Expr b abs)
+reduce :: forall b abs tb. BindAbs b abs tb => Expr b abs tb -> Either (Error tb) (Expr b abs tb)
 reduce expr = reduceRec emptyBindings expr
   where
   -- Recursively reduce an expression until it no longer reduces
-  reduceRec :: Bindings b abs -> Expr b abs -> Either Error (Expr b abs)
+  reduceRec :: Bindings b abs tb -> Expr b abs tb -> Either (Error tb) (Expr b abs tb)
   reduceRec bindings expr = do
     redExpr <- reduceStep bindings expr
     if redExpr == expr then pure expr else reduceRec bindings redExpr
 
-  reduceStep :: Bindings b abs -> Expr b abs -> Either Error (Expr b abs)
+  reduceStep :: Bindings b abs tb -> Expr b abs tb -> Either (Error tb) (Expr b abs tb)
   reduceStep bindings expr = case expr of
 
       -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
@@ -71,7 +71,7 @@ reduce expr = reduceRec emptyBindings expr
 
 
   -- The expression is not a variable and so we can reduce the case expession, finding the matching branch and returning the reduced RHS.
-  reducePossibleCaseBranches :: Bindings b abs -> Expr b abs -> PossibleCaseBranches b abs -> Either Error (Expr b abs)
+  reducePossibleCaseBranches :: Bindings b abs tb -> Expr b abs tb -> PossibleCaseBranches b abs tb -> Either (Error tb) (Expr b abs tb)
   reducePossibleCaseBranches bindings caseExpr = \case
       DefaultOnly defaultExpr
         -> reduceStep bindings defaultExpr
@@ -91,7 +91,7 @@ reduce expr = reduceRec emptyBindings expr
               (Nothing,Nothing)
                 -> Left $ EMsg "No branch matches expression and a default branch is not given"
 
-  tryBranches :: Bindings b abs -> Expr b abs -> SomeCaseBranches b abs -> Maybe ([Expr b abs],Expr b abs)
+  tryBranches :: Bindings b abs tb -> Expr b abs tb -> SomeCaseBranches b abs tb -> Maybe ([Expr b abs tb],Expr b abs tb)
   tryBranches bindings caseExpr (SomeCaseBranches caseBranch caseBranches) =
       firstMatch $ tryBranch bindings caseExpr <$> (caseBranch : caseBranches)
 
@@ -106,7 +106,7 @@ reduce expr = reduceRec emptyBindings expr
   --
   -- We assume the input is type-checked which ensures patterns have the same type as the caseexpr matched
   -- upon, and all patterns are completly valid.
-  tryBranch :: Bindings b abs -> Expr b abs -> CaseBranch b abs -> Maybe ([Expr b abs],Expr b abs)
+  tryBranch :: Bindings b abs tb -> Expr b abs tb -> CaseBranch b abs tb -> Maybe ([Expr b abs tb],Expr b abs tb)
   tryBranch bindings caseExpr caseBranch =
       let CaseBranch matchArg rhsExpr = caseBranch
          in (,rhsExpr) <$> patternBinding bindings caseExpr matchArg
@@ -114,11 +114,11 @@ reduce expr = reduceRec emptyBindings expr
   -- Try matching all of these expressions against these patterns, return the list of bindings if successful.
   --
   -- (Type checking ensures same length lists and valid patterns)
-  patternBindings :: Bindings b abs -> [Expr b abs] -> [MatchArg b] -> Maybe [Expr b abs]
+  patternBindings :: Bindings b abs tb -> [Expr b abs tb] -> [MatchArg b tb] -> Maybe [Expr b abs tb]
   patternBindings bindings exprs matchArgs = fmap concat $ mapM (uncurry $ patternBinding bindings) $ zip exprs matchArgs
 
   -- This expression can be matched by this matchArgs. Return the list of bindings.
-  patternBinding :: Bindings b abs -> Expr b abs -> MatchArg b -> Maybe [Expr b abs]
+  patternBinding :: Bindings b abs tb -> Expr b abs tb -> MatchArg b tb -> Maybe [Expr b abs tb]
   patternBinding bindings expr matchArg = case (expr,matchArg) of
 
       (expr,MatchBinding b)
@@ -165,14 +165,14 @@ reduce expr = reduceRec emptyBindings expr
       _ -> error "Expression under case analysis has a different type to the match branch."
 
   -- | Are two expressions identical under the same bindings?
-  exprEq :: Bindings b abs -> Expr b abs -> Expr b abs -> Either Error Bool
+  exprEq :: Bindings b abs tb -> Expr b abs tb -> Expr b abs tb -> Either (Error tb) Bool
   exprEq bindings e0 e1 = do
     redE0 <- reduceRec bindings e0
     redE1 <- reduceRec bindings e1
     Right $ redE0 == redE1
 
   -- we cant evaluate the case expression yet, so we just reduce all the possible RHSs as much as possible.
-  reducePossibleCaseRHSs :: Bindings b abs -> PossibleCaseBranches b abs -> Either Error (PossibleCaseBranches b abs)
+  reducePossibleCaseRHSs :: Bindings b abs tb -> PossibleCaseBranches b abs tb -> Either (Error tb) (PossibleCaseBranches b abs tb)
   reducePossibleCaseRHSs bindings = \case
     DefaultOnly onMatchExpr
       -> DefaultOnly <$> reduceStep bindings onMatchExpr
@@ -181,10 +181,10 @@ reduce expr = reduceRec emptyBindings expr
       -> CaseBranches <$> (reduceSomeBranchRHSs bindings branches)
                       <*> maybe (pure Nothing) (Just <$>) (reduceStep bindings <$> mDefaultExpr)
 
-  reduceSomeBranchRHSs :: Bindings b abs -> SomeCaseBranches b abs -> Either Error (SomeCaseBranches b abs)
+  reduceSomeBranchRHSs :: Bindings b abs tb -> SomeCaseBranches b abs tb -> Either (Error tb) (SomeCaseBranches b abs tb)
   reduceSomeBranchRHSs bindings (SomeCaseBranches caseBranch caseBranches) =
     SomeCaseBranches <$> (reduceBranchRHS bindings caseBranch) <*> (mapM (reduceBranchRHS bindings) caseBranches)
 
-  reduceBranchRHS :: Bindings b abs -> CaseBranch b abs -> Either Error (CaseBranch b abs)
+  reduceBranchRHS :: Bindings b abs tb -> CaseBranch b abs tb -> Either (Error tb) (CaseBranch b abs tb)
   reduceBranchRHS bindings (CaseBranch lhs rhs) = CaseBranch <$> pure lhs <*> reduceStep bindings rhs
 

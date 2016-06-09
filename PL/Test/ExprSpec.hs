@@ -33,7 +33,7 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
   ]
   where
     -- Name an expression, check it fully typechecks AND type checks to the given type
-    typeChecksTo :: String -> Expr Var Type -> Type -> Spec
+    typeChecksTo :: String -> Expr Var (Type ()) () -> Type () -> Spec
     typeChecksTo name expr ty = it name $ topExprType typeCtx expr `shouldSatisfy` (either (const False) (\exprTy -> case typeEq ty exprTy typeCtx of
                                                                                                             Nothing -> False -- A Name doesnt exit
                                                                                                             Just t  -> t
@@ -72,7 +72,7 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
   where
 
     -- name list of args applied to andExpr and the expected result
-    andOneTrue,andFalseTrue,andTrueTrue :: (String,[Expr Var Type],Expr Var Type)
+    andOneTrue,andFalseTrue,andTrueTrue :: (String,[Expr Var (Type ()) ()],Expr Var (Type ()) ())
 
     andOneTrue   = ("True       ~> Boolean identity function" , [trueTerm] , andOneTrueExpr)
       where andOneTrueExpr = Lam boolTypeName $ Case (Binding VZ) $ CaseBranches
@@ -88,15 +88,15 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
 
     -- Name an expression, apply it to a list of (argnames,argument,expected result) tuples.
     -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
-    manyAppliedReducesToSpec :: String -> Expr Var Type -> [(String,[Expr Var Type],Expr Var Type)] -> Spec
+    manyAppliedReducesToSpec :: String -> Expr Var (Type ()) () -> [(String,[Expr Var (Type ()) ()],Expr Var (Type ()) ())] -> Spec
     manyAppliedReducesToSpec name expr reductions = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult) $ reductions
 
     -- Name an expression, apply it to a list of expressions. Does it reduce to the given expression?
-    appliedReducesToSpec :: Expr Var Type -> String -> [Expr Var Type] -> Expr Var Type -> Spec
+    appliedReducesToSpec :: Expr Var (Type ()) () -> String -> [Expr Var (Type ()) ()] -> Expr Var (Type ()) () -> Spec
     appliedReducesToSpec expr name apps eqExpr = reduceToSpec name (appise (expr:apps)) eqExpr
 
     -- Name an expression. Check it reduces to an expression.
-    reduceToSpec :: String -> Expr Var Type -> Expr Var Type -> Spec
+    reduceToSpec :: String -> Expr Var (Type ()) () -> Expr Var (Type ()) () -> Spec
     reduceToSpec name expr eqExpr = it name $ case reduce expr of
       Left exprErr
         -> expectationFailure ("target expression does not reduce: " ++ show exprErr)
@@ -131,7 +131,7 @@ parsesToSpec = describe "Strings should parse to expected expressions" $ sequenc
   ]
   where
 
-    parseToSpec :: String -> Text.Text -> Expr Var Type -> Spec
+    parseToSpec :: String -> Text.Text -> Expr Var (Type ()) () -> Spec
     parseToSpec name txt expectExpr = it name $ case runParser expr txt of
       ParseFailure e c
         -> expectationFailure ("Unexpected parse failure: " ++ show e ++ "\n" ++ (Text.unpack $ pointTo c))
@@ -184,12 +184,12 @@ four  = suc three
 
 
 -- type context of bools and nats
-typeCtx :: TypeCtx
+typeCtx :: TypeCtx ()
 typeCtx = fromJust $ liftA2 unionTypeCtx boolTypeCtx natTypeCtx
 
 
 -- Boolean and
-andExpr :: Expr Var Type
+andExpr :: Expr Var (Type ()) ()
 andExpr = Lam boolTypeName $ Lam boolTypeName $     -- \x:Bool y:Bool ->
     Case (Binding VZ)                               -- case y of
       $ CaseBranches                                --
@@ -209,7 +209,7 @@ andExpr = Lam boolTypeName $ Lam boolTypeName $     -- \x:Bool y:Bool ->
                 )
             )
         )
-andExprType :: Type
+andExprType :: Type ()
 andExprType = Arrow boolType (Arrow boolType boolType)
 andText :: Text.Text
 andText = Text.unlines
@@ -228,7 +228,7 @@ andText = Text.unlines
 -- Test nested pattern matching
 -- n > 2     ~> n-2
 -- otherwise ~> 0
-subTwoExpr :: Expr Var Type
+subTwoExpr :: Expr Var (Type ()) ()
 subTwoExpr = Lam natTypeName $                           -- \n : Nat ->
     Case (Binding VZ)                                    -- case n of
       $ CaseBranches                                     --
@@ -239,7 +239,7 @@ subTwoExpr = Lam natTypeName $                           -- \n : Nat ->
         (Just                                            --
             zTerm                                        --   _     -> Z
         )
-subTwoExprType :: Type
+subTwoExprType :: Type ()
 subTwoExprType = Arrow natType natType
 subTwoText :: Text.Text
 subTwoText = Text.unlines
@@ -250,7 +250,7 @@ subTwoText = Text.unlines
   ]
 
 -- Test case analysis on a sum type with overlapping members
-sumThreeExpr :: Expr Var Type
+sumThreeExpr :: Expr Var (Type ()) ()
 sumThreeExpr = Lam (SumT [natTypeName,boolTypeName,natTypeName]) $   -- \x : Nat|Bool|Nat ->
     Case (Binding VZ)                                                -- case x of
       $ CaseBranches                                                 --
@@ -264,7 +264,7 @@ sumThreeExpr = Lam (SumT [natTypeName,boolTypeName,natTypeName]) $   -- \x : Nat
             ]
         )
         Nothing
-sumThreeExprType :: Type
+sumThreeExprType :: Type ()
 sumThreeExprType = Arrow (SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
 sumThreeText :: Text.Text
 sumThreeText = Text.unlines
@@ -279,7 +279,7 @@ sumThreeText = Text.unlines
   ]
 
 -- Test product expressions
-productThreeExpr :: Expr Var Type
+productThreeExpr :: Expr Var (Type ()) ()
 productThreeExpr = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
     Case (Binding VZ)                                                      -- case x of
       $ CaseBranches                                                       --
@@ -290,7 +290,7 @@ productThreeExpr = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x
         (Just                                                              --
             falseTerm                                                      -- _ -> False
         )
-productThreeExprType :: Type
+productThreeExprType :: Type ()
 productThreeExprType = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
 productThreeText :: Text.Text
 productThreeText = Text.unlines
@@ -303,7 +303,7 @@ productThreeText = Text.unlines
   ]
 
 -- : <Nat|Bool> -> Bool
-unionTwoExpr :: Expr Var Type
+unionTwoExpr :: Expr Var (Type ()) ()
 unionTwoExpr = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ -- \x : <Nat|Bool>
     Case (Binding VZ)                                                   -- case x of
       $ CaseBranches                                                    --
@@ -316,7 +316,7 @@ unionTwoExpr = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ -- \x : 
         (Just                                                           --
             falseTerm                                                   -- _          -> False
         )
-unionTwoExprType :: Type
+unionTwoExprType :: Type ()
 unionTwoExprType = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
 unionTwoText :: Text.Text
 unionTwoText = Text.unlines
@@ -328,3 +328,5 @@ unionTwoText = Text.unlines
   ,"                (+0 (*) (*) (*))"
   ,"              )"
   ]
+
+

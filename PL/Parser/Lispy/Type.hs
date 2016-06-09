@@ -9,10 +9,14 @@ import qualified Data.Set as Set
 
 import PL.Parser
 
+import PL.Parser.Lispy.Kind
+
 import PL.Type hiding (arrowise)
 import PL.Name
+import PL.Kind
 
 -- A name is an uppercase followed by zero or more lower case characters
+name :: Parser Text.Text
 name = Text.cons <$> upper <*> takeWhile isLower
 
 arrowise :: Type tb -> Type tb -> [Type tb] -> Type tb
@@ -24,27 +28,52 @@ namedTyp :: Ord tb => Parser (Type tb)
 namedTyp = Named . TypeName <$> name
 
 -- A '+' followed by zero or more types
-sumTyp :: Ord tb => Parser (Type tb)
-sumTyp = SumT <$> (plus *> many typ)
+sumTyp :: Ord tb => Parser tb -> Parser (Type tb)
+sumTyp tb = SumT <$> (plus *> many (typ tb))
 
 -- A '*' followed by zero or more types
-productTyp :: Ord tb => Parser (Type tb)
-productTyp = ProductT <$> (star *> many typ)
+productTyp :: Ord tb => Parser tb -> Parser (Type tb)
+productTyp tb = ProductT <$> (star *> many (typ tb))
 
 -- A 'U' followed by zero or more types
-unionTyp :: Ord tb => Parser (Type tb)
-unionTyp = UnionT . Set.fromList <$> (union *> many typ)
+unionTyp :: Ord tb => Parser tb -> Parser (Type tb)
+unionTyp tb = UnionT . Set.fromList <$> (union *> many (typ tb))
 
 -- A '^' followed by two or more types
-arrowTyp :: Ord tb => Parser (Type tb)
-arrowTyp = arrowise <$> (arrow *> typ) <*> typ <*> many typ
+arrowTyp :: Ord tb => Parser tb -> Parser (Type tb)
+arrowTyp tb = arrowise <$> (arrow *> (typ tb)) <*> typ tb <*> many (typ tb)
+
+-- A "/\" followed by an abstracted kind, then a type
+typeLamTyp :: Ord tb => Parser tb -> Parser (Type tb)
+typeLamTyp tb = lamise <$> (bigLambda *> kindAbs) <*> many kindAbs <*> typ tb
+  where
+    -- chain lambda
+    lamise :: Ord tb => Kind -> [Kind] -> Type tb -> Type tb
+    lamise k0 []     t = TypeLam k0 t
+    lamise k0 (k:ks) t = TypeLam k0 $ lamise k ks t
+
+-- An "@@" followed by two or more types
+typeAppTyp :: Ord tb => Parser tb -> Parser (Type tb)
+typeAppTyp tb = appise <$> (bigAt *> (typ tb)) <*> typ tb <*> many (typ tb)
+  where
+    appise :: Type tb -> Type tb -> [Type tb] -> Type tb
+    appise f x []     = TypeApp f x
+    appise f x (y:ys) = appise (TypeApp f x) y ys
+
+-- Given a parser for the type of binding used in types, parse a type binding
+typeBindingTyp :: Parser tb -> Parser (Type tb)
+typeBindingTyp = fmap TypeBinding
 
 -- A type is one of several variants, and may be nested in parenthesis
-typ :: Ord tb => Parser (Type tb)
-typ =  namedTyp
-   <|> sumTyp
-   <|> productTyp
-   <|> unionTyp
-   <|> arrowTyp
-   <|> betweenParens typ
+typ :: Ord tb => Parser tb -> Parser (Type tb)
+typ tb
+  = namedTyp
+ <|> sumTyp tb
+ <|> productTyp tb
+ <|> unionTyp tb
+ <|> arrowTyp tb
+ <|> typeLamTyp tb
+ <|> typeAppTyp tb
+ <|> typeBindingTyp tb
+ <|> betweenParens (typ tb)
 

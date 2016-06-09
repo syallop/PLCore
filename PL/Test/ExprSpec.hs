@@ -132,7 +132,7 @@ parsesToSpec = describe "Strings should parse to expected expressions" $ sequenc
   where
 
     parseToSpec :: String -> Text.Text -> Expr Var (Type ()) () -> Spec
-    parseToSpec name txt expectExpr = it name $ case runParser expr txt of
+    parseToSpec name txt expectExpr = it name $ case runParser (expr (textIs "TYPEVAR" *> pure ())) txt of
       ParseFailure e c
         -> expectationFailure ("Unexpected parse failure: " ++ show e ++ "\n" ++ (Text.unpack $ pointTo c))
 

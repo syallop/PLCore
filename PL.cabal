@@ -28,6 +28,7 @@ library
                      , PL.Parser.Lispy
                      , PL.Parser.Lispy.Expr
                      , PL.Parser.Lispy.Type
+                     , PL.Parser.Lispy.Kind
                      , PL.Reduce
                      , PL.Type
                      , PL.TypeCtx

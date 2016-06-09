@@ -42,6 +42,8 @@ module PL.Parser
   ,union
   ,question
   ,at
+  ,bigLambda
+  ,bigAt
 
   -- Functions on Text/ many characters
   ,takeN
@@ -348,6 +350,8 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
+bigLambda  = textIs "/\\"
+bigAt      = textIs "@@"
 
 -- number of characters until one is a space or a newline
 spaceLikeDistance :: Text -> Int

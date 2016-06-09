@@ -22,6 +22,12 @@ import Test.Hspec
 spec :: Spec
 spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parsesToSpec]
 
+type TestExpr = Expr Var (Type ()) ()
+
+testExprP :: Parser TestExpr
+testExprP = let typeVar = textIs "TYPEVAR" *> pure ()
+               in expr var (typ typeVar) (textIs "TYPEVAR" *> pure ())
+
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
 typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type" $ sequence_ . map (uncurry3 typeChecksTo) $
@@ -132,7 +138,7 @@ parsesToSpec = describe "Strings should parse to expected expressions" $ sequenc
   where
 
     parseToSpec :: String -> Text.Text -> Expr Var (Type ()) () -> Spec
-    parseToSpec name txt expectExpr = it name $ case runParser (expr (textIs "TYPEVAR" *> pure ())) txt of
+    parseToSpec name txt expectExpr = it name $ case runParser testExprP txt of
       ParseFailure e c
         -> expectationFailure ("Unexpected parse failure: " ++ show e ++ "\n" ++ (Text.unpack $ pointTo c))
 

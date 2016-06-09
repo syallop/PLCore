@@ -121,6 +121,12 @@ validDefinition t ctx = case t of
   UnionT ts
     -> and . map (`validDefinition` ctx) $ Set.toList ts
 
+  TypeLam _ typ
+    -> validDefinition typ ctx
+
+  TypeApp f x
+    -> validDefinition f ctx && validDefinition x ctx
+
 unionTypeCtx :: TypeCtx -> TypeCtx -> TypeCtx
 unionTypeCtx (TypeCtx t0) (TypeCtx t1) = TypeCtx (Map.union t0 t1)
 
@@ -152,6 +158,12 @@ typeEq t0 t1 tCtx = case (t0,t1) of
 
   (UnionT ts0,UnionT ts1)
     -> typeEqs (Set.toList ts0) (Set.toList ts1) tCtx
+
+  (TypeLam k0 ty0,TypeLam k1 ty1)
+    -> (&&) <$> pure (k0 == k1) <*> typeEq ty0 ty1 tCtx
+
+  (TypeApp f0 x0,TypeApp f1 x1)
+    -> (&&) <$> typeEq f0 f1 tCtx <*> typeEq x0 x1 tCtx
 
   -- A non-Named, non identical type
   _ -> Just False

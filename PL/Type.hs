@@ -1,11 +1,12 @@
 module PL.Type where
 
 import PL.Name
+import PL.Kind
 
 import Data.List
 import qualified Data.Set as Set
 
--- | A type is either
+-- Describe properties of expressions
 data Type
 
   -- | Some name
@@ -32,6 +33,19 @@ data Type
   -- | Set of union types
   | UnionT
     {_unionTypes :: Set.Set Type
+    }
+
+
+  -- Type-level lambda abstraction
+  | TypeLam
+    {_takeType :: Kind
+    ,_type     :: Type
+    }
+
+  -- Type-level application.
+  | TypeApp
+    {_f :: Type
+    ,_x :: Type
     }
   deriving (Eq,Ord)
 
@@ -70,6 +84,12 @@ showType t = case t of
     UnionT types
       -> parens $ ("U" ++) $ intercalate " " $ map show $ Set.toList types
 
+    TypeLam takeKind typ
+      -> parens $ "\\" ++ show takeKind ++ " " ++ show typ
+
+    TypeApp f x
+      -> parens $ "@" ++ show f ++ " " ++ show x
+
 parensS :: Show a => a -> String
 parensS = parens . show
 
@@ -81,8 +101,9 @@ parens s = "(" ++ s ++ ")"
 -- [a,b,c] ~> Arrow a (Arrow b c)
 -- etc
 arrowise :: [Type] -> Type
+arrowise []        = error "Can't arrowise empty list of Types"
 arrowise (t:[])    = t
-arrowise (t:t':ts) = t --> (arrowise (t':ts))
+arrowise (t:t':ts) = t --> arrowise (t':ts)
 
 -- a           ~> [a]
 -- a -> b -> c ~> [a,b,c]

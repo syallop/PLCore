@@ -16,20 +16,22 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     PL.Var
-                     , PL.Name
-                     , PL.Type
-                     , PL.Reduce
-                     , PL.Error
-                     , PL.Expr
-                     , PL.Binds
+  exposed-modules:     PL
                      , PL.Abstracts
                      , PL.Bindings
+                     , PL.Binds
+                     , PL.Error
+                     , PL.Expr
+                     , PL.Kind
+                     , PL.Name
                      , PL.Parser
                      , PL.Parser.Lispy
                      , PL.Parser.Lispy.Expr
                      , PL.Parser.Lispy.Type
+                     , PL.Reduce
+                     , PL.Type
                      , PL.TypeCtx
+                     , PL.Var
   -- other-modules:       
   other-extensions:    OverloadedStrings
                      , GeneralizedNewtypeDeriving

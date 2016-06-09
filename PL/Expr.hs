@@ -149,6 +149,9 @@ mapSubExpressions f = \case
   Union unionExpr tyIx ty
     -> Union (f unionExpr) tyIx ty
 
+  Binding b
+    -> Binding b
+
 mapCaseRHSs :: (Expr b abs -> Expr b abs) -> CaseBranch b abs -> CaseBranch b abs
 mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 
@@ -450,10 +453,12 @@ checkMatchesWith matches types bindCtx typeCtx = case (matches,types) of
     {-types = map snd bind-}
 
 appise :: [Expr b abs] -> Expr b abs
+appise []        = error "Cant appise empty list of expressions"
 appise (e:[])    = e
 appise (e:e':es) = appise ((App e e'):es)
 
 lamise :: BindAbs b abs => [abs] -> Expr b abs -> Expr b abs
+lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise (t:[])    e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
 

@@ -87,6 +87,10 @@ reduce expr = reduceRec emptyBindings expr
               (Just (bindExprs,rhsExpr),_)
                 -> reduceStep (append (reverse bindExprs) bindings) rhsExpr
 
+              -- No branch matches and a default has not been given.
+              (Nothing,Nothing)
+                -> Left $ EMsg "No branch matches expression and a default branch is not given"
+
   tryBranches :: Bindings b abs -> Expr b abs -> SomeCaseBranches b abs -> Maybe ([Expr b abs],Expr b abs)
   tryBranches bindings caseExpr (SomeCaseBranches caseBranch caseBranches) =
       firstMatch $ tryBranch bindings caseExpr <$> (caseBranch : caseBranches)
@@ -157,6 +161,8 @@ reduce expr = reduceRec emptyBindings expr
       -- The entire expression is to be bound
       (expr,Bind)
         -> Just [expr]
+
+      _ -> error "Expression under case analysis has a different type to the match branch."
 
   -- | Are two expressions identical under the same bindings?
   exprEq :: Bindings b abs -> Expr b abs -> Expr b abs -> Either Error Bool

@@ -35,6 +35,13 @@ data Type tb
     {_unionTypes :: Set.Set (Type tb)
     }
 
+  -- Type of BigLambda
+  -- Is this distinct from TypeLam??
+  | BigArrow
+    {_takeType :: Kind
+    ,_type     :: Type tb
+    }
+
 
   -- Type-level lambda abstraction
   | TypeLam

@@ -10,6 +10,7 @@ import PL.Type
 import PL.TypeCtx
 import PL.Name
 import PL.Error
+import PL.Kind
 
 import PL.Binds
 import PL.Abstracts
@@ -74,6 +75,18 @@ data Expr b abs tb
       {_unionExpr      :: Expr b abs tb
       ,_unionTypeIndex :: Type tb
       ,_unionType      :: Set.Set (Type tb)
+      }
+
+    -- Big lambda abstract type under an expression
+    | BigLam
+      {_takeTy :: Kind -- replace with tabs
+      ,_expr   :: Expr b abs tb
+      }
+
+    -- Big application type under an expression
+    | BigApp
+      {_f   :: Expr b abs tb
+      ,_xTy :: Type tb
       }
 
 deriving instance (Binds b tb, Abstracts abs tb,Eq tb) => Eq (Expr b abs tb)
@@ -152,6 +165,12 @@ mapSubExpressions f = \case
   Binding b
     -> Binding b
 
+  BigLam takeTy expr
+    -> BigLam takeTy (f expr)
+
+  BigApp fExpr xTy
+    -> BigApp (f fExpr) xTy
+
 mapCaseRHSs :: (Expr b abs tb -> Expr b abs tb) -> CaseBranch b abs tb -> CaseBranch b abs tb
 mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 
@@ -190,6 +209,12 @@ showExpr = \case
 
   Union unionExpr unionTypeIndex unionTy
     -> "(U" ++ showType unionTypeIndex ++ " " ++ showExpr unionExpr ++ (intercalate " " $ map showType $ Set.toList unionTy) ++ ")"
+
+  BigLam takeKind expr
+    -> error "unimplemented"
+
+  BigApp fExpr xTy
+    -> error "unimplemented"
 
 showPossibleCaseBranches :: BindAbs b abs tb => PossibleCaseBranches b abs tb -> String
 showPossibleCaseBranches = \case
@@ -379,6 +404,35 @@ exprType bindCtx typeCtx e = case e of
 
           Right branch0Ty
           -- TODO: maybe check coverage...
+
+
+  --  WORKING
+  --    absKind :: kind      expr : exprTy
+  -- ---------------------------------------
+  --   BigLam absKind expr : kind BigArrow exprTy
+  {-BigLam abs expr-}
+    {--> do let newTypeBindCtx = addBinding abs typeBindCtx-}
+          {-exprTy <- exprType bindCtx newTypeBindCtx typeCtx expr-}
+          {-Right $ BigArrow abs exprTy-}
+
+  -- WORKING
+  --    f : aKind BigLamArrow bTy      xTy :: aKind
+  -- ---------------------------------------------------
+  --              BigApp f xTy : bTy
+  {-BigApp f xTy-}
+    {--> do fTy <- exprType bindCtx typeBindCtx typeCtx expr-}
+          {-xKy <- typeKind xTY-}
+          {--- TODO maybe verify the xTy we've been given to apply?-}
+
+          {-resFTy <- maybe (Left $ EMsg "Unknown named type in Big function application") Right $ resolveInitialType f typeCtx-}
+
+          {-case resFTy of-}
+            {--- Regular big application attempt-}
+            {-BigArrow aKy bTy -> if aKy == xTy-}
+                                  {-then Right bTy-}
+                                  {-else Left $ EMsg "In big application, argument does not have the same kind as expected by the big lambda"-}
+
+            {-_ -> Left $ EMsg "In big application, function must have a big arrow type"-}
 
 -- Type check a case branch, requring it match the expected type
 -- if so, type checking the result expression which is returned

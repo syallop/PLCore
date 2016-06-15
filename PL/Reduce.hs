@@ -19,7 +19,7 @@ import Control.Arrow (second)
 import Data.Maybe
 
 -- | Reduce an 'Expr'.
-reduce :: forall b abs tb. BindAbs b abs tb => Expr b abs tb -> Either (Error tb) (Expr b abs tb)
+reduce :: forall b abs tb. (BindAbs b abs tb,Eq b) => Expr b abs tb -> Either (Error tb) (Expr b abs tb)
 reduce expr = reduceRec emptyBindings expr
   where
   -- Recursively reduce an expression until it no longer reduces

@@ -21,9 +21,9 @@ vtwo   = VS vone
 vthree = VS vtwo
 vfour  = VS vthree
 
-instance (Show tb,Eq tb) => Binds Var tb where
+instance (Show tb,Eq tb) => Binds Var (Type tb) where
 
-  data BindCtx Var tb = VarCtx [Type tb]
+  data BindCtx Var (Type tb) = VarCtx [Type tb]
 
   emptyCtx = VarCtx []
 

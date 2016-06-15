@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
 module PL.Expr where
 
 import PL.Type
@@ -24,7 +25,7 @@ todo :: String -> a
 todo str = error $ "TODO: " ++ str
 
 
-type BindAbs b abs tb = (Binds b tb, Abstracts abs tb)
+type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)
 type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
@@ -89,9 +90,9 @@ data Expr b abs tb
       ,_xTy :: Type tb
       }
 
-deriving instance (Binds b tb, Abstracts abs tb,Eq tb) => Eq (Expr b abs tb)
+deriving instance (Eq b,Eq abs,Eq tb) => Eq (Expr b abs tb)
 
-instance (Binds b tb,Abstracts abs tb,Show tb) => Show (Expr b abs tb) where
+instance (Abstracts abs tb,Show b) => Show (Expr b abs tb) where
   show = showExpr
 
 -- | Body of a case expression. Is either:
@@ -187,7 +188,7 @@ data MatchArg b tb
   | Bind                                   -- ^ Match anything and bind it
   deriving (Show,Eq)
 
-showExpr :: forall b abs tb. (BindAbs b abs tb,Show b,Show abs,Show tb) => Expr b abs tb -> String
+showExpr :: forall b abs tb. (Abstracts abs tb, Show b,Show abs,Show tb) => Expr b abs tb -> String
 showExpr = \case
   Lam takeTy expr
     -> "(\\" ++ show (absTy takeTy :: Type tb) ++ " " ++ showExpr expr ++ ")"
@@ -216,7 +217,7 @@ showExpr = \case
   BigApp fExpr xTy
     -> error "unimplemented"
 
-showPossibleCaseBranches :: BindAbs b abs tb => PossibleCaseBranches b abs tb -> String
+showPossibleCaseBranches :: (Abstracts abs tb,Show b) => PossibleCaseBranches b abs tb -> String
 showPossibleCaseBranches = \case
   DefaultOnly onMatch
     -> showExpr onMatch
@@ -224,16 +225,16 @@ showPossibleCaseBranches = \case
   CaseBranches someCaseBranches maybeDefaultOnMatch
     -> showSomeCaseBranches someCaseBranches ++ "\n" ++ (maybe "" showExpr maybeDefaultOnMatch)
 
-showSomeCaseBranches :: BindAbs b abs tb => SomeCaseBranches b abs tb -> String
+showSomeCaseBranches :: (Abstracts abs tb,Show b) => SomeCaseBranches b abs tb -> String
 showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n" $ map showCaseBranch (caseBranch : caseBranches)
 
-showCaseBranch :: BindAbs b abs tb => CaseBranch b abs tb -> String
+showCaseBranch :: (Abstracts abs tb,Show b) => CaseBranch b abs tb -> String
 showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " " ++ showExpr rhs
 
-showMatchArgs :: Binds b tb => [MatchArg b tb] -> String
+showMatchArgs :: (Show tb,Show b) => [MatchArg b tb] -> String
 showMatchArgs = intercalate " " . map showMatchArg
 
-showMatchArg :: Binds b tb => MatchArg b tb -> String
+showMatchArg :: (Show b,Show tb) => MatchArg b tb -> String
 showMatchArg = \case
   MatchSum ix matchArg
     -> "+" ++ show ix ++ " " ++ showMatchArg matchArg
@@ -251,11 +252,11 @@ showMatchArg = \case
     -> "?"
 
 -- | A top-level expression is an expression without a bindings context.
-topExprType :: (BindAbs b abs tb,Ord tb) => TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
+topExprType :: (BindAbs b abs tb,Binds b (Type tb), Ord tb) => TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
 topExprType = exprType emptyCtx
 
 -- | Under a given bindings context, type check an expression.
-exprType :: forall b abs tb. (BindAbs b abs tb,Ord tb) => BindCtx b tb -> TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
+exprType :: forall b abs tb. (BindAbs b abs tb,Ord tb) => BindCtx b (Type tb) -> TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
 exprType bindCtx typeCtx e = case e of
 
 
@@ -436,14 +437,14 @@ exprType bindCtx typeCtx e = case e of
 
 -- Type check a case branch, requring it match the expected type
 -- if so, type checking the result expression which is returned
-branchType :: (BindAbs b abs tb,Ord tb) => CaseBranch b abs tb -> Type tb -> BindCtx b tb -> TypeCtx tb -> Either (Error tb) (Type tb)
+branchType :: (BindAbs b abs tb,Ord tb) => CaseBranch b abs tb -> Type tb -> BindCtx b (Type tb) -> TypeCtx tb -> Either (Error tb) (Type tb)
 branchType (CaseBranch lhs rhs) expectedTy bindCtx typeCtx = do
   bindings <- checkMatchWith lhs expectedTy bindCtx typeCtx
   exprType (addBindings bindings bindCtx) typeCtx rhs
 
 -- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.
-checkMatchWith :: (Binds b tb,Ord tb) => MatchArg b tb -> Type tb -> BindCtx b tb -> TypeCtx tb -> Either (Error tb) [Type tb]
+checkMatchWith :: (Binds b (Type tb),Ord tb) => MatchArg b tb -> Type tb -> BindCtx b (Type tb) -> TypeCtx tb -> Either (Error tb) [Type tb]
 checkMatchWith match expectTy bindCtx typeCtx = do
   rExpectTy <- maybe (Left $ EMsg "The expected type in a pattern is a type name with no definition.") Right $ resolveInitialType expectTy typeCtx
   case match of
@@ -489,7 +490,7 @@ checkMatchWith match expectTy bindCtx typeCtx = do
             checkMatchWith nestedMatchArg unionIndexTy bindCtx typeCtx
 
 
-checkMatchesWith :: (Binds b tb,Ord tb) => [MatchArg b tb] -> [Type tb] -> BindCtx b tb -> TypeCtx tb -> Either (Error tb) [Type tb]
+checkMatchesWith :: (Binds b (Type tb),Ord tb) => [MatchArg b tb] -> [Type tb] -> BindCtx b (Type tb) -> TypeCtx tb -> Either (Error tb) [Type tb]
 checkMatchesWith matches types bindCtx typeCtx = case (matches,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg "Expected more patterns in match"
@@ -511,7 +512,7 @@ appise []        = error "Cant appise empty list of expressions"
 appise (e:[])    = e
 appise (e:e':es) = appise ((App e e'):es)
 
-lamise :: BindAbs b abs tb => [abs] -> Expr b abs tb -> Expr b abs tb
+lamise :: [abs] -> Expr b abs tb -> Expr b abs tb
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise (t:[])    e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)

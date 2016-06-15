@@ -9,14 +9,14 @@ import PL.Type
 
 -- A type used in an expression to bind an abstraction to a variable-like thing.
 -- I.E. \ABS -> Var BINDS
-class (Show b,Eq b,Show tb,Eq tb,Binds' b) => Binds b tb where
+class (Show b,Eq b,Show ty,Eq ty,Binds' b) => Binds b ty where
 
   -- Associate bindings to their types
-  data BindCtx b tb
-  emptyCtx    :: BindCtx b tb
-  bindTy      :: b -> BindCtx b tb -> Maybe (Type tb)
-  addBinding  :: Type tb -> BindCtx b tb -> BindCtx b tb
-  addBindings :: [Type tb] -> BindCtx b tb -> BindCtx b tb
+  data BindCtx b ty
+  emptyCtx    :: BindCtx b ty
+  bindTy      :: b -> BindCtx b ty -> Maybe ty
+  addBinding  :: ty -> BindCtx b ty -> BindCtx b ty
+  addBindings :: [ty] -> BindCtx b ty -> BindCtx b ty
 
 class (Show b,Eq b) => Binds' b where
   -- How far away is the abstraction we're binding?

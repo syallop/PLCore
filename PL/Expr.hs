@@ -346,7 +346,7 @@ exprType bindCtx typeCtx e = case e of
   -- -----------------
   --      b : t
   Binding b
-    -> case b `bindTy` bindCtx of
+    -> case lookupBindingTy b bindCtx of
           Nothing -> Left $ EMsg "Expression refers to a non-existant binding"
           Just ty -> Right ty
 
@@ -455,7 +455,7 @@ checkMatchWith match expectTy bindCtx typeCtx = do
 
     MatchBinding b
       -> do -- the type of the binding
-            bTy <- maybe (Left $ EMsg "pattern match on a non-existant binding") Right $ bindTy b bindCtx
+            bTy <- maybe (Left $ EMsg "pattern match on a non-existant binding") Right $ lookupBindingTy b bindCtx
             case typeEq bTy expectTy typeCtx of
                 Nothing         -> Left $ EMsg "pattern match on a Named type which does not exist"
                 Just isSameType -> if isSameType then pure [] else Left $ EMsg "pattern match on a binding from a different type"

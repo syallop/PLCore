@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 module PL.Var where
 
 import PL.Binds
@@ -25,17 +26,21 @@ instance Binds Var (Type tb) where
 
   data BindCtx Var (Type tb) = VarCtx [Type tb]
 
+  emptyCtx :: BindCtx Var (Type tb)
   emptyCtx = VarCtx []
 
-  bindTy b (VarCtx ts) =  Just $ ts !! (bindDepth b)
-
+  addBinding :: Type tb -> BindCtx Var (Type tb) -> BindCtx Var (Type tb)
   addBinding t (VarCtx ts) = VarCtx (t:ts)
-  addBindings ts varCtx = foldl (flip addBinding) varCtx ts
 
-instance Binds' Var where
+  lookupBindingTy :: Var -> BindCtx Var (Type tb) -> Maybe (Type tb)
+  lookupBindingTy b (VarCtx ts) =  Just $ ts !! (bindDepth b)
+
+instance BindingIx Var where
+  bindDepth :: Var -> Int
   bindDepth VZ     = 0
   bindDepth (VS n) = 1+bindDepth n
 
+  buryBinding :: Var -> Int -> Var
   buryBinding v 0 = v
   buryBinding v n = buryBinding (VS v) (n-1)
 

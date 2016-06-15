@@ -27,9 +27,10 @@ library
                      , PL.Parser
                      , PL.Parser.Lispy
                      , PL.Parser.Lispy.Expr
-                     , PL.Parser.Lispy.Type
                      , PL.Parser.Lispy.Kind
+                     , PL.Parser.Lispy.Type
                      , PL.Reduce
+                     , PL.TyVar
                      , PL.Type
                      , PL.TypeCtx
                      , PL.Var

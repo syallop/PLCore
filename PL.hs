@@ -12,6 +12,7 @@ import PL.Parser.Lispy
 import PL.Parser.Lispy.Expr
 import PL.Parser.Lispy.Type
 import PL.Reduce
+import PL.TyVar
 import PL.Type
 import PL.TypeCtx
 import PL.Var

@@ -10,7 +10,10 @@ import PL.Kind
 import Data.Coerce
 
 newtype TyVar = TyVar {_unTyVar :: Var}
-  deriving (Show,Eq,Ord)
+  deriving (Eq,Ord)
+
+instance Show TyVar where
+  show (TyVar v) = show v
 
 mkTyVar :: Int -> TyVar
 mkTyVar = TyVar . mkVar

@@ -87,13 +87,16 @@ showType t = case t of
       -> show belongs
 
     SumT types
-      -> parens $ ("+" ++) $ intercalate " " $ map show types
+      -> parens $ ("+" ++) $ unwords $ map show types
 
     ProductT types
-      -> parens $ ("*" ++) $ intercalate " " $ map show types
+      -> parens $ ("*" ++) $ unwords $ map show types
 
     UnionT types
-      -> parens $ ("U" ++) $ intercalate " " $ map show $ Set.toList types
+      -> parens $ ("U" ++) $ unwords $ map show $ Set.toList types
+
+    BigArrow from to
+      -> parens $ "^^" ++ show from ++ " " ++ show to
 
     TypeLam takeKind typ
       -> parens $ "\\" ++ show takeKind ++ " " ++ show typ

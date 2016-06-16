@@ -18,6 +18,7 @@ module PL.TypeCtx
 
 import PL.Name
 import PL.Type
+import PL.Kind
 
 import Control.Applicative
 import qualified Data.Map as Map
@@ -132,7 +133,7 @@ unionTypeCtx (TypeCtx t0) (TypeCtx t1) = TypeCtx (Map.union t0 t1)
 
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
-typeEq :: Type tb -> Type tb -> TypeCtx tb -> Maybe Bool
+typeEq :: Eq tb => Type tb -> Type tb -> TypeCtx tb -> Maybe Bool
 typeEq t0 t1 tCtx = case (t0,t1) of
   (Named n0,Named n1)
     | n0 == n1  -> Just True
@@ -160,6 +161,20 @@ typeEq t0 t1 tCtx = case (t0,t1) of
   (UnionT ts0,UnionT ts1)
     -> typeEqs (Set.toList ts0) (Set.toList ts1) tCtx
 
+
+  (BigArrow fromKy0 toTy0,BigArrow fromKy1 toTy1)
+    -> if kindEq fromKy0 fromKy1
+         then typeEq toTy0 toTy1 tCtx
+         else Just False
+
+  -- TODO: Without being provided a binding context, the only type of equality we can check is
+  -- whether the two bound things have the same name. It could be the case that the name doesnt exist, or is invalid.
+  -- It could also be the case that two different names unify.
+  (TypeBinding b0,TypeBinding b1)
+    -> if b0 == b1
+         then Just True
+         else Just False
+
   (TypeLam k0 ty0,TypeLam k1 ty1)
     -> (&&) <$> pure (k0 == k1) <*> typeEq ty0 ty1 tCtx
 
@@ -170,7 +185,7 @@ typeEq t0 t1 tCtx = case (t0,t1) of
   _ -> Just False
 
 -- Are two lists of types pairwise equivalent under a typectx?
-typeEqs :: [Type tb] -> [Type tb] -> TypeCtx tb -> Maybe Bool
+typeEqs :: Eq tb => [Type tb] -> [Type tb] -> TypeCtx tb -> Maybe Bool
 typeEqs ts0 ts1 tCtx
   | length ts0 == length ts1 = fmap and $ mapM (\(t0, t1) -> typeEq t0 t1 tCtx) $ zip ts0 ts1
   | otherwise                = Just False

@@ -10,7 +10,10 @@ import PL.Type
 -- | Debrujn index for referencing variables.
 -- A positive integer describing how many abstractions deep the var is found.
 data Var = VZ | VS Var
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Var where
+  show = show . bindDepth
 
 mkVar :: Int -> Var
 mkVar 0 = VZ

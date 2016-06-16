@@ -3,13 +3,14 @@ module ExprSpec where
 
 import PL.Error
 import PL.Expr
+import PL.Kind
+import PL.Parser
+import PL.Parser.Lispy hiding (appise,lamise)
 import PL.Reduce
+import PL.TyVar
 import PL.Type
 import PL.TypeCtx
-import PL.Parser
 import PL.Var
-import PL.TyVar
-import PL.Parser.Lispy hiding (appise,lamise)
 
 import Control.Applicative
 import Control.Monad
@@ -32,20 +33,26 @@ testExprP = expr var (typ tyVar) tyVar
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
 typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type" $ sequence_ . map (uncurry3 typeChecksTo) $
-  [("booleans"     , andExpr         ,andExprType)
-  ,("naturals"     , subTwoExpr      ,subTwoExprType)
-  ,("sum types"    , sumThreeExpr    ,sumThreeExprType)
-  ,("product types", productThreeExpr,productThreeExprType)
-  ,("union types"  , unionTwoExpr    ,unionTwoExprType)
+  [("booleans"      , andExpr         ,andExprType)
+  ,("naturals"      , subTwoExpr      ,subTwoExprType)
+  ,("sum types"     , sumThreeExpr    ,sumThreeExprType)
+  ,("product types" , productThreeExpr,productThreeExprType)
+  ,("union types"   , unionTwoExpr    ,unionTwoExprType)
+  ,("id"            , idExpr          ,idExprType)
+  ,("const"         , constExpr       ,constExprType)
   ]
   where
     -- Name an expression, check it fully typechecks AND type checks to the given type
     typeChecksTo :: String -> TestExpr -> TestType -> Spec
-    typeChecksTo name expr ty = it name $ topExprType typeCtx expr `shouldSatisfy` (either (const False) (\exprTy -> case typeEq ty exprTy typeCtx of
-                                                                                                            Nothing -> False -- A Name doesnt exit
-                                                                                                            Just t  -> t
-                                                                                                         )
-                                                                                   )
+    typeChecksTo name expr expectTy = it name $ case topExprType typeCtx expr of
+        Left err
+          -> expectationFailure "Expression does not type check"
+
+        Right exprTy
+          -> case typeEq exprTy expectTy typeCtx of
+               Nothing    -> expectationFailure "A given type name does not exist in the context"
+               Just False -> expectationFailure $ "Expected: " ++ show expectTy ++ " got: " ++ show exprTy
+               Just True  -> return ()
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec :: Spec
@@ -336,6 +343,18 @@ unionTwoText = Text.unlines
   ,"              )"
   ]
 
+-- The polymorphic identity function
+idExpr :: TestExpr
+idExpr = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
+idExprType :: TestType
+idExprType = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
+idText :: Text.Text
+idText = "TODO"
+
+constExpr :: TestExpr
+constExpr = BigLam Kind $ BigLam Kind $ Lam (TypeBinding $ TyVar $ VS VZ) $ Lam (TypeBinding $ TyVar VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
+constExprType :: TestType
+constExprType = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding $ TyVar $ VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar $ VS VZ)
 
 
 testPipeline :: Text.Text -> String

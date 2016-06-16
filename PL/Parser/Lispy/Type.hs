@@ -14,6 +14,10 @@ import PL.Parser.Lispy.Kind
 import PL.Type hiding (arrowise)
 import PL.Name
 import PL.Kind
+import PL.TyVar
+
+tyVar :: Parser TyVar
+tyVar = mkTyVar <$> natural
 
 -- A name is an uppercase followed by zero or more lower case characters
 name :: Parser Text.Text
@@ -74,6 +78,6 @@ typ tb
  <|> arrowTyp tb
  <|> typeLamTyp tb
  <|> typeAppTyp tb
- <|> typeBindingTyp tb
+ {-<|> typeBindingTyp tb-}
  <|> betweenParens (typ tb)
 

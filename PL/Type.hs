@@ -126,3 +126,4 @@ unarrowise :: Type tb -> [Type tb]
 unarrowise (Arrow a b) = a : unarrowise b
 unarrowise t           = [t]
 
+

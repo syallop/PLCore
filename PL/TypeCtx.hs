@@ -131,6 +131,7 @@ unionTypeCtx :: TypeCtx tb -> TypeCtx tb -> TypeCtx tb
 unionTypeCtx (TypeCtx t0) (TypeCtx t1) = TypeCtx (Map.union t0 t1)
 
 -- Are two types equivalent under a typectx?
+-- TODO: Should check equality under a BindCtx tb Kind
 typeEq :: Type tb -> Type tb -> TypeCtx tb -> Maybe Bool
 typeEq t0 t1 tCtx = case (t0,t1) of
   (Named n0,Named n1)

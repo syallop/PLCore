@@ -12,3 +12,7 @@ data Kind
     ,_to   :: Kind
     }
   deriving (Eq,Ord,Show)
+
+kindEq :: Kind -> Kind -> Bool
+kindEq = (==)
+

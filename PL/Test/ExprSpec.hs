@@ -8,6 +8,7 @@ import PL.Type
 import PL.TypeCtx
 import PL.Parser
 import PL.Var
+import PL.TyVar
 import PL.Parser.Lispy hiding (appise,lamise)
 
 import Control.Applicative
@@ -22,16 +23,11 @@ import Test.Hspec
 spec :: Spec
 spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parsesToSpec]
 
-newtype TVar = TVar {_unTVar :: Var} deriving (Show,Eq,Ord)
-
-type TestType = Type TVar
-type TestExpr = Expr Var TestType TVar
-
-tvarP :: Parser TVar
-tvarP = TVar <$> (charIs '\'' *> var)
+type TestType = Type TyVar
+type TestExpr = Expr Var TestType TyVar
 
 testExprP :: Parser TestExpr
-testExprP = expr var (typ tvarP) tvarP
+testExprP = expr var (typ tyVar) tyVar
 
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
@@ -195,7 +191,7 @@ four  = suc three
 
 
 -- type context of bools and nats
-typeCtx :: TypeCtx TVar
+typeCtx :: TypeCtx TyVar
 typeCtx = fromJust $ liftA2 unionTypeCtx boolTypeCtx natTypeCtx
 
 

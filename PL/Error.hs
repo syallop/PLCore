@@ -2,6 +2,7 @@ module PL.Error where
 
 import PL.Name
 import PL.Type
+import PL.Kind
 
 data Error tb
 
@@ -14,6 +15,12 @@ data Error tb
 
   -- ^ Two typed things cannot be applied to each other
   | EAppMismatch (Type tb) (Type tb) --
+
+  -- ^ Something with type cannot be big-applied to something with kind
+  | EBigAppMismatch (Type tb) Kind
+
+  -- ^ Something with kind cannot be type-applied to something with kind
+  | ETypeAppMismatch Kind Kind
   deriving (Ord,Eq)
 
 instance Show tb => Show (Error tb) where
@@ -32,4 +39,10 @@ showError e = let err m = "ERROR: " ++ m in err $ case e of
 
   EAppMismatch fTy xTy
     -> "Cannot apply expression typed: '" ++ show fTy ++ "' to expression typed: '" ++ show xTy ++ "'."
+
+  EBigAppMismatch fTy xKy
+    -> "Cannot apply expression typed: '" ++ show fTy ++ "' to type kinded: '" ++ show xKy ++ "'."
+
+  ETypeAppMismatch fKy xKy
+    -> "Cannot apply type kinded: '" ++ show fKy ++ "' to type kinded: '" ++ show xKy ++ "'."
 

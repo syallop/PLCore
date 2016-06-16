@@ -252,14 +252,14 @@ showMatchArg = \case
     -> "?"
 
 -- | A top-level expression is an expression without a bindings context.
-topExprType :: (BindAbs b abs tb,Binds b (Type tb), Ord tb) => TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
+topExprType :: (BindAbs b abs tb,Binds b (Type tb), Binds tb Kind, Ord tb) => TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
 topExprType = exprType emptyCtx emptyCtx
 
 type ExprBindCtx b tb = BindCtx b (Type tb)
 type TypeBindCtx tb   = Binds tb Kind => BindCtx tb Kind
 
 -- | Under a given bindings context, type check an expression.
-exprType :: forall b abs tb. (BindAbs b abs tb,Ord tb) => ExprBindCtx b tb -> TypeBindCtx tb -> TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
+exprType :: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb) => ExprBindCtx b tb -> TypeBindCtx tb -> TypeCtx tb -> Expr b abs tb -> Either (Error tb) (Type tb)
 exprType exprBindCtx typeBindCtx typeCtx e = case e of
 
 
@@ -410,37 +410,35 @@ exprType exprBindCtx typeBindCtx typeCtx e = case e of
           -- TODO: maybe check coverage...
 
 
-  --  WORKING
   --    absKind :: kind      expr : exprTy
   -- ---------------------------------------
   --   BigLam absKind expr : kind BigArrow exprTy
-  {-BigLam abs expr-}
-    {--> do let newTypeBindCtx = addBinding abs typeBindCtx-}
-          {-exprTy <- exprType exprBindCtx newTypeBindCtx typeCtx expr-}
-          {-Right $ BigArrow abs exprTy-}
+  BigLam abs expr
+    -> do let newTypeBindCtx = addBinding abs typeBindCtx
+          exprTy <- exprType exprBindCtx newTypeBindCtx typeCtx expr
+          Right $ BigArrow abs exprTy
 
-  -- WORKING
   --    f : aKind BigLamArrow bTy      xTy :: aKind
   -- ---------------------------------------------------
   --              BigApp f xTy : bTy
-  {-BigApp f xTy-}
-    {--> do fTy <- exprType exprBindCtx typeBindCtx typeCtx expr-}
-          {-xKy <- typeKind xTY-}
-          {--- TODO maybe verify the xTy we've been given to apply?-}
+  BigApp f x
+    -> do fTy <- exprType exprBindCtx typeBindCtx typeCtx f
+          xKy <- typeKind typeBindCtx x
+          -- TODO maybe verify the xTy we've been given to apply?
 
-          {-resFTy <- maybe (Left $ EMsg "Unknown named type in Big function application") Right $ resolveInitialType f typeCtx-}
+          resFTy <- maybe (Left $ EMsg "Unknown named type in Big function application") Right $ resolveInitialType fTy typeCtx
 
-          {-case resFTy of-}
-            {--- Regular big application attempt-}
-            {-BigArrow aKy bTy -> if aKy == xTy-}
-                                  {-then Right bTy-}
-                                  {-else Left $ EMsg "In big application, argument does not have the same kind as expected by the big lambda"-}
+          case resFTy of
+            -- Regular big application attempt
+            BigArrow aKy bTy
+              | aKy == xKy -> Right bTy
+              | otherwise  -> Left $ EBigAppMismatch fTy xKy
 
-            {-_ -> Left $ EMsg "In big application, function must have a big arrow type"-}
+            _ -> Left $ EMsg "In big application, function must have a big arrow type"
 
 -- Type check a case branch, requring it match the expected type
 -- if so, type checking the result expression which is returned
-branchType :: (BindAbs b abs tb,Ord tb) => CaseBranch b abs tb -> Type tb -> ExprBindCtx b tb -> TypeBindCtx tb -> TypeCtx tb -> Either (Error tb) (Type tb)
+branchType :: (BindAbs b abs tb,Binds tb Kind, Ord tb) => CaseBranch b abs tb -> Type tb -> ExprBindCtx b tb -> TypeBindCtx tb -> TypeCtx tb -> Either (Error tb) (Type tb)
 branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeCtx = do
   bindings <- checkMatchWith lhs expectedTy exprBindCtx typeBindCtx typeCtx
   exprType (addBindings bindings exprBindCtx) typeBindCtx typeCtx rhs
@@ -519,4 +517,68 @@ lamise :: [abs] -> Expr b abs tb -> Expr b abs tb
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise (t:[])    e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
+
+
+-- | Under a given bindings context, kind-check a type.
+-- TODO: Break move to more approritate location.
+typeKind :: Binds tb Kind => BindCtx tb Kind -> Type tb -> Either (Error tb) Kind
+typeKind typeBindCtx ty = case ty of
+
+  --
+  --   from :: fromKy     to :: toKy
+  -- ----------------------------------
+  --       Arrow from to :: Kind
+  Arrow from to
+    -> do -- both from and to must kind-check
+          _ <- typeKind typeBindCtx from
+          _ <- typeKind typeBindCtx to
+
+          Right Kind
+
+  --
+  --
+  SumT types
+    -> do -- every type must kind-check
+          mapM_ (typeKind typeBindCtx) types
+          Right Kind
+
+  --
+  --
+  ProductT types
+    -> do -- every type must kind-check
+          mapM_ (typeKind typeBindCtx) types
+          Right Kind
+
+  --
+  --
+  UnionT types
+    -> do -- every type must kind-check
+          mapM_ (typeKind typeBindCtx) (Set.toList types)
+          Right Kind
+
+  --
+  --
+  TypeLam absKy ty
+    -> do -- type must kind-check under the introduction of a new abstraction to the typeBindCtx
+          let newTypeBindCtx = addBinding absKy typeBindCtx
+          tyKy <- typeKind newTypeBindCtx ty
+          Right $ KindArrow absKy tyKy
+
+  --
+  --
+  TypeApp fTy xTy
+    -> do -- both f and x must kind-check
+          fKy <- typeKind typeBindCtx fTy
+          xKy <- typeKind typeBindCtx xTy
+
+          -- resolve the initial kind here if named kinds are added..
+
+          case fKy of
+            -- Regular big application attempt
+            KindArrow aKy bKy
+
+              -- The kind of the provided xTy, and the kind expected by the left of fTy's kind arrow
+              -- match => The kind is the right hand side of the kind arrow
+              | kindEq aKy xKy -> Right bKy
+              | otherwise      -> Left $ ETypeAppMismatch fKy xKy
 

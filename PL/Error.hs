@@ -41,8 +41,8 @@ showError e = let err m = "ERROR: " ++ m in err $ case e of
     -> "Cannot apply expression typed: '" ++ show fTy ++ "' to expression typed: '" ++ show xTy ++ "'."
 
   EBigAppMismatch fTy xKy
-    -> "Cannot apply expression typed: '" ++ show fTy ++ "' to type kinded: '" ++ show xKy ++ "'."
+    -> "Cannot big-apply expression typed: '" ++ show fTy ++ "' to type kinded: '" ++ show xKy ++ "'."
 
   ETypeAppMismatch fKy xKy
-    -> "Cannot apply type kinded: '" ++ show fKy ++ "' to type kinded: '" ++ show xKy ++ "'."
+    -> "Cannot type-apply type kinded: '" ++ show fKy ++ "' to type kinded: '" ++ show xKy ++ "'."
 

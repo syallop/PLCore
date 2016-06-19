@@ -5,6 +5,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module PL.Expr where
 
 import PL.Type
@@ -13,6 +15,7 @@ import PL.Name
 import PL.Error
 import PL.Kind
 
+import PL.ExprLike
 import PL.Binds
 import PL.Abstracts
 
@@ -132,8 +135,49 @@ data CaseBranch b abs tb = CaseBranch
   deriving (Show,Eq)
 
 
--- Map a monadic function over all the sub expressions within an expression
-{-exprMapM :: Monad m => (Expr -> m Expr) -> Expr -> m Expr-}
+-- An Expr abstracts over itself
+instance HasAbs (Expr b abs tb) where
+  applyToAbs f e = case e of
+    Lam abs e -> Lam abs (f e)
+    e         -> e
+
+-- An Expr has bindings of type 'b'
+instance HasBinding (Expr b abs tb) b where
+  applyToBinding f e = case e of
+    Binding b -> Binding $ f b
+    e         -> e
+
+-- An Expr contains NON-abstracted sub-expressions
+instance HasNonAbs (Expr b abs tb) where
+  applyToNonAbs f e = case e of
+    App x y
+      -> App (f x) (f y)
+
+    Case caseExpr possibleBranches
+      -> Case (f caseExpr) (case possibleBranches of
+                               DefaultOnly branchExpr
+                                 -> DefaultOnly (f branchExpr)
+
+                               CaseBranches (SomeCaseBranches branch branches) mExpr
+                                 -> CaseBranches (SomeCaseBranches (mapCaseRHSs f branch) (map (mapCaseRHSs f) branches)) (f <$> mExpr)
+                           )
+
+    Sum expr ix ty
+      -> Sum (f expr) ix ty
+
+    Product prodExprs
+      -> Product (map f prodExprs)
+
+    Union unionExpr tyIx ty
+      -> Union (f unionExpr) tyIx ty
+
+    BigLam takeTy expr
+      -> BigLam takeTy (f expr)
+
+    BigApp fExpr xTy
+      -> BigApp (f fExpr) xTy
+
+    e -> e
 
 -- Map a function over all contained subexpressions.
 -- The function should preserve the type of the expression.

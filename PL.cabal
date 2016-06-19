@@ -22,6 +22,7 @@ library
                      , PL.Binds
                      , PL.Error
                      , PL.Expr
+                     , PL.ExprLike
                      , PL.Kind
                      , PL.Name
                      , PL.Parser

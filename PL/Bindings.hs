@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module PL.Bindings
   ( BuryDepth()
   , Bindings()
@@ -9,88 +10,104 @@ module PL.Bindings
   , bury
   , bind
   , unbound
+
   , safeIndex
   , index
 
   , buryN
-  , bindingsFromList
-  , append
-  ) where
+  , bindAll
+  , bindFromList
 
+  , buryBy
+  )
+  where
 
 import Control.Applicative
+import Data.Maybe
+import Data.Proxy
 
-import PL.Expr
 import PL.Binds
+import PL.ExprLike
 
--- | A positive integer indicating how many lambda abstractions a bound expression has been moved under.
+-- | A positive integer indicating how many abstractions a bound thing has been moved under.
 newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
 
--- A context of bound 'Expr b abs' in which you may:
--- - 'bind'    : E.G. when an expr is Applied to a Lambda.
--- - 'unbound' : E.G. when you want to manipulate expressions under a Lambda abstraction whose binding hasnt been applied yet.
+data Binding e
+  = Unbound -- No expression bound to this abstraction (/yet)
+  | Bound e -- This expression is bound to the abstraction
+  deriving Show
+
+-- A context of bound things 'e' in which you may:
+-- - 'bind'    : E.G. when an expr is applied to a lambda abstraction
+-- - 'unbound' : E.G. when you want to manipulate expressions under a lambda abstraction whose binding hasnt been applied (/yet).
 -- - 'bury'    : E.G. when all of the bindings are lifted under an abstraction, any escaping bindings should be burried.
-data Bindings b abs tb
-  = EmptyBindings                                      -- ^ No bindings
-  | ConsBinding (Binding b abs tb) (Bindings b abs tb) -- ^ A new binding
-  | Buried (Bindings b abs tb)                         -- ^ Bury many bindings beneath a lambda abstraction
+data Bindings e
+  = EmptyBindings                        -- ^ No bindings
+  | ConsBinding (Binding e) (Bindings e) -- ^ A new binding
+  | Buried (Bindings e)                  -- ^ Bury many bindings beneath a lambda abstraction
   deriving Show
 
-data Binding b abs tb
-  = Unbound               -- No expression bound yet
-  | Bound (Expr b abs tb) -- This expression is bound
-  deriving Show
+-- | No bindings
+emptyBindings :: Bindings e
+emptyBindings = emptyBindings
 
-emptyBindings :: Bindings b abs tb
-emptyBindings = EmptyBindings
-
--- | Bury bindings under a lambda abstraction
-bury :: Bindings b abs tb -> Bindings b abs tb
+-- | Bury bindings under an abstraction
+bury :: Bindings e -> Bindings e
 bury = Buried
 
-buryN :: Int -> Bindings b abs tb -> Bindings b abs tb
-buryN 0 b = b
-buryN n b = buryN (n-1) (Buried b)
+-- | Bury bindings under a number of abstractions
+buryN :: Int -> Bindings e -> Bindings e
+buryN 0 = id
+buryN n = buryN (n-1) . Buried
 
--- | Introduce an unbound binding
-unbound :: Bindings b abs tb -> Bindings b abs tb
+-- | An unbound 'e'
+unbound :: Bindings e -> Bindings e
 unbound = ConsBinding Unbound
 
--- | Introduce a new bound binding
-bind :: Expr b abs tb -> Bindings b abs tb -> Bindings b abs tb
+-- | Bind 'e'
+bind :: e -> Bindings e -> Bindings e
 bind = ConsBinding . Bound
 
--- append a list of bound expressions to a bindings
-append :: [Expr b abs tb] -> Bindings b abs tb -> Bindings b abs tb
-append []     bs = bs
-append (x:xs) bs = ConsBinding (Bound x) (append xs bs)
+-- | Binds 'e's
+bindAll :: [e] -> Bindings e -> Bindings e
+bindAll []     = id
+bindAll (e:es) = bind e . bindAll es
 
--- | Transform a list of expressions to bind into a bindings
-bindingsFromList :: [Expr b abs tb] -> Bindings b abs tb
-bindingsFromList []     = EmptyBindings
-bindingsFromList (b:bs) = ConsBinding (Bound b) (bindingsFromList bs)
+-- | Create a Bindings from a list of bound 'e's
+bindFromList :: [e] -> Bindings e
+bindFromList = (`bindAll` emptyBindings)
 
--- | If the index exists, extract the bound expression, itself adjusted for it's depth in the bindings.
-safeIndex :: BindAbs b abs tb => Bindings b abs tb -> Int -> Maybe (Binding b abs tb)
-safeIndex EmptyBindings _ = Nothing
-safeIndex bs           ix = safeIndex' 0 bs ix
+-- | If the index exists then extract the bound 'e', adjusting it for its depth in the bindings
+safeIndex :: forall e b. (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Maybe (Binding e)
+safeIndex bindType EmptyBindings _  = Nothing
+safeIndex bindType bs ix
+  | ix < 0    = Nothing
+  | otherwise = safeIndex' 0 bs ix
   where
-    safeIndex' :: BindAbs b abs tb => BuryDepth -> Bindings b abs tb -> Int -> Maybe (Binding b abs tb)
-    safeIndex' buryDepth bs ix = case (bs,ix) of
-      (EmptyBindings    , _) -> Nothing
+  safeIndex' :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => BuryDepth -> Bindings e -> Int -> Maybe (Binding e)
+  safeIndex' buryDepth bs ix = case (bs,ix) of
+    (EmptyBindings, _)
+      -> Nothing
 
-      (ConsBinding b _  , 0) -> case b of
-                                   Unbound    -> Just Unbound
-                                   Bound expr -> Just $ Bound $ expr `buryBy` buryDepth
-      (ConsBinding _ bs', _) -> safeIndex' buryDepth     bs' (ix-1)
+    (ConsBinding b _, 0)
+      -> case b of
+           Unbound -> Just Unbound
+           Bound e -> Just $ Bound $ buryBy bindType e buryDepth
 
-      (Buried        bs', _) -> safeIndex' (buryDepth+1) bs' ix
+    (ConsBinding _ bs', _)
+      -> safeIndex' buryDepth bs' (ix-1)
 
--- | 'safeIndex' assuming the index is contained in the bindings.
-index :: BindAbs b abs tb => Bindings b abs tb -> Int -> Binding b abs tb
-index bs ix = let Just r = safeIndex bs ix in r
+    (Buried bs', _)
+      -> safeIndex' (buryDepth + 1) bs' ix
 
--- bury any escaping bindings in an expression by given depth.
+-- | A 'safeIndex' assuming the index is contained in the bindings.
+index :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Binding e
+index bindType bs = fromJust . safeIndex bindType bs
+
+
+
+
+-- Bury any escaping bindings in an 'e'xpression by a given depth.
 --
 -- E.G.
 -- Unaffected as no bindings escape.
@@ -100,79 +117,20 @@ index bs ix = let Just r = safeIndex bs ix in r
 -- Escaping bindings are effected.
 -- \.1        ~> \.(1+depth)
 -- \.\.0 1 2  ~> \.\. 0 1 (2+depth)
---
--- TODO: Refactor code, please..
--- - can probably merge all code into the aux definition/ use mapSubExpr
-buryBy :: BindAbs b abs tb => Expr b abs tb -> BuryDepth -> Expr b abs tb
-buryBy expr 0         = expr
-buryBy expr buryDepth = case expr of
-
-  Binding b
-    -> Binding $ buryBinding b (_unBurryDepth buryDepth)
-
-  Lam ty e
-    -> Lam ty (buryBy' 0 e buryDepth)
-
-  App f x
-    -> App (buryBy f buryDepth) (buryBy x buryDepth)
-
-  Case caseExpr possibleBranches
-    -> Case (buryBy caseExpr buryDepth)
-            $ case possibleBranches of
-                  DefaultOnly defExpr
-                    -> DefaultOnly (buryBy defExpr buryDepth)
-
-                  CaseBranches (SomeCaseBranches caseBranch caseBranches) mExpr
-                    -> CaseBranches
-                        (SomeCaseBranches (mapCaseRHSs (`buryBy` buryDepth) caseBranch) (map (mapCaseRHSs (`buryBy` buryDepth)) caseBranches))
-                        ((`buryBy` buryDepth) <$> mExpr)
-
-  Sum sumExpr sumIx sumTys
-    -> Sum (buryBy sumExpr buryDepth) sumIx sumTys
-
-  Product productExprs
-    -> Product $ map (`buryBy` buryDepth) productExprs
-
-  Union unionExpr tyIx tys
-    -> Union (buryBy unionExpr buryDepth) tyIx tys
-
+buryBy :: forall e b. (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> e -> BuryDepth -> e
+buryBy _        e 0         = e
+buryBy bindType e buryDepth = applyToAbs     (\subE     -> buryBetween 0 subE buryDepth)
+                            . applyToBinding (\(b :: b) -> buryBinding b (_unBurryDepth buryDepth))
+                            . applyToNonAbs  (\subE     -> buryBy bindType subE buryDepth)
+                            $ e
   where
-    buryBy' :: BindAbs b abs tb => Int -> Expr b abs tb -> BuryDepth -> Expr b abs tb
-    buryBy' ourTop expr buryDepth = case expr of
-
-      Binding b
-        -- Binding is within our height
-        | bindDepth b <= ourTop
-          -> Binding b
-
-        -- Binding escapes our height, so compensate for the greater depth.
-        | otherwise
-          -> Binding $ b `buryBinding` (_unBurryDepth buryDepth)
-
-      Lam abs e
-        -> Lam abs (buryBy' (ourTop+1) e buryDepth)
-
-      App f x
-        -> App (buryBy' ourTop f buryDepth) (buryBy' ourTop x buryDepth)
-
-      Case caseExpr possibleBranches
-        -> Case (buryBy' ourTop caseExpr buryDepth)
-                $ case possibleBranches of
-                      DefaultOnly defExpr
-                        -> DefaultOnly (buryBy' ourTop defExpr buryDepth)
-
-                      -- TODO LHS which contain MatchBinding's should probably be buried
-                      CaseBranches (SomeCaseBranches caseBranch caseBranches) mExpr
-                        -> CaseBranches
-                            (SomeCaseBranches (mapCaseRHSs (\e -> buryBy' ourTop e buryDepth) caseBranch) (map (mapCaseRHSs (\e -> buryBy' ourTop e buryDepth)) caseBranches))
-                            ((\e -> buryBy' ourTop e buryDepth) <$> mExpr)
-
-      Sum sumExpr sumIx sumTys
-        -> Sum (buryBy' ourTop sumExpr buryDepth) sumIx sumTys
-
-      Product productExprs
-        -> Product $ map (\e -> buryBy' ourTop e buryDepth) productExprs
-
-      Union unionExpr tyIx tys
-        -> Union (buryBy' ourTop unionExpr buryDepth) tyIx tys
+  buryBetween :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Int -> e -> BuryDepth -> e
+  buryBetween ourTop e buryDepth = applyToBinding (\(b :: b) -> if -- Binding is within our height.
+                                                                   | bindDepth b <= ourTop -> b 
+                                                                   -- Binding escapes our height, so compensate for the greater depth
+                                                                   | otherwise             -> buryBinding b (_unBurryDepth buryDepth)
+                                                  )
+                                 . applyToAbs     (\subE -> buryBetween (ourTop+1) subE buryDepth)
+                                 . applyToNonAbs  (\subE -> buryBetween ourTop subE buryDepth)
+                                 $ e
 

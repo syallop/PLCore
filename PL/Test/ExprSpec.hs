@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ExprSpec where
 
+import PL.Binds
 import PL.Error
 import PL.Expr
 import PL.Kind

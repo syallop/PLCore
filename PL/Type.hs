@@ -1,7 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module PL.Type where
 
 import PL.Name
 import PL.Kind
+import PL.ExprLike
 
 import Data.List
 import qualified Data.Set as Set
@@ -129,4 +132,37 @@ unarrowise :: Type tb -> [Type tb]
 unarrowise (Arrow a b) = a : unarrowise b
 unarrowise t           = [t]
 
+instance HasAbs (Type tb) where
+  applyToAbs f ty = case ty of
+    TypeLam ky ty -> TypeLam ky (f ty)
+--  Nope(?)
+--  BigArrow ky ty -> BigArrow ky (f ty)
+    ty            -> ty
+
+instance HasBinding (Type tb) tb where
+  applyToBinding f ty = case ty of
+    TypeBinding tb -> TypeBinding (f tb)
+    ty             -> ty
+
+instance Ord tb => HasNonAbs (Type tb) where
+  applyToNonAbs f ty = case ty of
+    Arrow from to
+      -> Arrow (f from) (f to)
+
+    SumT types
+      -> SumT (map f types)
+
+    ProductT types
+      -> ProductT (map f types)
+
+    UnionT types
+      -> UnionT (Set.fromList . map f . Set.toList $ types)
+
+    BigArrow from to
+      -> BigArrow from (f to)
+
+    TypeApp x y
+      -> TypeApp (f x) (f y)
+
+    ty -> ty
 

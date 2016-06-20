@@ -31,8 +31,10 @@ library
                      , PL.Parser.Lispy.Kind
                      , PL.Parser.Lispy.Type
                      , PL.Reduce
+                     , PL.ReduceType
                      , PL.TyVar
                      , PL.Type
+                     , PL.Type.Eq
                      , PL.TypeCtx
                      , PL.Var
   -- other-modules:       

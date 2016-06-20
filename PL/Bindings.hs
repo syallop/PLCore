@@ -49,7 +49,7 @@ data Bindings e
 
 -- | No bindings
 emptyBindings :: Bindings e
-emptyBindings = emptyBindings
+emptyBindings = EmptyBindings
 
 -- | Bury bindings under an abstraction
 bury :: Bindings e -> Bindings e
@@ -102,7 +102,9 @@ safeIndex bindType bs ix
 
 -- | A 'safeIndex' assuming the index is contained in the bindings.
 index :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Binding e
-index bindType bs = fromJust . safeIndex bindType bs
+index bindType bs ix = case safeIndex bindType bs ix of
+  Nothing -> error "index: given ix is not contained in the bindings"
+  Just b  -> b
 
 
 

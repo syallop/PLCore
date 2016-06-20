@@ -10,8 +10,10 @@ import PL.Parser.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+import PL.Bindings
 
 import Control.Applicative
 import Control.Monad
@@ -41,16 +43,17 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
   ,("union types"   , unionTwoExpr    ,unionTwoExprType)
   ,("id"            , idExpr          ,idExprType)
   ,("const"         , constExpr       ,constExprType)
+  ,("list of nats"  , listNatExpr     ,listNatExprType)
   ]
   where
     -- Name an expression, check it fully typechecks AND type checks to the given type
     typeChecksTo :: String -> TestExpr -> TestType -> Spec
     typeChecksTo name expr expectTy = it name $ case topExprType typeCtx expr of
         Left err
-          -> expectationFailure "Expression does not type check"
+          -> expectationFailure $ show err
 
         Right exprTy
-          -> case typeEq exprTy expectTy typeCtx of
+          -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
                Nothing    -> expectationFailure "A given type name does not exist in the context"
                Just False -> expectationFailure $ "Expected: " ++ show expectTy ++ " got: " ++ show exprTy
                Just True  -> return ()
@@ -197,10 +200,29 @@ two   = suc one
 three = suc two
 four  = suc three
 
+identityTypeName = Named "Identity"
+identityType     = TypeLam Kind $ ProductT [TypeBinding $ TyVar VZ]
+identityTerm     = undefined
+
+
+{- List -}
+listTypeCtx  = insertRecType "List" listType emptyTypeCtx
+listTypeName = Named "List"
+listType     = TypeLam Kind $ SumT listSumType
+listSumType  = [ProductT []                                        -- : List a
+               {-,BigArrow Kind $                                    -- : \(x:a) (xs : List a) ->-}
+                 {-Arrow (TypeBinding $ TyVar VZ) $-}
+                   {-Arrow (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $-}
+               ,      ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
+               ]
+emptyTerm    = BigLam Kind $ Sum (Product []) 0 listSumType
+consTerm     = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ,Binding VZ]) 1 listSumType
+
+
 
 -- type context of bools and nats
 typeCtx :: TypeCtx TyVar
-typeCtx = fromJust $ liftA2 unionTypeCtx boolTypeCtx natTypeCtx
+typeCtx = foldr unionTypeCtx emptyTypeCtx . map fromJust $ [boolTypeCtx,natTypeCtx,listTypeCtx]
 
 
 -- Boolean and
@@ -356,6 +378,13 @@ constExpr :: TestExpr
 constExpr = BigLam Kind $ BigLam Kind $ Lam (TypeBinding $ TyVar $ VS VZ) $ Lam (TypeBinding $ TyVar VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
 constExprType :: TestType
 constExprType = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding $ TyVar $ VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar $ VS VZ)
+
+-- [0]
+listNatExpr :: TestExpr
+listNatExpr = (App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName))
+listNatExprType :: TestType
+listNatExprType = TypeApp listTypeName natType
+
 
 
 testPipeline :: Text.Text -> String

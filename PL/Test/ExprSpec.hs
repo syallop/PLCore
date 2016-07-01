@@ -2,6 +2,7 @@
 module ExprSpec where
 
 import PL.Binds
+import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -21,6 +22,7 @@ import Data.Maybe
 import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import Data.List.NonEmpty (NonEmpty(..))
 
 import Test.Hspec
 
@@ -93,9 +95,8 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
     andOneTrue,andFalseTrue,andTrueTrue :: (String,[TestExpr],TestExpr)
 
     andOneTrue   = ("True       ~> Boolean identity function" , [trueTerm] , andOneTrueExpr)
-      where andOneTrueExpr = Lam boolTypeName $ Case (Binding VZ) $ CaseBranches
-                               (SomeCaseBranches (CaseBranch falsePat falseTerm)
-                               []
+      where andOneTrueExpr = Lam boolTypeName $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+                               (CaseBranch falsePat falseTerm :| []
                                )
                                (Just trueTerm)
 
@@ -227,22 +228,18 @@ typeCtx = foldr unionTypeCtx emptyTypeCtx . map fromJust $ [boolTypeCtx,natTypeC
 
 -- Boolean and
 andExpr :: TestExpr
-andExpr = Lam boolTypeName $ Lam boolTypeName $     -- \x:Bool y:Bool ->
-    Case (Binding VZ)                               -- case y of
-      $ CaseBranches                                --
-        (SomeCaseBranches                           --
-            (CaseBranch falsePat falseTerm)         --    False -> False
-            []                                      --
-        )                                           --
-        (Just                                       --     _      ->
-            (Case (Binding $ VS VZ)                 --               case x of
-              $ CaseBranches                        --
-                (SomeCaseBranches                   --
-                    (CaseBranch falsePat falseTerm) --                 False -> False
-                    []                              --
-                )                                   --
-                (Just                               --                        _     ->
-                    trueTerm                        --                                 True
+andExpr = Lam boolTypeName $ Lam boolTypeName $      -- \x:Bool y:Bool ->
+    CaseAnalysis $ Case (Binding VZ)                 -- case y of
+      $ CaseBranches                                 --
+        ((CaseBranch falsePat falseTerm) :| []       --     False -> False
+        )                                            --
+        (Just                                        --     _      ->
+            (CaseAnalysis $ Case (Binding $ VS VZ)   --               case x of
+              $ CaseBranches                         --
+                ((CaseBranch falsePat falseTerm):|[] --                 False -> False
+                )                                    --
+                (Just                                --                        _     ->
+                    trueTerm                         --                                 True
                 )
             )
         )
@@ -266,15 +263,13 @@ andText = Text.unlines
 -- n > 2     ~> n-2
 -- otherwise ~> 0
 subTwoExpr :: TestExpr
-subTwoExpr = Lam natTypeName $                           -- \n : Nat ->
-    Case (Binding VZ)                                    -- case n of
-      $ CaseBranches                                     --
-        (SomeCaseBranches                                --
-            (CaseBranch (sPat $ sPat Bind) (Binding VZ)) --   S S n -> n
-            []                                           --
-        )                                                --
-        (Just                                            --
-            zTerm                                        --   _     -> Z
+subTwoExpr = Lam natTypeName $                              -- \n : Nat ->
+    CaseAnalysis $ Case (Binding VZ)                        -- case n of
+      $ CaseBranches                                        --
+        ((CaseBranch (sPat $ sPat Bind) (Binding VZ)) :| [] --   S S n -> n
+        )                                                   --
+        (Just                                               --
+            zTerm                                           --   _     -> Z
         )
 subTwoExprType :: TestType
 subTwoExprType = Arrow natType natType
@@ -289,11 +284,10 @@ subTwoText = Text.unlines
 -- Test case analysis on a sum type with overlapping members
 sumThreeExpr :: TestExpr
 sumThreeExpr = Lam (SumT [natTypeName,boolTypeName,natTypeName]) $   -- \x : Nat|Bool|Nat ->
-    Case (Binding VZ)                                                -- case x of
+    CaseAnalysis $ Case (Binding VZ)                                 -- case x of
       $ CaseBranches                                                 --
-        (SomeCaseBranches                                            --
-            (CaseBranch (MatchSum 0 $ sPat Bind) (Binding VZ))       --  0| S n   -> n
-            [CaseBranch (MatchSum 0   zPat)      zTerm               --  0| Z     -> Z
+        ((CaseBranch (MatchSum 0 $ sPat Bind) (Binding VZ))          --  0| S n   -> n
+         :| [CaseBranch (MatchSum 0   zPat)      zTerm               --  0| Z     -> Z
             ,CaseBranch (MatchSum 1   falsePat)  zTerm               --  1| False -> Z
             ,CaseBranch (MatchSum 1   truePat)   (sTerm `App` zTerm) --  1| True  -> S Z
             ,CaseBranch (MatchSum 2 $ sPat Bind) zTerm               --  2| S n   -> Z
@@ -318,11 +312,10 @@ sumThreeText = Text.unlines
 -- Test product expressions
 productThreeExpr :: TestExpr
 productThreeExpr = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
-    Case (Binding VZ)                                                      -- case x of
+    CaseAnalysis $ Case (Binding VZ)                                       -- case x of
       $ CaseBranches                                                       --
-        (SomeCaseBranches                                                  --
-            (CaseBranch (MatchProduct [zPat,Bind,zPat]) (Binding VZ))      -- Z,y,Z -> y
-            [CaseBranch (MatchProduct [Bind,Bind,zPat]) (Binding VZ)]      -- x,y,Z -> y
+        ((CaseBranch (MatchProduct [zPat,Bind,zPat]) (Binding VZ))         -- Z,y,Z -> y
+         :| [CaseBranch (MatchProduct [Bind,Bind,zPat]) (Binding VZ)]      -- x,y,Z -> y
         )                                                                  --
         (Just                                                              --
             falseTerm                                                      -- _ -> False
@@ -342,11 +335,10 @@ productThreeText = Text.unlines
 -- : <Nat|Bool> -> Bool
 unionTwoExpr :: TestExpr
 unionTwoExpr = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ -- \x : <Nat|Bool>
-    Case (Binding VZ)                                                   -- case x of
+    CaseAnalysis $ Case (Binding VZ)                                    -- case x of
       $ CaseBranches                                                    --
-        (SomeCaseBranches                                               --
-            (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm) -- Nat | Z    -> False
-            [CaseBranch (MatchUnion natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
+        ((CaseBranch (MatchUnion natTypeName   zPat)      falseTerm)    -- Nat | Z    -> False
+         :| [CaseBranch (MatchUnion natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
             ,CaseBranch (MatchUnion boolTypeName  truePat)   trueTerm   -- Bool| True -> True
             ]                                                           --
         )                                                               --

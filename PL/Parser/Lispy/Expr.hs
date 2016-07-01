@@ -4,11 +4,13 @@
 module PL.Parser.Lispy.Expr where
 
 import Control.Applicative
+import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Set as Set
 
 import PL.Parser
 import PL.Parser.Lispy.Type
 
+import PL.Case
 import PL.Expr hiding (appise,lamise)
 import PL.Type
 import PL.Var
@@ -99,30 +101,31 @@ matchBinding eb = MatchBinding <$> eb
 bind :: Parser (MatchArg b tb)
 bind = question *> pure Bind
 
--- A matchArg pattern, then an expression
-caseBranch :: (Ord tb,Implicits b abs tb) => Parser (CaseBranch b abs tb)
-caseBranch = caseBranch' <|> betweenParens caseBranch'
-  where caseBranch' = CaseBranch <$> (charIs '|' *> matchArg) <*> exprI
+-- "CASE", then an expr then casebranches
+caseExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)
+caseExpr = CaseAnalysis <$> (Case <$> (textIs "CASE" *> exprI) <*> caseBody)
 
--- One or many caseBranch
-someCaseBranches :: (Ord tb,Implicits b abs tb) => Parser (SomeCaseBranches b abs tb)
-someCaseBranches = SomeCaseBranches <$> caseBranch <*> many caseBranch
+-- Either someCaseBranches or
+caseBody :: (Ord tb,Implicits b abs tb) => Parser (CaseBranches (Expr b abs tb) (MatchArg b tb))
+caseBody = caseBranches <|> defaultOnly
 
--- An expr
-defaultOnly :: (Ord tb, Implicits b abs tb) => Parser (PossibleCaseBranches b abs tb)
-defaultOnly = DefaultOnly <$> exprI
-
--- someCaseBranches then a possible expr
-caseBranches :: (Ord tb, Implicits b abs tb) => Parser (PossibleCaseBranches b abs tb)
+-- One or many casebranch then a possible default expr
+caseBranches :: (Ord tb,Implicits b abs tb) => Parser (CaseBranches (Expr b abs tb) (MatchArg b tb))
 caseBranches = CaseBranches <$> someCaseBranches <*> ((Just <$> exprI) <|> pure Nothing)
 
--- either caseBranches or a defaultOnly expr
-possibleCaseBranches :: (Ord tb, Implicits b abs tb) => Parser (PossibleCaseBranches b abs tb)
-possibleCaseBranches = caseBranches <|> defaultOnly
+-- A non-empty list of caseBranch
+someCaseBranches :: (Ord tb,Implicits b abs tb) => Parser (NonEmpty (CaseBranch (Expr b abs tb) (MatchArg b tb)))
+someCaseBranches = (:|) <$> caseBranch <*> many caseBranch
 
--- "CASE", then ann expr then possibleCaseBranches
-caseExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)
-caseExpr = Case <$> (textIs "CASE" *> exprI) <*> possibleCaseBranches
+-- A single case branch is a matchArg pattern, then a result expression
+caseBranch :: (Ord tb,Implicits b abs tb) => Parser (CaseBranch (Expr b abs tb) (MatchArg b tb))
+caseBranch = caseBranch' <|> betweenParens caseBranch'
+  where
+    caseBranch' = CaseBranch <$> (charIs '|' *> matchArg) <*> exprI
+
+-- A default case branch only
+defaultOnly :: (Ord tb,Implicits b abs tb) => Parser (CaseBranches (Expr b abs tb) (MatchArg b tb))
+defaultOnly = DefaultOnly <$> exprI
 
 
 -- Implicitly bind Parsers for expression bindings, abstractions and type bindings

@@ -9,6 +9,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module PL.Expr where
 
+import PL.Case
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
@@ -24,6 +25,7 @@ import PL.Bindings
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty (..))
 import Control.Applicative
 
 import Debug.Trace
@@ -58,9 +60,8 @@ data Expr b abs tb
       }
 
     -- | Case analysis of an expression
-    | Case
-      {_caseExpr     :: Expr b abs tb
-      ,_caseBranches :: PossibleCaseBranches b abs tb
+    | CaseAnalysis
+      {_caseAnalysis :: Case (Expr b abs tb) (MatchArg b tb)
       }
 
     -- | An expression is indexed within a Sum type
@@ -102,43 +103,6 @@ deriving instance (Eq b,Eq abs,Eq tb) => Eq (Expr b abs tb)
 instance (Abstracts abs tb,Show b) => Show (Expr b abs tb) where
   show = showExpr
 
--- | Body of a case expression. Is either:
--- - Just a catch all match
--- - One or many branches and a possible default catch all
-data PossibleCaseBranches b abs tb
-
-  -- | No proper matches, only a default catch all
-  -- case ... of
-  --   {_ -> exp}
-  = DefaultOnly
-    { _onMatch :: Expr b abs tb
-    }
-
-  -- | One or many branches and a possible default catch all
-  -- case ... of
-  --   {pat -> exp
-  --    ... -> ...
-  --    ... -> ...
-  --    _   -> ...
-  --   }
-  | CaseBranches
-    { _branches       :: SomeCaseBranches b abs tb -- One to many
-    , _defaultOnMatch :: Maybe (Expr b abs tb) -- Possible catch all default
-    }
-    deriving (Show, Eq)
-
--- | One or many 'CaseBranch'
-data SomeCaseBranches b abs tb = SomeCaseBranches (CaseBranch b abs tb) [CaseBranch b abs tb]
-  deriving (Show,Eq)
-
--- | A single branch in a case analysis of a type
-data CaseBranch b abs tb = CaseBranch
-  {_caseLHS :: MatchArg b tb
-  ,_caseRHS :: Expr b abs tb
-  }
-  deriving (Show,Eq)
-
-
 -- An Expr abstracts over itself
 instance HasAbs (Expr b abs tb) where
   applyToAbs f e = case e of
@@ -157,14 +121,8 @@ instance HasNonAbs (Expr b abs tb) where
     App x y
       -> App (f x) (f y)
 
-    Case caseExpr possibleBranches
-      -> Case (f caseExpr) (case possibleBranches of
-                               DefaultOnly branchExpr
-                                 -> DefaultOnly (f branchExpr)
-
-                               CaseBranches (SomeCaseBranches branch branches) mExpr
-                                 -> CaseBranches (SomeCaseBranches (mapCaseRHSs f branch) (map (mapCaseRHSs f) branches)) (f <$> mExpr)
-                           )
+    CaseAnalysis c
+      -> CaseAnalysis $ mapCaseExpr (applyToNonAbs f) c
 
     Sum expr ix ty
       -> Sum (f expr) ix ty
@@ -193,14 +151,8 @@ mapSubExpressions f = \case
   App fExpr xExpr
     -> App (f fExpr) (f xExpr)
 
-  Case caseExpr possibleBranches
-    -> Case (f caseExpr) (case possibleBranches of
-                             DefaultOnly branchExpr
-                               -> DefaultOnly (f branchExpr)
-
-                             CaseBranches (SomeCaseBranches branch branches) mExpr
-                               -> CaseBranches (SomeCaseBranches (mapCaseRHSs f branch) (map (mapCaseRHSs f) branches)) (f <$> mExpr)
-                         )
+  CaseAnalysis c
+    -> CaseAnalysis $ mapCaseExpr f c
 
   Sum expr ix ty
     -> Sum (f expr) ix ty
@@ -219,9 +171,6 @@ mapSubExpressions f = \case
 
   BigApp fExpr xTy
     -> BigApp (f fExpr) xTy
-
-mapCaseRHSs :: (Expr b abs tb -> Expr b abs tb) -> CaseBranch b abs tb -> CaseBranch b abs tb
-mapCaseRHSs f (CaseBranch lhs rhs) = CaseBranch lhs (f rhs)
 
 
 
@@ -247,8 +196,8 @@ showExpr = \case
   Binding b
     -> show b
 
-  Case caseExpr caseBranches
-    -> "(CASE" ++ showExpr caseExpr ++ "\n" ++ showPossibleCaseBranches caseBranches ++ ")"
+  CaseAnalysis c
+    -> "(CASE " ++ show c ++ ")"
 
   Sum sumExpr sumIndex sumType
     -> "(+" ++ show sumIndex ++ " " ++ show sumExpr ++ " " ++ (intercalate " " $ map showType sumType) ++ ")"
@@ -265,19 +214,6 @@ showExpr = \case
   BigApp fExpr xTy
     -> "(# " ++ show fExpr ++ " " ++ show xTy ++ ")" 
 
-showPossibleCaseBranches :: (Abstracts abs tb,Show b) => PossibleCaseBranches b abs tb -> String
-showPossibleCaseBranches = \case
-  DefaultOnly onMatch
-    -> showExpr onMatch
-
-  CaseBranches someCaseBranches maybeDefaultOnMatch
-    -> showSomeCaseBranches someCaseBranches ++ "\n" ++ (maybe "" showExpr maybeDefaultOnMatch)
-
-showSomeCaseBranches :: (Abstracts abs tb,Show b) => SomeCaseBranches b abs tb -> String
-showSomeCaseBranches (SomeCaseBranches caseBranch caseBranches) = intercalate "\n" $ map showCaseBranch (caseBranch : caseBranches)
-
-showCaseBranch :: (Abstracts abs tb,Show b) => CaseBranch b abs tb -> String
-showCaseBranch (CaseBranch lhs rhs) = showMatchArg lhs ++ " " ++ showExpr rhs
 
 showMatchArgs :: (Show tb,Show b) => [MatchArg b tb] -> String
 showMatchArgs = intercalate " " . map showMatchArg
@@ -420,64 +356,62 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
           Nothing -> Left $ EMsg "Expression refers to a non-existant binding"
           Just ty -> Right ty
 
-  -- | A case expression with only a defaut branch.
+
+  --        scrutineeExpr : t0   defExpr : t1
+  -- -----------------------------------------------
+  --       CASE scrutineeExpr of defExpr  : t1
   --
-  -- caseExpr : ct   defExpr : t
-  -- --------------------------
-  --   case caseExpr Of
-  --      defExpr        : t
-  Case caseExpr (DefaultOnly defExpr)
-    -> do -- caseExpr should be well typed (but we don't care about anything else)
-          _ <- exprType exprBindCtx typeBindCtx typeBindings typeCtx caseExpr
-
-          -- The case expression is then typed by the default branch assuming its well typed
-          exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr
-
-
-  -- | A case expression with one or many branches and a possible default branch.
+  --                          or
   --
-  -- caseExpr : ct    defExpr : dt    branch0 : t     branches : [t]
-  -- -------------------------------------------------------------
-  --                   case caseExpr of
-  --                     branch0
-  --                     branches      : t
-  --                     mDefExpr
-  Case caseExpr (CaseBranches (SomeCaseBranches branch0 branches) mDefExpr)
-    -> do -- The expression case-analysed on must type-check
-          caseExprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx caseExpr
+  --   scrutineeExpr : st   defExpr : dt   branch0 : t   branches : [t]
+  -- --------------------------------------------------------------------
+  --                     CASE scrutineExpr of
+  --                        branch0
+  --                        branches            : t
+  --                        branches
+  --                        ?defExpr
+  CaseAnalysis c
+    -> do -- scrutinee should be well typed
+          scrutineeTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx $ _caseScrutinee c
 
-          -- Check the first and any other branches
-          branch0Ty <- branchType branch0 caseExprTy exprBindCtx typeBindCtx typeBindings typeCtx
-          branchTys <- mapM (\branch -> branchType branch caseExprTy exprBindCtx typeBindCtx typeBindings typeCtx) branches
+          case _caseCaseBranches c of
 
-          -- Check the default branch if it exists
-          mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr) mDefExpr
+            -- The case expression is then typed by the default branch, if its well typed
+            DefaultOnly defExpr
+              -> exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr
 
-          -- Check all branches have the same result type
-          -- If the default branch exists, its type must be the same as the first branch
-          _ <- maybe (Right ())
-                     (\defExprTy -> case typeEq typeBindCtx typeBindings typeCtx defExprTy branch0Ty of
-                                        Nothing -> Left $ EMsg "First branch has a unresolvable type name"
-                                        Just isSameType
-                                          | isSameType -> Right ()
-                                          | otherwise  -> Left $ EMsg $ unlines ["Default branch and first case branch have different result types"
-                                                                                ,show defExprTy
-                                                                                ,show branch0Ty
-                                                                                ]
-                     )
-                     mDefExprTy
+            CaseBranches (branch0 :| branches) mDefExpr
+              -> do -- Check the all the branches
+                    branch0Ty <- branchType branch0 scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx
+                    branchTys <- mapM (\branch -> branchType branch scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx) branches
 
-          -- Any other branches must have the same type as the first
-          _ <- mapM (\branchTy -> case typeEq typeBindCtx typeBindings typeCtx branchTy branch0Ty of
-                                      Nothing -> Left $ EMsg "Branch has an unresolvable type name"
-                                      Just isSameType
-                                        | isSameType -> Right ()
-                                        | otherwise  -> Left $ EMsg "Branch and first branch have different result types"
-                    )
-                    branchTys
+                    -- Check the default branch if it exists
+                    mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr) mDefExpr
 
-          Right branch0Ty
-          -- TODO: maybe check coverage...
+                    -- If the default branch exists, its type must be the same as the first branch
+                    _ <- maybe (Right ())
+                               (\defExprTy -> case typeEq typeBindCtx typeBindings typeCtx defExprTy branch0Ty of
+                                                  Nothing -> Left $ EMsg "First branch has a unresolvable type name"
+                                                  Just isSameType
+                                                    | isSameType -> Right ()
+                                                    | otherwise  -> Left $ EMsg $ unlines ["Default branch and first case branch have different result types"
+                                                                                          ,show defExprTy
+                                                                                          ,show branch0Ty
+                                                                                          ]
+                               )
+                               mDefExprTy
+
+                    -- Any other branches must have the same type as the first
+                    _ <- mapM (\branchTy -> case typeEq typeBindCtx typeBindings typeCtx branchTy branch0Ty of
+                                                Nothing -> Left $ EMsg "Branch has an unresolvable type name"
+                                                Just isSameType
+                                                  | isSameType -> Right ()
+                                                  | otherwise  -> Left $ EMsg "Branch and first branch have different result types"
+                              )
+                              branchTys
+
+                    -- The case expression has the type of all of the branch expressions
+                    Right branch0Ty
 
 
   --    absKind :: kind      expr : exprTy
@@ -512,10 +446,10 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
             _ -> Left $ EMsg "In big application, function must have a big arrow type"
 
--- Type check a case branch, requring it match the expected type
--- if so, type checking the result expression which is returned
+-- Type check a case branch, requiring it match the expected type
+-- , if so, type checking the result expression which is returned.
 branchType :: (BindAbs b abs tb,Binds tb Kind, Ord tb,Show b)
-           => CaseBranch b abs tb
+           => CaseBranch (Expr b abs tb) (MatchArg b tb)
            -> Type tb
            -> ExprBindCtx b tb
            -> TypeBindCtx tb
@@ -525,6 +459,7 @@ branchType :: (BindAbs b abs tb,Binds tb Kind, Ord tb,Show b)
 branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   bindings <- checkMatchWith lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
   exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
+
 
 -- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.

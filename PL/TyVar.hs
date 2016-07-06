@@ -1,16 +1,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PL.TyVar where
 
 import PL.Var
 import PL.Binds
+import PL.Binds.Ix
 import PL.Kind
 
 import Data.Coerce
 
 newtype TyVar = TyVar {_unTyVar :: Var}
-  deriving (Eq,Ord)
+  deriving (Eq,Ord,Enum)
 
 instance Show TyVar where
   show (TyVar v) = show v
@@ -37,6 +39,9 @@ instance Binds TyVar Kind where
 
   lookupBindingTy :: TyVar -> BindCtx TyVar Kind -> Maybe Kind
   lookupBindingTy b (TyVarCtx ks) = Just $ ks !! (bindDepth b)
+
+  toList :: BindCtx TyVar Kind -> [(TyVar,Kind)]
+  toList (TyVarCtx ks) = (enumFrom (TyVar VZ)) `zip` ks
 
 instance BindingIx TyVar where
   bindDepth :: TyVar -> Int

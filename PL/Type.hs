@@ -1,13 +1,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module PL.Type where
 
+import PL.Binds.Ix
 import PL.Name
 import PL.Kind
 import PL.ExprLike
 
 import Data.List
 import qualified Data.Set as Set
+import Data.Proxy
 
 -- Describe properties of expressions
 data Type tb
@@ -165,4 +168,37 @@ instance Ord tb => HasNonAbs (Type tb) where
       -> TypeApp (f x) (f y)
 
     ty -> ty
+
+instantiate :: forall tb. (Ord tb,BindingIx tb) => Type tb -> Type tb -> Type tb
+instantiate instType inType = instantiate' 0 instType inType
+  where
+    {-instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb-}
+    instantiate' i instType inType = case inType of
+      Arrow from to
+        -> Arrow (instantiate' i instType from) (instantiate' i instType to)
+
+      SumT ts
+        -> SumT $ map (instantiate' i instType) ts
+
+      ProductT ts
+        -> ProductT $ map (instantiate' i instType) ts
+
+      UnionT ts
+        -> UnionT $ Set.map (instantiate' i instType) ts
+
+      BigArrow from to
+        -> BigArrow from (instantiate' i instType to)
+
+      TypeLam from to
+        -> TypeLam from (instantiate' (i+1) instType to)
+
+      TypeApp f x
+        -> TypeApp (instantiate' i instType f) (instantiate' i instType x)
+
+      TypeBinding tb
+        | bindDepth tb == i -> buryBy (Proxy :: Proxy tb) instType (BuryDepth i)
+        | otherwise         -> TypeBinding tb
+
+      Named n
+        -> Named n
 

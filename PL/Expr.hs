@@ -33,6 +33,13 @@ import Debug.Trace
 todo :: String -> a
 todo str = error $ "TODO: " ++ str
 
+{- Debuging -}
+-- trace a string, formatted between braces and indented by 'a few' tabs. As in
+-- a mathmatical derivation
+traceStep s a = trace ("\t\t\t\t{" ++ s ++ "}") a
+
+-- trace a string, indented a number of tabs
+traceIndent i s a = trace (replicate (i*2) ' ' ++ s) a
 
 type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)
 type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb
@@ -236,7 +243,7 @@ showMatchArg = \case
     -> "?"
 
 -- | A top-level expression is an expression without a bindings context.
-topExprType :: (BindAbs b abs tb,Binds b (Type tb), Binds tb Kind, Ord tb,Show b)
+topExprType :: (BindAbs b abs tb,Binds b (Type tb), Binds tb Kind, Ord tb,Show b,Show (BindCtx tb Kind))
             => TypeCtx tb
             -> Expr b abs tb
             -> Either (Error tb) (Type tb)
@@ -247,14 +254,24 @@ type TypeBindCtx tb   = Binds tb Kind => BindCtx tb Kind
 type TypeBindings tb  = Bindings (Type tb)
 
 -- | Under a given bindings context, type check an expression.
-exprType :: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b)
+exprType :: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b,Show (BindCtx tb Kind))
          => ExprBindCtx b tb -- Associate expr bindings 'b' to their types
+         -> TypeBindCtx tb   -- Associate type bindings 'tb' to their Kinds
+         -> TypeBindings tb  -- Associate type bindings 'tb' to their bound or unbound types
+         -> TypeCtx tb       -- Associate Named types to their TypeInfo
+         -> Expr b abs tb    -- Expression to type-check
+         -> Either (Error tb) (Type tb)
+exprType = exprType' 0
+
+exprType':: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b,Show (BindCtx tb Kind))
+         => Int              -- indentation level of debuging output
+         -> ExprBindCtx b tb -- Associate expr bindings 'b' to their types
          -> TypeBindCtx tb   -- Associate type bindings 'tb' to their Kinds
          -> TypeBindings tb  -- Associate type bindings 'tb' to their bound or unbound types 
          -> TypeCtx tb       -- Associate Named types to their TypeInfo
          -> Expr b abs tb    -- Expression to type-check
          -> Either (Error tb) (Type tb)
-exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
+exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (show ("EXPRTYPE",e,typeBindCtx,typeBindings)) $ case e of
 
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
@@ -265,7 +282,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   --   Lam absTy expr : absTy -> exprTy
   Lam abs expr
     -> do let newExprBindCtx = addBinding (absTy abs) exprBindCtx
-          exprTy <- exprType newExprBindCtx typeBindCtx typeBindings typeCtx expr
+          exprTy <- exprType' (i+1) newExprBindCtx typeBindCtx typeBindings typeCtx expr
           Right $ Arrow (absTy abs) exprTy
 
   -- |
@@ -273,8 +290,8 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- -----------------------
   --       App f x : b
   App f x
-    -> do fTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx f -- Both f and x must type check
-          xTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx x
+    -> do fTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx f -- Both f and x must type check
+          xTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx x
 
           resFTy <- maybe (Left $ EMsg "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
@@ -291,8 +308,8 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
                                                                      ,"f : " ++ show fTy
                                                                      ,"x : " ++ show xTy
                                                                      ,"f :~> " ++ show resFTy
-                                                                     ] 
-                                                      in error msg  
+                                                                     ]
+                                                      in error msg
                                    --error $ "Types not equal in application of arrow type. Expected: " ++ show aTy ++ " Given: " ++ show xTy
                                    --
             _ -> error "Attempting to apply non-arrow type"
@@ -301,7 +318,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- has that sum type.
   Sum expr ix inTypr
     -> do -- Expression must type check
-          exprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx expr
+          exprTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
           _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy (inTypr !! ix) of
@@ -319,7 +336,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- A product is typed by the order of each expression it contains
   Product prodExprs
     -> do -- type check each successive expression
-          prodExprTys <- mapM (exprType exprBindCtx typeBindCtx typeBindings typeCtx) prodExprs
+          prodExprTys <- mapM (exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx) prodExprs
 
           -- the type is the product of those types
           Right $ ProductT prodExprTys
@@ -329,7 +346,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- TODO: The same type appearing more than once should be an error?
   Union unionExpr unionTypeIndex unionTypes
     -> do -- type check injected expression
-          exprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx unionExpr
+          exprTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx unionExpr
 
           -- Type must be what we claim it is...
           _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy unionTypeIndex of
@@ -372,21 +389,21 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   --                        ?defExpr
   CaseAnalysis c
     -> do -- scrutinee should be well typed
-          scrutineeTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx $ _caseScrutinee c
+          scrutineeTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx $ _caseScrutinee c
 
           case _caseCaseBranches c of
 
             -- The case expression is then typed by the default branch, if its well typed
             DefaultOnly defExpr
-              -> exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr
+              -> exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx defExpr
 
             CaseBranches (branch0 :| branches) mDefExpr
               -> do -- Check the all the branches
-                    branch0Ty <- branchType branch0 scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx
-                    branchTys <- mapM (\branch -> branchType branch scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx) branches
+                    branch0Ty <- branchType (i+1) branch0 scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx
+                    branchTys <- mapM (\branch -> branchType (i+1) branch scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx) branches
 
                     -- Check the default branch if it exists
-                    mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr) mDefExpr
+                    mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx defExpr) mDefExpr
 
                     -- If the default branch exists, its type must be the same as the first branch
                     _ <- maybe (Right ())
@@ -420,7 +437,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   BigLam abs expr
     -> do let newTypeBindCtx  = addBinding abs typeBindCtx
               newTypeBindings = unbound $ bury typeBindings 
-          exprTy <- exprType exprBindCtx newTypeBindCtx newTypeBindings typeCtx expr
+          exprTy <- exprType' (i+1) exprBindCtx newTypeBindCtx newTypeBindings typeCtx expr
           Right $ BigArrow abs exprTy
 
   --    f : aKind BigLamArrow bTy      xTy :: aKind
@@ -429,10 +446,10 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   BigApp f x
     -> do xKy <- typeKind typeBindCtx typeCtx x
           let newTypeBindCtx  = addBinding xKy typeBindCtx
-              newTypeBindings = bind x typeBindings 
+              newTypeBindings = bind x typeBindings
 
           -- Check f under x
-          fTy <- exprType exprBindCtx newTypeBindCtx newTypeBindings typeCtx f
+          fTy <- exprType' (i+1) exprBindCtx newTypeBindCtx newTypeBindings typeCtx f
 
           -- TODO maybe verify the xTy we've been given to apply?
 
@@ -441,24 +458,25 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
           case resFTy of
             -- Regular big application attempt
             BigArrow aKy bTy
-              | aKy == xKy -> Right bTy
+              | aKy == xKy -> Right $ instantiate x bTy -- TODO: all bindings need to be instantiated
               | otherwise  -> Left $ EBigAppMismatch fTy xKy
 
             _ -> Left $ EMsg "In big application, function must have a big arrow type"
 
 -- Type check a case branch, requiring it match the expected type
 -- , if so, type checking the result expression which is returned.
-branchType :: (BindAbs b abs tb,Binds tb Kind, Ord tb,Show b)
-           => CaseBranch (Expr b abs tb) (MatchArg b tb)
+branchType :: (BindAbs b abs tb,Binds tb Kind, Ord tb,Show b,Show (BindCtx tb Kind))
+           => Int
+           -> CaseBranch (Expr b abs tb) (MatchArg b tb)
            -> Type tb
            -> ExprBindCtx b tb
            -> TypeBindCtx tb
            -> TypeBindings tb
            -> TypeCtx tb
            -> Either (Error tb) (Type tb)
-branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
+branchType i (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   bindings <- checkMatchWith lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
-  exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
+  exprType' (i+1) (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
 
 
 -- | Check that a MatchArg matches the expected Type

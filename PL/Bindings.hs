@@ -3,8 +3,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module PL.Bindings
-  ( BuryDepth()
-  , Bindings()
+  ( Bindings()
   , Binding(Unbound,Bound)
   , emptyBindings
   , bury
@@ -27,15 +26,13 @@ import Data.Maybe
 import Data.Proxy
 
 import PL.Binds
+import PL.Binds.Ix
 import PL.ExprLike
 
--- | A positive integer indicating how many abstractions a bound thing has been moved under.
-newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
 
 data Binding e
   = Unbound -- No expression bound to this abstraction (/yet)
   | Bound e -- This expression is bound to the abstraction
-  deriving Show
 
 -- A context of bound things 'e' in which you may:
 -- - 'bind'    : E.G. when an expr is applied to a lambda abstraction
@@ -45,7 +42,20 @@ data Bindings e
   = EmptyBindings                        -- ^ No bindings
   | ConsBinding (Binding e) (Bindings e) -- ^ A new binding
   | Buried (Bindings e)                  -- ^ Bury many bindings beneath a lambda abstraction
-  deriving Show
+
+instance Show e => Show (Bindings e) where show = showBindings
+instance Show e => Show (Binding e) where show = showBinding
+
+showBinding :: Show e => Binding e -> String
+showBinding Unbound   = "U"
+showBinding (Bound b) = show b
+
+showBindings :: Show e => Bindings e -> String
+showBindings bs = "[" ++ showBindings' bs ++ "]"
+  where
+    showBindings' EmptyBindings      = ""
+    showBindings' (ConsBinding b bs) = showBinding b ++ ", " ++ showBindings' bs
+    showBindings' (Buried bs)       = "[" ++ showBindings' bs ++ "]"
 
 -- | No bindings
 emptyBindings :: Bindings e
@@ -105,34 +115,4 @@ index :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Binding
 index bindType bs ix = case safeIndex bindType bs ix of
   Nothing -> error "index: given ix is not contained in the bindings"
   Just b  -> b
-
-
-
-
--- Bury any escaping bindings in an 'e'xpression by a given depth.
---
--- E.G.
--- Unaffected as no bindings escape.
--- \.0        ~> \.0    --id
--- \.\.1      ~> \.\.1  --const
---
--- Escaping bindings are effected.
--- \.1        ~> \.(1+depth)
--- \.\.0 1 2  ~> \.\. 0 1 (2+depth)
-buryBy :: forall e b. (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> e -> BuryDepth -> e
-buryBy _        e 0         = e
-buryBy bindType e buryDepth = applyToAbs     (\subE     -> buryBetween 0 subE buryDepth)
-                            . applyToBinding (\(b :: b) -> buryBinding b (_unBurryDepth buryDepth))
-                            . applyToNonAbs  (\subE     -> buryBy bindType subE buryDepth)
-                            $ e
-  where
-  buryBetween :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Int -> e -> BuryDepth -> e
-  buryBetween ourTop e buryDepth = applyToBinding (\(b :: b) -> if -- Binding is within our height.
-                                                                   | bindDepth b <= ourTop -> b 
-                                                                   -- Binding escapes our height, so compensate for the greater depth
-                                                                   | otherwise             -> buryBinding b (_unBurryDepth buryDepth)
-                                                  )
-                                 . applyToAbs     (\subE -> buryBetween (ourTop+1) subE buryDepth)
-                                 . applyToNonAbs  (\subE -> buryBetween ourTop subE buryDepth)
-                                 $ e
 

@@ -47,6 +47,7 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
   ,("const"         , constExpr       ,constExprType)
   ,("list of nats"  , listNatExpr     ,listNatExprType)
   ]
+  {-[("list of nats", listNatExpr,listNatExprType)]-}
   where
     -- Name an expression, check it fully typechecks AND type checks to the given type
     typeChecksTo :: String -> TestExpr -> TestType -> Spec

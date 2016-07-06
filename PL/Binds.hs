@@ -3,6 +3,7 @@
 module PL.Binds where
 
 import PL.Type
+import PL.Binds.Ix
 
 -- 'b' maps to and from an index describing where the variable was bound.
 -- The associated ''BindCtx b' associates 'b' to types'
@@ -31,13 +32,12 @@ class BindingIx b => Binds b ty where
   addBindings :: [ty] -> BindCtx b ty -> BindCtx b ty
   addBindings ts ctx = foldl (flip addBinding) ctx ts
 
--- class of index-like binding types, E.G. Var.
--- A binding type maps to an index describing where the abstraction it binds is and may be buries below a number of new abstractions
-class BindingIx b where
-  -- How far away is the abstraction we're binding?
-  bindDepth :: b -> Int
 
-  -- During a reduction, a binding may be buried below a number of new abstractions
-  buryBinding :: b -> Int -> b
+  toList :: BindCtx b ty -> [(b,ty)]
 
+showBindCtx :: (Show b,Show ty,Binds b ty) => BindCtx b ty -> String
+showBindCtx = (++ "]") . ("[" ++) . concat . foldr (\(b,ty) acc -> (show b ++ ":" ++ show ty):acc) [] . toList
+
+instance (Show b,Show ty,Binds b ty) => Show (BindCtx b ty) where
+  show = showBindCtx
 

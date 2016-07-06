@@ -7,6 +7,7 @@
 module PL.Reduce where
 
 import PL.Binds
+import PL.Binds.Ix
 import PL.Bindings
 import PL.Case
 import PL.Expr

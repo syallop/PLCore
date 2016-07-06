@@ -3,6 +3,7 @@ module PL where
 import PL.Abstracts
 import PL.Bindings
 import PL.Binds
+import PL.Binds.Ix
 import PL.Case
 import PL.Error
 import PL.Expr

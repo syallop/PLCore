@@ -9,6 +9,7 @@ module PL.Type.Eq
 
 import PL.Kind
 import PL.Binds
+import PL.Binds.Ix
 import PL.Error
 import PL.Type
 import PL.TypeCtx
@@ -26,8 +27,8 @@ import Debug.Trace
 -- a mathmatical derivation
 traceStep s a = trace ("\t\t\t\t{" ++ s ++ "}") a
 
--- trace a string, indented a number of tabs 
-traceIndent i s a = trace (replicate i '\t' ++ s) a
+-- trace a string, indented a number of tabs
+traceIndent i s a = trace (replicate (i*2) ' ' ++ s) a
 
 typeEq :: forall tb. (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb)
        => BindCtx tb Kind
@@ -59,9 +60,9 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
                       {-typeEq typeBindCtx typeNameCtx (_typeInfoType it0) (_typeInfoType it1)-}
 
   -- To compare a Named type to a non-named type, lookup the definition of the
-  -- name and recurse. 
+  -- name and recurse.
   (_,Named _)
-    -> traceStep "Reverse" $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 t0 
+    -> traceStep "Reverse" $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 t0
   (Named n0,_)
     -> do it0 <- lookupTypeNameInitialInfo n0 typeNameCtx
           traceStep "Lookup name" $
@@ -73,12 +74,12 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
   -- propogating this unification? If so, the current data structures and
   -- algorithm is not appropriate.
   (TypeBinding b0,TypeBinding b1)
-    -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0) 
+    -> let binding0 = maybe (error "") id $ safeIndex (Proxy :: Proxy tb) typeBindings (bindDepth b0)
            binding1 = index (Proxy :: Proxy tb) typeBindings (bindDepth b1)
           in traceStep "Lookup both bindings" $ case (binding0,binding1) of
                -- Two unbound are unified
                (Unbound,Unbound)
-                 -> traceIndent i "Both unbound => T" $ Just True 
+                 -> traceIndent i "Both unbound => T" $ Just True
 
                -- An unbound unifies with a bound
                (Unbound,Bound ty1)
@@ -88,25 +89,25 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
 
                -- Two bound types are equal if the bound types are equal
                (Bound ty0,Bound ty1)
-                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1 
+                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1
 
   -- To compare a binding to a non-binding
   (ty0,TypeBinding _)
     -> traceStep "Reverse" $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
   (TypeBinding b0,ty1)
-    -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0) 
+    -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0)
           in traceStep "Lookup binding" $ case binding0 of
                Unbound
                  -> traceIndent i "Unbound => T" $ Just True
 
                Bound ty0
-                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1 
+                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1
 
 
   -- Two type applications are equal if both of their corresponding parts are
   -- equal
   (TypeApp f0 x0,TypeApp f1 x1)
-    -> traceStep "Both eq" $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx x0 x1 
+    -> traceStep "Both eq" $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx x0 x1
 
   -- A TypeApp is equal to something else when, after reducing it, it is equal
   -- to that other thing.
@@ -123,7 +124,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
                 -- The resulting type is then the rhs of the typelam under the
                 -- context of what it was applied to
                 TypeLam aKy bTy
-                  -> typeEq' (i+1) (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy ty1 
+                  -> typeEq' (i+1) (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy ty1
 
                 _ -> error "In typeEq: Cant type apply a non-lambda type to a type"
 
@@ -144,7 +145,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
 
   (BigArrow fromKy0 toTy0,BigArrow fromKy1 toTy1)
     -> traceStep "Both eq" $
-       let newTypeBindCtx  = addBinding fromKy1 typeBindCtx 
+       let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
            newTypeBindings = unbound $ bury typeBindings
           in if kindEq fromKy0 fromKy1
                then typeEq' (i+1) newTypeBindCtx newTypeBindings typeNameCtx toTy0 toTy1
@@ -165,11 +166,14 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs :: (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb) => BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
-typeEqs = typeEqs' 0 
+typeEqs = typeEqs' 0
 
 typeEqs' :: (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb) => Int -> BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
 typeEqs' i typeBindCtx typeBindings typeNameCtx ts0 ts1
-  | length ts0 == length ts1 = fmap and $ mapM (\(t0, t1) -> typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1) $ zip ts0 ts1
+  | length ts0 == length ts1 = let mEq = fmap and $ mapM (\(t0, t1) -> typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1) $ zip ts0 ts1
+                                  in case mEq of
+                                       Just True -> traceIndent i "T" mEq
+                                       _         -> traceIndent i "F" mEq
   | otherwise                = Just False
 
 

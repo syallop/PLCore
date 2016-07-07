@@ -1,12 +1,16 @@
 module PL.Case where
 
-import Prelude hiding (sequence,mapM)
+import Prelude hiding (sequence,mapM,foldr)
 
 import PL.ExprLike
+import PL.Printer
 
 import Data.List.NonEmpty
+import qualified Data.List.NonEmpty as NonEmpty
 import Control.Applicative
 import Data.Traversable (sequence,mapM)
+import Data.Monoid
+import Data.Foldable
 
 -- | Case analysis on a scrutinee 'e' which either:
 -- - Is just a default match 'e'
@@ -84,4 +88,27 @@ sequenceCaseBranchExpr c = case c of
   CaseBranch m fe
     -> do e <- fe
           return $ CaseBranch m e
+
+instance (Document e
+         ,Document m
+         )
+      => Document (Case e m) where
+  document (Case s bs) = document s <> document bs
+
+instance (Document e
+         ,Document m
+         )
+      => Document (CaseBranches e m) where
+  document bs = case bs of
+    DefaultOnly def
+      -> parens (document def)
+
+    CaseBranches bs mDef
+      -> (foldr (\b acc -> acc <> document b) emptyDoc $ bs) <> (maybe emptyDoc (parens . document) $ mDef)
+
+instance (Document e
+         ,Document m
+         )
+      => Document (CaseBranch e m) where
+  document (CaseBranch m r) = char '|' <> document m <> document r
 

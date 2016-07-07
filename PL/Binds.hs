@@ -1,9 +1,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings #-}
 module PL.Binds where
 
 import PL.Type
 import PL.Binds.Ix
+
+import PL.Printer
+
+import Data.Monoid
 
 -- 'b' maps to and from an index describing where the variable was bound.
 -- The associated ''BindCtx b' associates 'b' to types'
@@ -37,6 +42,10 @@ class BindingIx b => Binds b ty where
 
 showBindCtx :: (Show b,Show ty,Binds b ty) => BindCtx b ty -> String
 showBindCtx = (++ "]") . ("[" ++) . concat . foldr (\(b,ty) acc -> (show b ++ ":" ++ show ty):acc) [] . toList
+
+instance (Document b,Document ty, Binds b ty)
+      => Document (BindCtx b ty) where
+  document = between (char '[',char ']') . foldr (\(b,ty) acc -> mconcat [document b,":",document ty,acc]) emptyDoc . toList
 
 instance (Show b,Show ty,Binds b ty) => Show (BindCtx b ty) where
   show = showBindCtx

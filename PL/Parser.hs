@@ -76,6 +76,8 @@ import Control.Monad
 import Data.Monoid
 import Data.Char
 
+import PL.Printer (Document(document),int,renderDocument,text)
+
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
 -- Instances for Monad & Applicative sequence Parsers together left-to-right, propogating failure.
 -- Instances for MonadPlus & Alternative sequence left-to-right when successful but have backtracking behaviour on failure.
@@ -91,15 +93,14 @@ data Pos
     }
   deriving Show
 
-showPos :: Pos -> Text
-showPos (Pos t l c) =
-  Text.concat ["["
-              ,Text.pack . show $ t
-              ,"] Line "
-              ,Text.pack . show $ l
-              ," : Character "
-              ,Text.pack . show $ c
-              ]
+instance Document Pos where
+  document (Pos t l c) = mconcat ["["
+                                 ,int t
+                                 ,"] Line "
+                                 ,int l
+                                 ," : Character "
+                                 ,int c
+                                 ]
 
 -- A cursor is a position within some text, where we remember how much text we've passed,
 -- how many newlines and how much into the current line we are but not the prior text itself
@@ -113,11 +114,14 @@ data Cursor = Cursor
 remainder :: Cursor -> Text
 remainder (Cursor _ next _) = next
 
+instance Document Cursor where
+  document = text . pointTo
+
 pointTo :: Cursor -> Text
 pointTo (Cursor prev next (Pos t l c))
   = let (untilLineEnd,rest) = Text.span (/= '\n') next
        in Text.concat prev <> untilLineEnd <> "\n"
-       <> Text.replicate c "-" <> "^ " <> showPos (Pos t l c) <> "\n"
+       <> Text.replicate c "-" <> "^ " <> renderDocument (Pos t l c) <> "\n"
        <> rest
 
 
@@ -158,6 +162,15 @@ data ParseResult a
   | ParseFailure Expected Cursor -- Expected something with leftovers
   deriving Show
 
+instance Document a
+      => Document (ParseResult a) where
+  document p = case p of
+    ParseSuccess a leftovers
+      -> "Parsed: " <> document a <> "with leftovers" <> document leftovers
+
+    ParseFailure e c
+      -> "Expected: " <> document e <> "at" <> document c
+
 parseResult :: (a -> Cursor -> b) -> (Expected -> Cursor -> b) -> ParseResult a -> b
 parseResult sF fF r = case r of
   ParseSuccess a c -> sF a c
@@ -169,8 +182,10 @@ data Expected
   | ExpectPredicate Text           -- Failed predicate with label
   | ExpectAnything                 -- Expected anything => got an EOF
   | ExpectN Int Expected           -- Expected a N repetitions
+  deriving Show
 
-instance Show Expected where show = Text.unpack . showExpected
+instance Document Expected where
+  document = text . showExpected
 
 expectNothing :: Expected
 expectNothing = ExpectOneOf []
@@ -452,3 +467,4 @@ whitespace :: Parser ()
 whitespace  = dropWhile isSpace
 
 helloWorldP = textIs "Hello" *> textIs "World!"
+

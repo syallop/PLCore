@@ -1,8 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
 module PL.Error where
 
 import PL.Name
 import PL.Type
 import PL.Kind
+
+import PL.Printer
+
+import Data.Monoid
 
 data Error tb
 
@@ -21,28 +26,25 @@ data Error tb
 
   -- ^ Something with kind cannot be type-applied to something with kind
   | ETypeAppMismatch Kind Kind
-  deriving (Ord,Eq)
+  deriving (Ord,Eq,Show)
 
-instance Show tb => Show (Error tb) where
-    show = showError
+instance Document tb => Document (Error tb) where
+  document e = text "ERROR: " <> case e of
+    EMsg msg
+      -> string msg
 
-showError :: Show tb => Error tb -> String
-showError e = let err m = "ERROR: " ++ m in err $ case e of
-  EMsg msg
-    -> show msg
+    ETypeNotDefined name
+      -> "Type named '" <> document name <> "' is not defined."
 
-  ETypeNotDefined name
-    -> "Type named '" ++ show name ++ "' is not defined."
+    ETermNotDefined name
+      -> "Term named '" <> document name <> "' is not defined."
 
-  ETermNotDefined name
-    -> "Term named '" ++ show name ++ "' is not defined."
+    EAppMismatch fTy xTy
+      -> "Cannot apply expression typed: '" <> document fTy <> "' to expression typed: '" <> document xTy <> "'."
 
-  EAppMismatch fTy xTy
-    -> "Cannot apply expression typed: '" ++ show fTy ++ "' to expression typed: '" ++ show xTy ++ "'."
+    EBigAppMismatch fTy xKy
+      -> "Cannot big-apply expression typed: '" <> document fTy <> "' to type kinded: '" <> document xKy <> "'."
 
-  EBigAppMismatch fTy xKy
-    -> "Cannot big-apply expression typed: '" ++ show fTy ++ "' to type kinded: '" ++ show xKy ++ "'."
-
-  ETypeAppMismatch fKy xKy
-    -> "Cannot type-apply type kinded: '" ++ show fKy ++ "' to type kinded: '" ++ show xKy ++ "'."
+    ETypeAppMismatch fKy xKy
+      -> "Cannot type-apply type kinded: '" <> document fKy <> "' to type kinded: '" <> document xKy <> "'."
 

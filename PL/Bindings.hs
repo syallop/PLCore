@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 module PL.Bindings
   ( Bindings()
   , Binding(Unbound,Bound)
@@ -24,15 +25,19 @@ module PL.Bindings
 import Control.Applicative
 import Data.Maybe
 import Data.Proxy
+import Data.Monoid
 
 import PL.Binds
 import PL.Binds.Ix
 import PL.ExprLike
 
+import PL.Printer
+
 
 data Binding e
   = Unbound -- No expression bound to this abstraction (/yet)
   | Bound e -- This expression is bound to the abstraction
+  deriving Show
 
 -- A context of bound things 'e' in which you may:
 -- - 'bind'    : E.G. when an expr is applied to a lambda abstraction
@@ -42,20 +47,25 @@ data Bindings e
   = EmptyBindings                        -- ^ No bindings
   | ConsBinding (Binding e) (Bindings e) -- ^ A new binding
   | Buried (Bindings e)                  -- ^ Bury many bindings beneath a lambda abstraction
+  deriving Show
 
-instance Show e => Show (Bindings e) where show = showBindings
-instance Show e => Show (Binding e) where show = showBinding
+instance Document e
+      => Document (Binding e) where
+  document b = case b of
+    Unbound -> "U"
+    Bound b -> "B:"<> document b
 
-showBinding :: Show e => Binding e -> String
-showBinding Unbound   = "U"
-showBinding (Bound b) = show b
+instance Document e
+      => Document (Bindings e) where
+  document bs = between (char '[',char ']') $ case bs of
+                  EmptyBindings
+                    -> emptyDoc
 
-showBindings :: Show e => Bindings e -> String
-showBindings bs = "[" ++ showBindings' bs ++ "]"
-  where
-    showBindings' EmptyBindings      = ""
-    showBindings' (ConsBinding b bs) = showBinding b ++ ", " ++ showBindings' bs
-    showBindings' (Buried bs)       = "[" ++ showBindings' bs ++ "]"
+                  ConsBinding b bs
+                    -> document b <> char ',' <> document bs
+
+                  Buried bs
+                    -> between (char '[',char ']') $ document bs
 
 -- | No bindings
 emptyBindings :: Bindings e

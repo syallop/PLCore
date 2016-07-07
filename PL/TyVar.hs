@@ -9,13 +9,13 @@ import PL.Binds
 import PL.Binds.Ix
 import PL.Kind
 
+import PL.Printer
+
 import Data.Coerce
+import Data.Monoid
 
 newtype TyVar = TyVar {_unTyVar :: Var}
-  deriving (Eq,Ord,Enum)
-
-instance Show TyVar where
-  show (TyVar v) = show v
+  deriving (Eq,Ord,Enum,Show,Document)
 
 mkTyVar :: Int -> TyVar
 mkTyVar = TyVar . mkVar

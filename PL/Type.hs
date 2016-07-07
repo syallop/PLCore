@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 module PL.Type where
 
 import PL.Binds.Ix
@@ -8,9 +10,12 @@ import PL.Name
 import PL.Kind
 import PL.ExprLike
 
+import PL.Printer
+
 import Data.List
 import qualified Data.Set as Set
 import Data.Proxy
+import Data.Monoid
 
 -- Describe properties of expressions
 data Type tb
@@ -64,7 +69,7 @@ data Type tb
   | TypeBinding
     {_binding :: tb
     }
-  deriving (Eq,Ord)
+  deriving (Eq,Ord,Show)
 
 -- | Is a Type a simple named type
 isType :: Type tb -> Bool
@@ -80,44 +85,35 @@ a --> b = Arrow a b
 ty :: TypeName -> Type tb
 ty b = Named b
 
-instance Show tb => Show (Type tb) where
-  show = showType
-
-showType :: Show tb => Type tb -> String
-showType t = case t of
-
+instance Document tb => Document (Type tb) where
+  document t = case t of
     Arrow from to
-      -> parens $ "^" ++ show from ++ " " ++ show to
+      -> char '^' <> parens (document from) <> parens (document to)
 
     Named belongs
-      -> show belongs
+      -> document belongs
 
-    SumT types
-      -> parens $ ("+" ++) $ unwords $ map show types
+    SumT tys
+      -> char '+' <> (mconcat . map (parens . document) $ tys)
 
-    ProductT types
-      -> parens $ ("*" ++) $ unwords $ map show types
+    ProductT tys
+      -> char '*' <> (mconcat . map (parens . document) $ tys)
 
-    UnionT types
-      -> parens $ ("U" ++) $ unwords $ map show $ Set.toList types
+    UnionT tys
+      -> char 'U' <> (mconcat . map (parens . document) . Set.toList $ tys)
 
     BigArrow from to
-      -> parens $ "^^" ++ show from ++ " " ++ show to
+      -> text "^^" <> parens (document from) <> parens (document to)
 
-    TypeLam takeKind typ
-      -> parens $ "\\" ++ show takeKind ++ " " ++ show typ
+    TypeLam takeKy ty
+      -> char '\\' <> parens (document takeKy) <> parens (document ty)
 
     TypeApp f x
-      -> parens $ "@" ++ show f ++ " " ++ show x
+      -> char '@' <> parens (document f) <> parens (document x)
 
-    TypeBinding binding
-      -> show binding
+    TypeBinding b
+      -> document b
 
-parensS :: Show a => a -> String
-parensS = parens . show
-
-parens :: String -> String
-parens s = "(" ++ s ++ ")"
 
 -- PARTIAL
 -- [a]   ~> Type a

@@ -1,4 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverlappingInstances #-}
 module PL.Kind where
+
+import PL.Printer
+import Data.Monoid
 
 -- Describe properties of types
 data Kind
@@ -15,4 +20,12 @@ data Kind
 
 kindEq :: Kind -> Kind -> Bool
 kindEq = (==)
+
+instance Document Kind where
+  document k = case k of
+    Kind
+      -> text "KIND"
+
+    KindArrow from to
+      -> char '^' <> parens (document from) <> parens (document to)
 

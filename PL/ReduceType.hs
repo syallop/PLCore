@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 module PL.ReduceType
   (reduceType
   ,reduceTypeStep
@@ -13,25 +14,31 @@ import PL.Type
 import PL.TypeCtx
 import PL.Name
 
+import PL.Printer
+
 import Control.Applicative
 import Control.Arrow (second)
 import Data.Proxy
+import Data.Monoid
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 import Debug.Trace
 
 {- Debuging -}
 -- trace a string, formatted between braces and indented by 'a few' tabs. As in
 -- a mathmatical derivation
-traceStep s a = trace ("\t\t\t\t{" ++ s ++ "}") a
+traceStep :: Doc -> a -> a
+traceStep d = trace (Text.unpack . render . indent 4 . between (char '{',char '}') $ d)
 
 -- trace a string, indented a number of tabs
-traceIndent i s a = trace (replicate (i*2) ' ' ++ s) a
+traceIndent :: Int -> Doc -> a -> a
+traceIndent i d = trace (Text.unpack . render . indent i $ d)
 
 
 -- | Reduce a top-level type - A type under no outer abstractions
 -- Assume kind checked?
-reduceType :: forall tb. (Ord tb,Show tb,BindingIx tb) => TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
+reduceType :: forall tb. (Ord tb,Document tb,BindingIx tb) => TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
 reduceType = reduceTypeRec emptyBindings
   where
 
@@ -42,21 +49,21 @@ reduceType = reduceTypeRec emptyBindings
     if reducedTy == ty then pure ty else reduceTypeRec bindings typeNameCtx reducedTy
 
 -- Reduce a type by a single reduction step.
-reduceTypeStep :: forall tb. (Ord tb,Show tb,BindingIx tb) => Bindings (Type tb) -> TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
+reduceTypeStep :: forall tb. (Ord tb,Document tb,BindingIx tb) => Bindings (Type tb) -> TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
 reduceTypeStep = reduceTypeStep' 0
 
 
 reduceTypeStep' :: forall tb
                  . (Ord tb
-                   ,Show tb
                    ,BindingIx tb
+                   ,Document tb
                    )
                 => Int
                 -> Bindings (Type tb)
                 -> TypeCtx tb
                 -> Type tb
                 -> Either (Error tb) (Type tb)
-reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (show ("~>",bindings,ty)) $ case ty of
+reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat ["~>",document bindings,document ty]) $ case ty of
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
@@ -81,7 +88,7 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (show ("~>",bindings,t
                    -- like to terminate...
                    Just ti -> Right $ TypeApp f' x'
 
-            _ -> error $ "Cant reduce type application of non-lambda term: f: " ++ show f'
+            _ -> error $ Text.unpack $ render $ "Cant reduce type application of non-lambda term: f: " <> document f'
 
   -- Reduce under a lambda by noting the abstraction is buried and Unbound
   -- TODO: Maybe dont reduce under

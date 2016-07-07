@@ -16,6 +16,8 @@ import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
+import PL.Printer
+
 import Control.Applicative
 import Control.Monad
 import Data.Maybe
@@ -23,6 +25,7 @@ import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.List
 
 import Test.Hspec
 
@@ -53,12 +56,12 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
     typeChecksTo :: String -> TestExpr -> TestType -> Spec
     typeChecksTo name expr expectTy = it name $ case topExprType typeCtx expr of
         Left err
-          -> expectationFailure $ show err
+          -> expectationFailure $ Text.unpack $ renderDocument err
 
         Right exprTy
           -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
-               Nothing    -> expectationFailure "A given type name does not exist in the context"
-               Just False -> expectationFailure $ "Expected: " ++ show expectTy ++ " got: " ++ show exprTy
+               Nothing    -> expectationFailure $ Text.unpack $ render "A given type name does not exist in the context"
+               Just False -> expectationFailure $ Text.unpack $ render $ "Expected: " <> document expectTy <> " got: " <> document exprTy
                Just True  -> return ()
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
@@ -119,7 +122,7 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
     reduceToSpec :: String -> TestExpr -> TestExpr -> Spec
     reduceToSpec name expr eqExpr = it name $ case reduce expr of
       Left exprErr
-        -> expectationFailure ("target expression does not reduce: " ++ show exprErr)
+        -> expectationFailure $ Text.unpack $ render $ "target expression does not reduce: " <> document exprErr
 
       Right redExpr
         -> if redExpr == eqExpr
@@ -129,7 +132,9 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
              -- reduce that expression and check once more
              else case reduce eqExpr of
                     Left eqExprErr
-                      -> expectationFailure ("target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:" ++ show eqExprErr)
+                      -> expectationFailure $ Text.unpack $ render $ mconcat ["target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
+                                                                             ,document eqExprErr
+                                                                             ]
 
                     Right redEqExpr
                       -> if redExpr == redEqExpr
@@ -154,12 +159,23 @@ parsesToSpec = describe "Strings should parse to expected expressions" $ sequenc
     parseToSpec :: String -> Text.Text -> TestExpr -> Spec
     parseToSpec name txt expectExpr = it name $ case runParser testExprP txt of
       ParseFailure e c
-        -> expectationFailure ("Unexpected parse failure: " ++ show e ++ "\n" ++ (Text.unpack $ pointTo c))
+        -> expectationFailure $ Text.unpack $ render $ mconcat ["Unexpected parse failure: "
+                                                               ,document e
+                                                               ,lineBreak
+                                                               ,text $ pointTo c
+                                                               ]
 
       ParseSuccess expr c
         -> if expr == expectExpr
              then return ()
-             else expectationFailure ("Parses successfully, BUT not as expected. Got:\n" ++ show expr ++ "\n expected:\n" ++ show expectExpr)
+             else expectationFailure $ Text.unpack $ render $ mconcat ["Parses successfully, BUT not as expected. Got:"
+                                                                      ,lineBreak
+                                                                      ,document expr
+                                                                      ,lineBreak
+                                                                      ,"expected:"
+                                                                      ,lineBreak
+                                                                      ,document expectExpr
+                                                                      ]
 
 
 
@@ -391,14 +407,13 @@ testPipeline txt = case runParser testExprP txt of
   ParseSuccess expr c
     -> case topExprType typeCtx expr of
           Left err
-            -> unlines ["Type check failure"
-                       ,"Parses:"
-                       ,show expr
-                       ,""
-
-                       ,"Type error:"
-                       ,show err
-                       ]
+            -> Text.unpack . render . mconcat . intersperse lineBreak $
+                 [ "Type check failure: "
+                 , "Parses: "
+                 , document expr
+                 , "Type error: "
+                 , document err
+                 ]
 
           Right exprTy
             -> case reduce expr of
@@ -406,18 +421,18 @@ testPipeline txt = case runParser testExprP txt of
                    -> "reduce error"
 
                  Right redExpr
-                   -> unlines ["Success"
+                   -> Text.unpack . render . mconcat . intersperse lineBreak $
+                        ["Success"
+                        ,"Parses:"
+                        ,document expr
+                        ,""
 
-                              ,"Parses:"
-                              ,show expr
-                              ,""
+                        ,"Type checks:"
+                        ,document exprTy
+                        ,""
 
-                              ,"Type checks:"
-                              ,show exprTy
-                              ,""
-
-                              ,"Reduces:"
-                              ,show redExpr
-                              ]
+                        ,"Reduces:"
+                        ,document redExpr
+                        ]
 
 

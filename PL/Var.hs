@@ -7,11 +7,17 @@ module PL.Var where
 import PL.Binds
 import PL.Binds.Ix
 import PL.Type
+import PL.Printer
+
+import Data.Monoid
 
 -- | Debrujn index for referencing variables.
 -- A positive integer describing how many abstractions deep the var is found.
 data Var = VZ | VS Var
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
+
+instance Document Var where
+  document = int . bindDepth
 
 instance Enum Var where
   toEnum 0 = VZ
@@ -19,9 +25,6 @@ instance Enum Var where
 
   fromEnum VZ     = 0
   fromEnum (VS v) = 1+(fromEnum v)
-
-instance Show Var where
-  show = show . bindDepth
 
 mkVar :: Int -> Var
 mkVar 0 = VZ

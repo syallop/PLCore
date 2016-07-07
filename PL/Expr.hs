@@ -7,10 +7,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 module PL.Expr where
 
 import PL.Case
-import PL.Type
+import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Name
@@ -22,12 +24,17 @@ import PL.Binds
 import PL.Abstracts
 import PL.Bindings
 
+import PL.Printer
+
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Monoid hiding (Sum,Product)
 import Control.Applicative
 
+
+import qualified Data.Text as Text
 import Debug.Trace
 
 todo :: String -> a
@@ -36,10 +43,12 @@ todo str = error $ "TODO: " ++ str
 {- Debuging -}
 -- trace a string, formatted between braces and indented by 'a few' tabs. As in
 -- a mathmatical derivation
-traceStep s a = trace ("\t\t\t\t{" ++ s ++ "}") a
+traceStep :: Doc -> a -> a
+traceStep d = trace (Text.unpack . render . indent 4 . between (char '{',char '}') $ d)
 
 -- trace a string, indented a number of tabs
-traceIndent i s a = trace (replicate (i*2) ' ' ++ s) a
+traceIndent :: Int -> Doc -> a -> a
+traceIndent i d = trace (Text.unpack . render . indent i $ d)
 
 type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)
 type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb
@@ -104,11 +113,43 @@ data Expr b abs tb
       {_f   :: Expr b abs tb
       ,_xTy :: Type tb
       }
+      deriving Show
 
 deriving instance (Eq b,Eq abs,Eq tb) => Eq (Expr b abs tb)
 
-instance (Abstracts abs tb,Show b) => Show (Expr b abs tb) where
-  show = showExpr
+instance (Document abs
+         ,Document b
+         ,Document tb
+         )
+      => Document (Expr b abs tb) where
+  document e = case e of
+    Lam takeTy expr
+      -> char '\\' <> parens (document takeTy) <> parens (document expr)
+
+    App f x
+      -> char '@' <> parens (document f) <> parens (document x)
+
+    Binding b
+      -> document b
+
+    CaseAnalysis c
+      -> text "CASE" <> document c
+
+    Sum sumExpr sumIx sumTys
+      -> char '+' <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
+
+    Product prodExprs
+      -> char '*' <> (mconcat . map (parens . document) $ prodExprs)
+
+    Union unionExpr tyIx unionTys
+      -> char 'U' <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
+
+    BigLam takeKy expr
+      -> text "/\\" <> parens (document takeKy) <> parens (document expr)
+
+    BigApp f xTy
+      -> text "@@" <> parens (document f) <> parens (document xTy)
+
 
 -- An Expr abstracts over itself
 instance HasAbs (Expr b abs tb) where
@@ -192,58 +233,35 @@ data MatchArg b tb
   | Bind                                   -- ^ Match anything and bind it
   deriving (Show,Eq)
 
-showExpr :: forall b abs tb. (Abstracts abs tb, Show b,Show abs,Show tb) => Expr b abs tb -> String
-showExpr = \case
-  Lam takeTy expr
-    -> "(\\" ++ show (absTy takeTy :: Type tb) ++ " " ++ showExpr expr ++ ")"
+instance (Document b,Document tb)
+      => Document (MatchArg b tb) where
+  document = \case
+    MatchSum ix matchArg
+      -> "+" <> document ix <> document matchArg
 
-  App f x
-    -> "(@" ++ showExpr f ++ " " ++ showExpr x ++ ")"
+    MatchProduct matchArgs
+      -> "*" <> (mconcat . map document $ matchArgs)
 
-  Binding b
-    -> show b
+    MatchUnion ty matchArg
+      -> "U" <> document ty <> document matchArg
 
-  CaseAnalysis c
-    -> "(CASE " ++ show c ++ ")"
+    MatchBinding b
+      -> document b
 
-  Sum sumExpr sumIndex sumType
-    -> "(+" ++ show sumIndex ++ " " ++ show sumExpr ++ " " ++ (intercalate " " $ map showType sumType) ++ ")"
+    Bind
+      -> "?"
 
-  Product prodExprs
-    -> "(*" ++ (intercalate " " $ map showExpr prodExprs) ++ ")"
-
-  Union unionExpr unionTypeIndex unionTy
-    -> "(U" ++ showType unionTypeIndex ++ " " ++ showExpr unionExpr ++ (intercalate " " $ map showType $ Set.toList unionTy) ++ ")"
-
-  BigLam takeKind expr
-    -> "(/\\ " ++ show takeKind ++ " " ++ show expr ++ ")" 
-
-  BigApp fExpr xTy
-    -> "(# " ++ show fExpr ++ " " ++ show xTy ++ ")" 
-
-
-showMatchArgs :: (Show tb,Show b) => [MatchArg b tb] -> String
-showMatchArgs = intercalate " " . map showMatchArg
-
-showMatchArg :: (Show b,Show tb) => MatchArg b tb -> String
-showMatchArg = \case
-  MatchSum ix matchArg
-    -> "+" ++ show ix ++ " " ++ showMatchArg matchArg
-
-  MatchProduct matchArgs
-    -> "*" ++ (intercalate " " $ map showMatchArg matchArgs)
-
-  MatchUnion ty matchArg
-    -> "U" ++ showType ty ++ " " ++ showMatchArg matchArg
-
-  MatchBinding b
-    -> show b
-
-  Bind
-    -> "?"
 
 -- | A top-level expression is an expression without a bindings context.
-topExprType :: (BindAbs b abs tb,Binds b (Type tb), Binds tb Kind, Ord tb,Show b,Show (BindCtx tb Kind))
+topExprType :: (BindAbs b abs tb
+               ,Binds b (Type tb)
+               ,Binds tb Kind
+               ,Ord tb
+               ,Document b
+               ,Document abs
+               ,Document tb
+               ,Document (BindCtx tb Kind)
+               )
             => TypeCtx tb
             -> Expr b abs tb
             -> Either (Error tb) (Type tb)
@@ -254,7 +272,15 @@ type TypeBindCtx tb   = Binds tb Kind => BindCtx tb Kind
 type TypeBindings tb  = Bindings (Type tb)
 
 -- | Under a given bindings context, type check an expression.
-exprType :: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b,Show (BindCtx tb Kind))
+exprType :: forall b abs tb
+          . (BindAbs b abs tb
+            ,Binds tb Kind
+            ,Ord tb
+            ,Document b
+            ,Document abs
+            ,Document tb
+            ,Document (BindCtx tb Kind)
+            )
          => ExprBindCtx b tb -- Associate expr bindings 'b' to their types
          -> TypeBindCtx tb   -- Associate type bindings 'tb' to their Kinds
          -> TypeBindings tb  -- Associate type bindings 'tb' to their bound or unbound types
@@ -263,7 +289,15 @@ exprType :: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b,Show 
          -> Either (Error tb) (Type tb)
 exprType = exprType' 0
 
-exprType':: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b,Show (BindCtx tb Kind))
+exprType':: forall b abs tb
+          . (BindAbs b abs tb
+            ,Binds tb Kind
+            ,Ord tb
+            ,Document b
+            ,Document abs
+            ,Document tb
+            ,Document (BindCtx tb Kind)
+            )
          => Int              -- indentation level of debuging output
          -> ExprBindCtx b tb -- Associate expr bindings 'b' to their types
          -> TypeBindCtx tb   -- Associate type bindings 'tb' to their Kinds
@@ -271,7 +305,7 @@ exprType':: forall b abs tb. (BindAbs b abs tb,Binds tb Kind,Ord tb,Show b,Show 
          -> TypeCtx tb       -- Associate Named types to their TypeInfo
          -> Expr b abs tb    -- Expression to type-check
          -> Either (Error tb) (Type tb)
-exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (show ("EXPRTYPE",e,typeBindCtx,typeBindings)) $ case e of
+exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat ["EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case e of
 
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
@@ -296,22 +330,33 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (show
           resFTy <- maybe (Left $ EMsg "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           {-let errAppMismatch = Left $ EAppMismatch fTy xTy-}
-          let errAppMismatch = Left $ error $ show resFTy ++ "   " ++ show xTy
+          let errAppMismatch = Left . error . Text.unpack . render $ document resFTy <> document xTy
           case resFTy of
             -- Regular function application attempt
             Arrow aTy bTy -> case typeEq typeBindCtx typeBindings typeCtx aTy xTy of
                                  Nothing -> error "Non existant type name in application of arrow type"
                                  Just isSameType
                                    | isSameType -> Right bTy
-                                   | otherwise  -> let msg = unlines ["In expr: "
-                                                                     ,show $ App f x
-                                                                     ,"f : " ++ show fTy
-                                                                     ,"x : " ++ show xTy
-                                                                     ,"f :~> " ++ show resFTy
-                                                                     ]
+                                   | otherwise  -> let msg = Text.unpack . render . mconcat $
+                                                             ["In expr: "
+                                                             ,lineBreak
+
+                                                             ,document $ App f x
+                                                             ,lineBreak
+
+                                                             ,"f : "
+                                                             ,document fTy
+                                                             ,lineBreak
+
+                                                             ,"x : "
+                                                             ,document xTy
+                                                             ,lineBreak
+
+                                                             ,"f :~> "
+                                                             ,lineBreak
+                                                             ,document resFTy
+                                                             ]
                                                       in error msg
-                                   --error $ "Types not equal in application of arrow type. Expected: " ++ show aTy ++ " Given: " ++ show xTy
-                                   --
             _ -> error "Attempting to apply non-arrow type"
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
@@ -325,7 +370,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (show
                    Nothing -> Left $ EMsg "An expressions indexed type in a sum is an unknown type name"
                    Just isSameType
                      | isSameType -> Right ()
-                     | otherwise  -> Left $ EMsg $ "Expression doesnt have the type of the position in a sum type it claims it has. Has: " ++ show exprTy ++ " Expected: " ++ show (inTypr !! ix)
+                     | otherwise  -> Left $ EMsg $ Text.unpack $ render $ "Expression doesnt have the type of the position in a sum type it claims it has. Has: " <> document exprTy <> " Expected: " <> document (inTypr !! ix)
 
           -- Allow the other types in the sum to not exist...
           _ <- Right ()
@@ -411,10 +456,11 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (show
                                                   Nothing -> Left $ EMsg "First branch has a unresolvable type name"
                                                   Just isSameType
                                                     | isSameType -> Right ()
-                                                    | otherwise  -> Left $ EMsg $ unlines ["Default branch and first case branch have different result types"
-                                                                                          ,show defExprTy
-                                                                                          ,show branch0Ty
-                                                                                          ]
+                                                    | otherwise  -> Left $ EMsg $ Text.unpack $ render $ mconcat $
+                                                                      ["Default branch and first case branch have different result types"
+                                                                      ,document defExprTy
+                                                                      ,document branch0Ty
+                                                                      ]
                                )
                                mDefExprTy
 
@@ -465,7 +511,14 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (show
 
 -- Type check a case branch, requiring it match the expected type
 -- , if so, type checking the result expression which is returned.
-branchType :: (BindAbs b abs tb,Binds tb Kind, Ord tb,Show b,Show (BindCtx tb Kind))
+branchType :: (BindAbs b abs tb
+              ,Binds tb Kind
+              ,Ord tb
+              ,Document b
+              ,Document abs
+              ,Document tb
+              ,Document (BindCtx tb Kind)
+              )
            => Int
            -> CaseBranch (Expr b abs tb) (MatchArg b tb)
            -> Type tb
@@ -481,7 +534,7 @@ branchType i (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBinding
 
 -- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.
-checkMatchWith :: (Binds b (Type tb),Binds tb Kind,Ord tb,Show tb)
+checkMatchWith :: (Binds b (Type tb),Binds tb Kind,Ord tb,Document tb)
                => MatchArg b tb
                -> Type tb
                -> ExprBindCtx b tb
@@ -534,7 +587,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
             checkMatchWith nestedMatchArg unionIndexTy exprBindCtx typeBindCtx typeBindings typeCtx
 
 
-checkMatchesWith :: (Binds b (Type tb),Binds tb Kind,Ord tb,Show tb)
+checkMatchesWith :: (Binds b (Type tb),Binds tb Kind,Ord tb,Document tb)
                  => [MatchArg b tb]
                  -> [Type tb]
                  -> ExprBindCtx b tb

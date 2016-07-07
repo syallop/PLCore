@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 module PL.Type.Eq
   (typeEq
   ,typeEqs
@@ -17,20 +18,34 @@ import PL.Bindings
 import PL.ReduceType
 import PL.ExprLike
 
+import PL.Printer
+
 import Data.Proxy
 import qualified Data.Set as Set
 import Control.Applicative
+import qualified Data.Text as Text
+import Data.Monoid
 
 import Debug.Trace
 
+{- Debuging -}
 -- trace a string, formatted between braces and indented by 'a few' tabs. As in
 -- a mathmatical derivation
-traceStep s a = trace ("\t\t\t\t{" ++ s ++ "}") a
+traceStep :: Doc -> a -> a
+traceStep d = trace (Text.unpack . render . indent 4 . between (char '{',char '}') $ d)
 
 -- trace a string, indented a number of tabs
-traceIndent i s a = trace (replicate (i*2) ' ' ++ s) a
+traceIndent :: Int -> Doc -> a -> a
+traceIndent i d = trace (Text.unpack . render . indent i $ d)
 
-typeEq :: forall tb. (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb)
+
+typeEq :: forall tb
+        . (Eq tb
+          ,Ord tb
+          ,Binds tb Kind
+          ,HasBinding (Type tb) tb
+          ,Document tb
+          )
        => BindCtx tb Kind
        -> Bindings (Type tb)
        -> TypeCtx tb
@@ -41,7 +56,13 @@ typeEq = typeEq' 0
 
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
-typeEq' :: forall tb. (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb)
+typeEq' :: forall tb
+         . (Eq tb
+           ,Ord tb
+           ,Binds tb Kind
+           ,HasBinding (Type tb) tb
+           ,Document tb
+           )
         => Int
         -> BindCtx tb Kind
         -> Bindings (Type tb)
@@ -49,7 +70,7 @@ typeEq' :: forall tb. (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) t
         -> Type tb
         -> Type tb
         -> Maybe Bool
-typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t1,typeBindings)) $ case (t0,t1) of
+typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [document t0,document t1,document typeBindings]) $ case (t0,t1) of
 
   -- Named Types are ONLY equal if they have the same name.
   (Named n0,Named n1)
@@ -116,7 +137,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
   (TypeApp f0 x0,ty1)
     -> traceStep "Reduce application function,under arg" $ case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
-           -> error $ "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " ++ show e
+           -> error $ Text.unpack $ render $ "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
 
          Right redF0
            -> case redF0 of
@@ -165,10 +186,10 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (show (t0,t
 
 
 -- Are two lists of types pairwise equivalent under a typectx?
-typeEqs :: (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb) => BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
+typeEqs :: (Eq tb,Ord tb,Document tb,Binds tb Kind,HasBinding (Type tb) tb) => BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
 typeEqs = typeEqs' 0
 
-typeEqs' :: (Eq tb,Ord tb,Show tb,Binds tb Kind,HasBinding (Type tb) tb) => Int -> BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
+typeEqs' :: (Eq tb,Ord tb,Document tb,Binds tb Kind,HasBinding (Type tb) tb) => Int -> BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
 typeEqs' i typeBindCtx typeBindings typeNameCtx ts0 ts1
   | length ts0 == length ts1 = let mEq = fmap and $ mapM (\(t0, t1) -> typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1) $ zip ts0 ts1
                                   in case mEq of

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverlappingInstances #-}
 module PL.Type.Eq
   (typeEq
   ,typeEqs
@@ -19,6 +20,7 @@ import PL.ReduceType
 import PL.ExprLike
 
 import PL.Printer
+import PL.Printer.Debug
 
 import Data.Proxy
 import qualified Data.Set as Set
@@ -27,17 +29,6 @@ import qualified Data.Text as Text
 import Data.Monoid
 
 import Debug.Trace
-
-{- Debuging -}
--- trace a string, formatted between braces and indented by 'a few' tabs. As in
--- a mathmatical derivation
-traceStep :: Doc -> a -> a
-traceStep d = trace (Text.unpack . render . indent 4 . between (char '{',char '}') $ d)
-
--- trace a string, indented a number of tabs
-traceIndent :: Int -> Doc -> a -> a
-traceIndent i d = trace (Text.unpack . render . indent i $ d)
-
 
 typeEq :: forall tb
         . (Eq tb
@@ -74,8 +65,8 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
 
   -- Named Types are ONLY equal if they have the same name.
   (Named n0,Named n1)
-    | n0 == n1  -> traceIndent i "T" $ Just True
-    | otherwise -> traceIndent i "F" $ Just False
+    | n0 == n1  -> traceIndent i ("T"::Text.Text) $ Just True
+    | otherwise -> traceIndent i ("F"::Text.Text) $ Just False
     {-| otherwise -> do it0 <- lookupTypeNameInitialInfo n0 typeNameCtx-}
                       {-it1 <- lookupTypeNameInitialInfo n1 typeNameCtx-}
                       {-typeEq typeBindCtx typeNameCtx (_typeInfoType it0) (_typeInfoType it1)-}
@@ -83,10 +74,10 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   -- To compare a Named type to a non-named type, lookup the definition of the
   -- name and recurse.
   (_,Named _)
-    -> traceStep "Reverse" $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 t0
+    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 t0
   (Named n0,_)
     -> do it0 <- lookupTypeNameInitialInfo n0 typeNameCtx
-          traceStep "Lookup name" $
+          traceStep ("Lookup name"::Text.Text) $
             typeEq' (i+1) typeBindCtx typeBindings typeNameCtx (_typeInfoType it0) t1
 
 
@@ -97,16 +88,16 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   (TypeBinding b0,TypeBinding b1)
     -> let binding0 = maybe (error "") id $ safeIndex (Proxy :: Proxy tb) typeBindings (bindDepth b0)
            binding1 = index (Proxy :: Proxy tb) typeBindings (bindDepth b1)
-          in traceStep "Lookup both bindings" $ case (binding0,binding1) of
+          in traceStep ("Lookup both bindings"::Text.Text) $ case (binding0,binding1) of
                -- Two unbound are unified
                (Unbound,Unbound)
-                 -> traceIndent i "Both unbound => T" $ Just True
+                 -> traceIndent i ("Both unbound => T"::Text.Text) $ Just True
 
                -- An unbound unifies with a bound
                (Unbound,Bound ty1)
-                 -> traceIndent i "One bound => unifies => T" $ Just True
+                 -> traceIndent i ("One bound => unifies => T"::Text.Text) $ Just True
                (Bound ty1,Unbound)
-                 -> traceIndent i "One bound => unifies => T" $ Just True
+                 -> traceIndent i ("One bound => unifies => T"::Text.Text) $ Just True
 
                -- Two bound types are equal if the bound types are equal
                (Bound ty0,Bound ty1)
@@ -114,12 +105,12 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
 
   -- To compare a binding to a non-binding
   (ty0,TypeBinding _)
-    -> traceStep "Reverse" $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
+    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
   (TypeBinding b0,ty1)
     -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0)
-          in traceStep "Lookup binding" $ case binding0 of
+          in traceStep ("Lookup binding"::Text.Text) $ case binding0 of
                Unbound
-                 -> traceIndent i "Unbound => T" $ Just True
+                 -> traceIndent i ("Unbound => T"::Text.Text) $ Just True
 
                Bound ty0
                  -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1
@@ -128,14 +119,14 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   -- Two type applications are equal if both of their corresponding parts are
   -- equal
   (TypeApp f0 x0,TypeApp f1 x1)
-    -> traceStep "Both eq" $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx x0 x1
+    -> traceStep ("Both eq"::Text.Text) $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx x0 x1
 
   -- A TypeApp is equal to something else when, after reducing it, it is equal
   -- to that other thing.
   (ty0,TypeApp _ _)
-    -> traceStep "Reverse" $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
+    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
   (TypeApp f0 x0,ty1)
-    -> traceStep "Reduce application function,under arg" $ case reduceTypeStep typeBindings typeNameCtx f0 of
+    -> traceStep ("Reduce application function,under arg"::Text.Text) $ case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
            -> error $ Text.unpack $ render $ "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
 
@@ -153,30 +144,30 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   -- Arrow types are equal when their corresponding to and from types are the
   -- same
   (Arrow from0 to0,Arrow from1 to1)
-    -> traceStep "Both eq" $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx from0 from1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx to0 to1
+    -> traceStep ("Both eq"::Text.Text) $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx from0 from1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx to0 to1
 
   (SumT ts0,SumT ts1)
-    -> traceStep "All eq" $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx ts0 ts1
+    -> traceStep ("All eq"::Text.Text) $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx ts0 ts1
 
   (ProductT ts0,ProductT ts1)
-    -> traceStep "All eq" $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx ts0 ts1
+    -> traceStep ("All eq"::Text.Text) $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx ts0 ts1
 
   (UnionT ts0,UnionT ts1)
-    -> traceStep "All eq" $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx(Set.toList ts0) (Set.toList ts1)
+    -> traceStep ("All eq"::Text.Text) $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx(Set.toList ts0) (Set.toList ts1)
 
   (BigArrow fromKy0 toTy0,BigArrow fromKy1 toTy1)
-    -> traceStep "Both eq" $
+    -> traceStep ("Both eq"::Text.Text) $
        let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
            newTypeBindings = unbound $ bury typeBindings
           in if kindEq fromKy0 fromKy1
                then typeEq' (i+1) newTypeBindCtx newTypeBindings typeNameCtx toTy0 toTy1
-               else traceIndent i "F" $ Just False
+               else traceIndent i ("F"::Text.Text) $ Just False
 
   -- Two type lambda are equivalent if their corresponding from and to are the
   -- same
   -- TODO: Should probably UnBound the type vars when checking theyre equal
   (TypeLam k0 ty0,TypeLam k1 ty1)
-    -> traceStep "Both eq" $
+    -> traceStep ("Both eq"::Text.Text) $
        let newTypeBindCtx  = addBinding k0 typeBindCtx
            newTypeBindings = unbound $ bury typeBindings
           in (&&) <$> pure (k0 == k1) <*> typeEq' (i+1) newTypeBindCtx newTypeBindings typeNameCtx ty0 ty1
@@ -193,8 +184,8 @@ typeEqs' :: (Eq tb,Ord tb,Document tb,Binds tb Kind,HasBinding (Type tb) tb) => 
 typeEqs' i typeBindCtx typeBindings typeNameCtx ts0 ts1
   | length ts0 == length ts1 = let mEq = fmap and $ mapM (\(t0, t1) -> typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1) $ zip ts0 ts1
                                   in case mEq of
-                                       Just True -> traceIndent i "T" mEq
-                                       _         -> traceIndent i "F" mEq
+                                       Just True -> traceIndent i ("T"::Text.Text) mEq
+                                       _         -> traceIndent i ("F"::Text.Text) mEq
   | otherwise                = Just False
 
 

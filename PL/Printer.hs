@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE RankNTypes #-}
 module PL.Printer
   (-- * Types
    Doc(..)
@@ -214,12 +216,12 @@ class Document d where
 renderDocument :: Document d => d -> Text
 renderDocument = render . document
 
-instance Document Doc    where document = id
 instance Document Char   where document = char
 instance Document Text   where document = text
 instance Document String where document = string
 instance Document Bool   where document = bool
 instance Document Int    where document = int
+instance Document Doc    where document = id
 
 instance IsString Doc where
   fromString = string

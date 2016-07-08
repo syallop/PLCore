@@ -25,6 +25,7 @@ import PL.Abstracts
 import PL.Bindings
 
 import PL.Printer
+import PL.Printer.Debug
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -33,22 +34,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Monoid hiding (Sum,Product)
 import Control.Applicative
 
-
 import qualified Data.Text as Text
-import Debug.Trace
-
-todo :: String -> a
-todo str = error $ "TODO: " ++ str
-
-{- Debuging -}
--- trace a string, formatted between braces and indented by 'a few' tabs. As in
--- a mathmatical derivation
-traceStep :: Doc -> a -> a
-traceStep d = trace (Text.unpack . render . indent 4 . between (char '{',char '}') $ d)
-
--- trace a string, indented a number of tabs
-traceIndent :: Int -> Doc -> a -> a
-traceIndent i d = trace (Text.unpack . render . indent i $ d)
 
 type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)
 type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb
@@ -133,22 +119,22 @@ instance (Document abs
       -> document b
 
     CaseAnalysis c
-      -> text "CASE" <> document c
+      -> "CASE" <> document c
 
     Sum sumExpr sumIx sumTys
-      -> char '+' <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
+      -> "+" <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
 
     Product prodExprs
-      -> char '*' <> (mconcat . map (parens . document) $ prodExprs)
+      -> "*" <> (mconcat . map (parens . document) $ prodExprs)
 
     Union unionExpr tyIx unionTys
-      -> char 'U' <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
+      -> "U" <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
 
     BigLam takeKy expr
-      -> text "/\\" <> parens (document takeKy) <> parens (document expr)
+      -> "/\\" <> parens (document takeKy) <> parens (document expr)
 
     BigApp f xTy
-      -> text "@@" <> parens (document f) <> parens (document xTy)
+      -> "@@" <> parens (document f) <> parens (document xTy)
 
 
 -- An Expr abstracts over itself
@@ -237,19 +223,19 @@ instance (Document b,Document tb)
       => Document (MatchArg b tb) where
   document = \case
     MatchSum ix matchArg
-      -> "+" <> document ix <> document matchArg
+      -> char '+' <> document ix <> document matchArg
 
     MatchProduct matchArgs
-      -> "*" <> (mconcat . map document $ matchArgs)
+      -> char '*' <> (mconcat . map document $ matchArgs)
 
     MatchUnion ty matchArg
-      -> "U" <> document ty <> document matchArg
+      -> char 'U' <> document ty <> document matchArg
 
     MatchBinding b
       -> document b
 
     Bind
-      -> "?"
+      -> char '?'
 
 
 -- | A top-level expression is an expression without a bindings context.

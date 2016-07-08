@@ -60,7 +60,7 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
 
         Right exprTy
           -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
-               Nothing    -> expectationFailure $ Text.unpack $ render "A given type name does not exist in the context"
+               Nothing    -> expectationFailure $ Text.unpack $ render $ "A given type name does not exist in the context"
                Just False -> expectationFailure $ Text.unpack $ render $ "Expected: " <> document expectTy <> " got: " <> document exprTy
                Just True  -> return ()
 

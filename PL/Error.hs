@@ -29,7 +29,7 @@ data Error tb
   deriving (Ord,Eq,Show)
 
 instance Document tb => Document (Error tb) where
-  document e = text "ERROR: " <> case e of
+  document e = "ERROR: " <> case e of
     EMsg msg
       -> string msg
 

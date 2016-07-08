@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE OverlappingInstances #-}
 module PL.Parser
   (-- Core parser functions
    ParseResult(..)

@@ -33,6 +33,7 @@ library
                      , PL.Parser.Lispy.Kind
                      , PL.Parser.Lispy.Type
                      , PL.Printer
+                     , PL.Printer.Debug
                      , PL.Reduce
                      , PL.ReduceType
                      , PL.TyVar

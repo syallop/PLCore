@@ -15,6 +15,7 @@ import PL.TypeCtx
 import PL.Name
 
 import PL.Printer
+import PL.Printer.Debug
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -22,19 +23,6 @@ import Data.Proxy
 import Data.Monoid
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-
-import Debug.Trace
-
-{- Debuging -}
--- trace a string, formatted between braces and indented by 'a few' tabs. As in
--- a mathmatical derivation
-traceStep :: Doc -> a -> a
-traceStep d = trace (Text.unpack . render . indent 4 . between (char '{',char '}') $ d)
-
--- trace a string, indented a number of tabs
-traceIndent :: Int -> Doc -> a -> a
-traceIndent i d = trace (Text.unpack . render . indent i $ d)
-
 
 -- | Reduce a top-level type - A type under no outer abstractions
 -- Assume kind checked?
@@ -67,9 +55,9 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat ["~>",documen
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
-    -> traceStep "Lookup binding" $ pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
-         Unbound   -> traceIndent i "Unbound. No reduction" $ TypeBinding b
-         Bound ty' -> traceIndent i "Bound" $ ty' -- maybe should reduce again?
+    -> traceStep ("Lookup binding"::Text.Text) $ pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
+         Unbound   -> traceIndent i ("Unbound. No reduction":: Text.Text) $ TypeBinding b
+         Bound ty' -> traceIndent i ("Bound" :: Text.Text) $ ty' -- maybe should reduce again?
 
   TypeApp f x
     -> do x' <- reduceTypeStep' (i+1) bindings typeNameCtx x

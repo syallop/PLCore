@@ -15,6 +15,7 @@ import PL.Parser.Lispy
 import PL.Parser.Lispy.Expr
 import PL.Parser.Lispy.Type
 import PL.Printer
+import PL.Printer.Debug
 import PL.Reduce
 import PL.ReduceType
 import PL.TyVar

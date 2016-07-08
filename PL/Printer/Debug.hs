@@ -12,9 +12,15 @@ import PL.Printer
 import qualified Debug.Trace as D
 import qualified Data.Text as Text
 
+-- Global flag which turns all uses of the trace functions exported by this module on/off.
+globalDebug :: Bool
+globalDebug = False
+
 -- Debug.Trace from base, but takes a Document d instead of a String
 trace :: Document d => d -> a -> a
-trace = D.trace . Text.unpack . renderDocument
+trace = if globalDebug
+          then D.trace . Text.unpack . renderDocument
+          else flip const
 
 -- Debug.TraceId from base, but takes a Document d instead of a String
 traceId :: Document d => d -> d

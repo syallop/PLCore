@@ -216,6 +216,7 @@ class Document d where
 renderDocument :: Document d => d -> Text
 renderDocument = render . document
 
+instance Document ()     where document () = text "()"
 instance Document Char   where document = char
 instance Document Text   where document = text
 instance Document String where document = string

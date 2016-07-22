@@ -65,6 +65,8 @@ module PL.Parser
   ,remainder
   ,showExpected
   ,parseResult
+
+  ,Cursor(..)
   ) where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
@@ -372,7 +374,7 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = charIs '/'
+bigLambda  = charIs 'Λ'
 bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline
@@ -425,6 +427,7 @@ takeNIf pred i = sat pred $ takeN i
 
 
 -- Take a string of text
+-- The text must not be followed by another regular character, only spaces or an end of input.
 textIs :: Text -> Parser ()
 textIs t = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
 

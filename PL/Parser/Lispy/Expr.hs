@@ -9,10 +9,12 @@ import qualified Data.Set as Set
 
 import PL.Parser
 import PL.Parser.Lispy.Type
+import PL.Parser.Lispy.Kind
 
 import PL.Case
 import PL.Expr hiding (appise,lamise)
 import PL.Type
+import PL.Kind
 import PL.Var
 
 typeAbs :: Ord tb => Parser tb -> Parser (Type tb)
@@ -28,6 +30,16 @@ lamise a0 []     e = Lam a0 e
 lamise a0 (a:as) e = Lam a0 $ lamise a as e
 
 
+-- A big lambda followed by one or more kind abstractions then an expression
+bigLamExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)
+bigLamExpr = bigLamise <$> (bigLambda *> kind) <*> many kind  <*> exprI
+
+-- Chain big lambda
+bigLamise :: Kind -> [Kind] -> Expr b abs tb -> Expr b abs tb
+bigLamise a0 []     e = BigLam a0 e
+bigLamise a0 (a:as) e = BigLam a0 $ bigLamise a as e
+
+
 -- An '@' followed by two or more expressions
 appExpr :: (Ord tb, Implicits b abs tb) => Parser (Expr b abs tb)
 appExpr = appise <$> (at *> exprI) <*> exprI <*> many exprI
@@ -36,6 +48,17 @@ appExpr = appise <$> (at *> exprI) <*> exprI <*> many exprI
 appise :: Expr b abs tb -> Expr b abs tb -> [Expr b abs tb] -> Expr b abs tb
 appise f x []     = App f x
 appise f x (y:ys) = appise (App f x) y ys
+
+
+-- A "@@" followed by two or more expressions
+bigAppExpr :: (Ord tb, Implicits b abs tb) => Parser (Expr b abs tb)
+bigAppExpr = bigAppise <$> (at *> exprI) <*> (typ ?tb) <*> many (typ ?tb)
+
+-- Chain big application
+bigAppise :: Expr b abs tb -> Type tb -> [Type tb] -> Expr b abs tb
+bigAppise f x []     = BigApp f x
+bigAppise f x (y:ys) = bigAppise (BigApp f x) y ys
+
 
 bindingExpr :: Parser b -> Parser (Expr b abs tb)
 bindingExpr eb = Binding <$> eb
@@ -137,8 +160,10 @@ type Implicits b abs tb = (?eb :: Parser b,?abs :: Parser abs,?tb :: Parser tb)
 -- - ?tb  Type bindings          (E.G. Var)
 exprI :: (Ord tb, Implicits b abs tb) => Parser (Expr b abs tb)
 exprI
-  = lamExpr
+  =  lamExpr
+ <|> bigLamExpr
  <|> appExpr
+ <|> bigAppExpr
  <|> sumExpr
  <|> productExpr
  <|> unionExpr

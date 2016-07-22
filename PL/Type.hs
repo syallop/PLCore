@@ -168,7 +168,7 @@ instance Ord tb => HasNonAbs (Type tb) where
 instantiate :: forall tb. (Ord tb,BindingIx tb) => Type tb -> Type tb -> Type tb
 instantiate instType inType = instantiate' 0 instType inType
   where
-    {-instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb-}
+    instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb
     instantiate' i instType inType = case inType of
       Arrow from to
         -> Arrow (instantiate' i instType from) (instantiate' i instType to)

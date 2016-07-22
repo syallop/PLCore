@@ -10,7 +10,9 @@ kindAbs :: Parser Kind
 kindAbs = kind
 
 kind :: Parser Kind
-kind = simpleKind <|> arrowKind
+kind =  kind'
+    <|> betweenParens kind'
+  where kind' = simpleKind <|> arrowKind
 
 simpleKind :: Parser Kind
 simpleKind = textIs "KIND" *> pure Kind

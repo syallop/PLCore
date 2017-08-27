@@ -19,9 +19,7 @@ module ExprSpec.Natural
   , three
   , four
 
-  , subTwoExpr
-  , subTwoExprType
-  , subTwoText
+  , subTwoExprTestCase
   )
   where
 
@@ -41,13 +39,13 @@ import PL.Var
 import PL.Bindings
 
 import Data.Text (Text)
+import Data.Maybe
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Text as Text
 
 import Data.Monoid ((<>))
 
-type TestType = Type TyVar
-type TestExpr = Expr Var TestType TyVar
+import ExprTestCase
 
 natTypeCtx = insertRecType "Nat" natType emptyTypeCtx
 natTypeName = Named "Nat"
@@ -76,22 +74,29 @@ four  = suc three
 -- Test nested pattern matching
 -- n > 2     ~> n-2
 -- otherwise ~> 0
-subTwoExpr :: TestExpr
-subTwoExpr = Lam natTypeName $                              -- \n : Nat ->
-    CaseAnalysis $ Case (Binding VZ)                        -- case n of
-      $ CaseBranches                                        --
-        ((CaseBranch (sPat $ sPat Bind) (Binding VZ)) :| [] --   S S n -> n
-        )                                                   --
-        (Just                                               --
-            zTerm                                           --   _     -> Z
-        )
-subTwoExprType :: TestType
-subTwoExprType = Arrow natType natType
-subTwoText :: Text
-subTwoText = Text.unlines
-  ["\\Nat (CASE 0"
-  ,"         (|"<>(sPatText $ sPatText "?")<>" 0)"
-  ,"         "<>zTermText
-  ,"     )"
-  ]
+subTwoExprTestCase :: ExprTestCase
+subTwoExprTestCase = ExprTestCase
+  {_underTypeCtx = ctx
+  ,_isExpr       = e
+  ,_typed        = ty
+  ,_parsesFrom   = txt
+  }
+  where
+    ctx = fromJust natTypeCtx
+    e   = Lam natTypeName $                                         -- \n : Nat ->
+            CaseAnalysis $ Case (Binding VZ)                        -- case n of
+              $ CaseBranches                                        --
+                ((CaseBranch (sPat $ sPat Bind) (Binding VZ)) :| [] --   S S n -> n
+                )                                                   --
+                (Just                                               --
+                    zTerm                                           --   _     -> Z
+                )
+    ty = Arrow natType natType
+
+    txt = Text.unlines
+      ["\\Nat (CASE 0"
+      ,"         (|"<>(sPatText $ sPatText "?")<>" 0)"
+      ,"         "<>zTermText
+      ,"     )"
+      ]
 

@@ -13,9 +13,7 @@ module ExprSpec.Boolean
   , falsePatText
   , truePatText
 
-  , andExpr
-  , andExprType
-  , andText
+  , andExprTestCase
   )
   where
 
@@ -34,13 +32,13 @@ import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
 
-type TestType = Type TyVar
-type TestExpr = Expr Var TestType TyVar
+import ExprTestCase
 
 boolTypeCtx = insertType "Bool" boolType emptyTypeCtx
 boolTypeName = Named "Bool"
@@ -61,35 +59,41 @@ falsePatText  = "+0(*)"
 truePatText   = "+1(*)"
 
 -- Boolean and
-andExpr :: TestExpr
-andExpr = Lam boolTypeName $ Lam boolTypeName $      -- \x:Bool y:Bool ->
-    CaseAnalysis $ Case (Binding VZ)                 -- case y of
-      $ CaseBranches                                 --
-        ((CaseBranch falsePat falseTerm) :| []       --     False -> False
-        )                                            --
-        (Just                                        --     _      ->
-            (CaseAnalysis $ Case (Binding $ VS VZ)   --               case x of
-              $ CaseBranches                         --
-                ((CaseBranch falsePat falseTerm):|[] --                 False -> False
-                )                                    --
-                (Just                                --                        _     ->
-                    trueTerm                         --                                 True
+andExprTestCase :: ExprTestCase
+andExprTestCase = ExprTestCase
+  {_underTypeCtx = ctx
+  ,_isExpr       = e
+  ,_typed        = ty
+  ,_parsesFrom   = txt
+  }
+  where
+    ctx = fromJust boolTypeCtx
+    e   = Lam boolTypeName $ Lam boolTypeName $      -- \x:Bool y:Bool ->
+        CaseAnalysis $ Case (Binding VZ)                 -- case y of
+          $ CaseBranches                                 --
+            ((CaseBranch falsePat falseTerm) :| []       --     False -> False
+            )                                            --
+            (Just                                        --     _      ->
+                (CaseAnalysis $ Case (Binding $ VS VZ)   --               case x of
+                  $ CaseBranches                         --
+                    ((CaseBranch falsePat falseTerm):|[] --                 False -> False
+                    )                                    --
+                    (Just                                --                        _     ->
+                        trueTerm                         --                                 True
+                    )
                 )
             )
-        )
-andExprType :: TestType
-andExprType = Arrow boolType (Arrow boolType boolType)
-andText :: Text
-andText = Text.unlines
-  ["\\Bool Bool (CASE 0"
-  ,"               (| "<>falsePatText<>" "<>falseTermText<>")"
-  ,""
-  ,"               (CASE 1"
-  ,"                   (| "<>falsePatText<>" "<>falseTermText<>")"
-  ,""
-  ,"                   "<>trueTermText<>""
-  ,""
-  ,"               )"
-  ,"            )"
-  ]
+    ty  = Arrow boolType (Arrow boolType boolType)
+    txt = Text.unlines
+      ["\\Bool Bool (CASE 0"
+      ,"               (| "<>falsePatText<>" "<>falseTermText<>")"
+      ,""
+      ,"               (CASE 1"
+      ,"                   (| "<>falsePatText<>" "<>falseTermText<>")"
+      ,""
+      ,"                   "<>trueTermText<>""
+      ,""
+      ,"               )"
+      ,"            )"
+      ]
 

@@ -6,8 +6,8 @@ module ExprSpec.List
   , listSumType
   , emptyTerm
   , consTerm
-  , listNatExpr
-  , listNatExprType,
+
+  , listNatExprTestCase
   )
   where
 
@@ -27,24 +27,32 @@ import PL.Var
 import PL.Bindings
 
 import Data.Text (Text)
+import Data.Monoid ((<>))
+import Data.Maybe
 
 import ExprSpec.Natural
-
-type TestType = Type TyVar
-type TestExpr = Expr Var TestType TyVar
+import ExprTestCase
 
 listTypeCtx  = insertRecType "List" listType emptyTypeCtx
 listTypeName = Named "List"
 listType     = TypeLam Kind $ SumT listSumType
-listSumType  = [ProductT []                                        -- : List a
+listSumType  = [ProductT [] -- : List a
                ,      ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
                ]
 emptyTerm    = BigLam Kind $ Sum (Product []) 0 listSumType
 consTerm     = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ,Binding VZ]) 1 listSumType
 
 -- [0]
-listNatExpr :: TestExpr
-listNatExpr = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
-listNatExprType :: TestType
-listNatExprType = TypeApp listTypeName natType
+listNatExprTestCase :: ExprTestCase
+listNatExprTestCase = ExprTestCase
+  {_underTypeCtx = ctx
+  ,_isExpr       = e
+  ,_typed        = ty
+  ,_parsesFrom   = txt
+  }
+  where
+    ctx = fromJust $ listTypeCtx <> natTypeCtx
+    e   = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
+    ty  = TypeApp listTypeName natType
+    txt = undefined
 

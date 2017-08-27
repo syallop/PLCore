@@ -4,10 +4,8 @@ module ExprSpec.Function
   , identityType
   , identityTerm
 
-  , idExpr
-  ,idExprType
-  ,constExpr
-  ,constExprType
+  , idExprTestCase
+  , constExprTestCase
   )
   where
 
@@ -28,21 +26,36 @@ import PL.Bindings
 
 import Data.Text (Text)
 
-type TestType = Type TyVar
-type TestExpr = Expr Var TestType TyVar
+import ExprTestCase
 
 identityTypeName = Named "Identity"
 identityType     = TypeLam Kind $ ProductT [TypeBinding $ TyVar VZ]
 identityTerm     = undefined
 
 -- The polymorphic identity function
-idExpr :: TestExpr
-idExpr = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
-idExprType :: TestType
-idExprType = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
+idExprTestCase :: ExprTestCase
+idExprTestCase = ExprTestCase
+  {_underTypeCtx = ctx
+  ,_isExpr       = e
+  ,_typed        = ty
+  ,_parsesFrom   = txt
+  }
+  where
+    ctx = emptyTypeCtx
+    e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
+    ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
+    txt = undefined
 
-constExpr :: TestExpr
-constExpr = BigLam Kind $ BigLam Kind $ Lam (TypeBinding $ TyVar $ VS VZ) $ Lam (TypeBinding $ TyVar VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
-constExprType :: TestType
-constExprType = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding $ TyVar $ VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar $ VS VZ)
+constExprTestCase :: ExprTestCase
+constExprTestCase = ExprTestCase
+  {_underTypeCtx = ctx
+  ,_isExpr       = e
+  ,_typed        = ty
+  ,_parsesFrom   = txt
+  }
+  where
+    ctx = emptyTypeCtx
+    e   = BigLam Kind $ BigLam Kind $ Lam (TypeBinding $ TyVar $ VS VZ) $ Lam (TypeBinding $ TyVar VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
+    ty  = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding $ TyVar $ VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar $ VS VZ)
+    txt = undefined
 

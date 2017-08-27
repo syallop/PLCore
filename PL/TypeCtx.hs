@@ -29,6 +29,7 @@ import Control.Applicative
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
+import Data.Monoid
 
 data Rec
   = Rec
@@ -40,6 +41,11 @@ data Rec
 -- do so a finite amount of times.
 newtype TypeCtx tb = TypeCtx {_unTypeCtx :: Map.Map TypeName (TypeInfo tb)}
   deriving Show
+
+instance Monoid (TypeCtx tb) where
+  mempty = TypeCtx mempty
+  mappend (TypeCtx t0) (TypeCtx t1) = TypeCtx (t0 <> t1)
+
 
 -- Information associated with a type
 data TypeInfo tb

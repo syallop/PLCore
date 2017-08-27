@@ -1,3 +1,11 @@
+{-|
+Module      : PL.Printer.Debug
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Wraps Debug.Trace into a pretty printer.
+-}
 module PL.Printer.Debug
   (trace
   ,traceId

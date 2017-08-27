@@ -1,7 +1,16 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , TypeFamilies
+           , FlexibleInstances
+           , InstanceSigs
+           #-}
+{-|
+Module      : PL.Var
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Variables which can be used within a binding context to Types.
+-}
 module PL.Var where
 
 import PL.Binds

@@ -1,4 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : ExprSpec.Boolean
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+HSpec tests for PL.Expr using a 'Boolean' type.
+-}
 module ExprSpec.Boolean
   ( boolTypeCtx
   , boolTypeName

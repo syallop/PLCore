@@ -1,4 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : ExprSpec.List
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+HSpec tests for PL.Expr using a heterogenous 'List' type parameterised by some
+element type.
+-}
 module ExprSpec.List
   ( listTypeCtx
   , listTypeName

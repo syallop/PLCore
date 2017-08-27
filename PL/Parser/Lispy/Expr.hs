@@ -1,6 +1,15 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ConstraintKinds
+           , ImplicitParams
+           , OverloadedStrings
+           #-}
+{-|
+Module      : PL.Parser.Lispy.Expr
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+A Parser for PL.Expr which consumes a lisp-like syntax.
+-}
 module PL.Parser.Lispy.Expr where
 
 import Control.Applicative

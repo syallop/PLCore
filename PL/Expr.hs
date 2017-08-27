@@ -1,14 +1,24 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase
+           , StandaloneDeriving 
+           , RankNTypes 
+           , ScopedTypeVariables 
+           , ConstraintKinds 
+           , GADTs 
+           , FlexibleContexts 
+           , FlexibleInstances 
+           , MultiParamTypeClasses 
+           , OverlappingInstances 
+           , OverloadedStrings
+           #-}
+{-|
+Module      : PL.Expr
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+An AST containing anonymous functions, sums, products and union types.
+Indexed by de bruijn indexes and with some level of type functions.
+-}
 module PL.Expr where
 
 import PL.Case

@@ -1,4 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : ExprSpec.Function
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+HSpec tests for PL.Expr using 'function' types.
+-}
 module ExprSpec.Function
   ( identityTypeName
   , identityType

@@ -1,4 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-|
+Module      : PL.TypeCtx
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Maps names to types allowing type resolution.
+-}
 module PL.TypeCtx
   (TypeCtx()
   ,emptyTypeCtx

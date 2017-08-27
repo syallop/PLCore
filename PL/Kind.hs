@@ -1,5 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE OverloadedStrings
+           , OverlappingInstances
+  #-}
+{-|
+Module      : PL.Kind
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+The Type of Types.
+-}
 module PL.Kind where
 
 import PL.Printer

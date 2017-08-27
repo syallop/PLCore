@@ -1,4 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : ExprSpec.Union
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+HSpec tests for PL.Expr using the 'Union' type.
+-}
 module ExprSpec.Union
   ( unionTwoExprTestCase
   )

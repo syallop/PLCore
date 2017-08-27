@@ -1,8 +1,16 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving
+           , MultiWayIf
+           , AllowAmbiguousTypes
+           , ScopedTypeVariables
+           , OverloadedStrings
+           #-}
+{-|
+Module      : PL.Bindings
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+-}
 module PL.Bindings
   ( Bindings()
   , Binding(Unbound,Bound)

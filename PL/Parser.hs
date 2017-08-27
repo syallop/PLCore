@@ -1,8 +1,17 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE InstanceSigs
+           , ScopedTypeVariables
+           , OverloadedStrings
+           , TupleSections
+           , OverlappingInstances
+           #-}
+{-|
+Module      : PL.Parser
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+A NIH parser with backtracking, leftovers and automatic whitespace consumption.
+-}
 module PL.Parser
   (-- Core parser functions
    ParseResult(..)

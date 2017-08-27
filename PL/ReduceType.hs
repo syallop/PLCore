@@ -1,5 +1,15 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables
+           , OverloadedStrings
+           #-}
+{-|
+Module      : PL.ReduceType
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Duplication of Reduce but acting at the type level. Currently has the right
+to behave differently and terminate on types that could be otherwise reduced.
+-}
 module PL.ReduceType
   (reduceType
   ,reduceTypeStep

@@ -1,8 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings
+           , FlexibleInstances
+           , UndecidableInstances
+           , OverlappingInstances
+           , RankNTypes
+           #-}
+{-|
+Module      : PL.Printer
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+A NIH Pretty-Printer
+-}
 module PL.Printer
   (-- * Types
    Doc(..)

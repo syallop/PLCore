@@ -1,4 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : ExprSpec.Natural
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+HSpec tests for PL.Expr using a 'Natural' type.
+-}
 module ExprSpec.Natural
   ( natTypeCtx
   , natTypeName

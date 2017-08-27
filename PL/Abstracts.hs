@@ -1,5 +1,14 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , FlexibleInstances
+           #-}
+{-|
+Module      : PL.Abstracts
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Things which can be used like the abstraction in a lambda. I.E. \ABS -> ...
+-}
 module PL.Abstracts where
 
 import PL.Type

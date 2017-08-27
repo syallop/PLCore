@@ -1,3 +1,11 @@
+{-|
+Module      : PL.Parser.Lispy.Type
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+A Parser for PL.Type which consumes a lisp-like syntax.
+-}
 module PL.Parser.Lispy.Type where
 
 import Prelude hiding (takeWhile)

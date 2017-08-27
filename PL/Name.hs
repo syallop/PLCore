@@ -1,4 +1,16 @@
-{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving, TypeSynonymInstances #-}
+{-# LANGUAGE OverloadedStrings
+           , GeneralizedNewtypeDeriving
+           , TypeSynonymInstances
+           #-}
+{-|
+Module      : PL.Name
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Assign new name types to things we really wouldnt want to accidentally confuse.
+Type and variable names for example.
+-}
 module PL.Name where
 
 import Data.Text

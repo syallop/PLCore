@@ -1,4 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : PL.Parser.Lispy.Kind
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+A Parser for PL.Kind which consumes a lisp-like syntax.
+-}
 module PL.Parser.Lispy.Kind where
 
 import Control.Applicative

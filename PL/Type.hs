@@ -1,8 +1,18 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances
+           , MultiParamTypeClasses
+           , ScopedTypeVariables
+           , OverlappingInstances
+           , OverloadedStrings
+           #-}
+{-|
+Module      : PL.Type
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Types inhabited by Expressions. Types are structural until explicitly Named
+and can abstract and be applied much like Expressions.
+-}
 module PL.Type where
 
 import PL.Binds.Ix

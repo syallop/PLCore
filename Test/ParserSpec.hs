@@ -1,5 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings
+           , FlexibleInstances
+  #-}
+{-|
+Module      : ExprSpec.Boolean
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+HSpec tests for PL.Parser.
+-}
 module ParserSpec where
 
 import PL.Parser

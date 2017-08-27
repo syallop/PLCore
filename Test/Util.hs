@@ -1,3 +1,12 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : Util
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Utility functions used when testing PL.
+-}
 module Util
   (putColor
   ,putGreen
@@ -5,8 +14,6 @@ module Util
   ,putYellow
   ,putBlue
   ,putCyan
-
-
   )
   where
 
@@ -22,5 +29,4 @@ putRed    = putColor 31
 putYellow = putColor 33
 putBlue   = putColor 34
 putCyan   = putColor 36
-
 

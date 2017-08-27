@@ -1,3 +1,10 @@
+{-|
+Module      : PL.Binds.Ix
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+-}
 module PL.Binds.Ix where
 
 -- class of index-like binding types, E.G. Var.

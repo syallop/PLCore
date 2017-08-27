@@ -1,6 +1,14 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses
+            , TypeFamilies
+            , OverloadedStrings
+            #-}
+{-|
+Module      : PL.Binds
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+-}
 module PL.Binds where
 
 import PL.Type

@@ -1,4 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : PL.Error
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Errors that may be throws in various compilation stages.
+-}
+
 module PL.Error where
 
 import PL.Name

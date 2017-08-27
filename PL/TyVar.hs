@@ -1,7 +1,16 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , TypeFamilies
+           , InstanceSigs
+           , GeneralizedNewtypeDeriving
+           #-}
+{-|
+Module      : PL.TyVar
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Type-level variables which can be used with a binding context to Kinds.
+-}
 module PL.TyVar where
 
 import PL.Var

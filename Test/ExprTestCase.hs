@@ -1,6 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
--- | Functions for testing expression parsing, typechecking, reduction, etc.
--- Also exports 'ExprTestCase' which encapsulates an example which can have all of these properties tested.
+{-|
+Module      : ExprTestCase
+Copyright   : (c) Samuel A. Yallop, 2017
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Functions for testing expression parsing, typechecking, reduction, etc.
+Also exports 'ExprTestCase' which encapsulates an example which can have all of these properties tested.
+-}
 module ExprTestCase
   ( TestExpr
   , TestType

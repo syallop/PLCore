@@ -1,9 +1,19 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ScopedTypeVariables
+           , LambdaCase
+           , OverloadedStrings
+           , FlexibleContexts
+           , TupleSections
+           , ConstraintKinds
+           #-}
+{-|
+Module      : PL.Reduce
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Reduce expressions by maintaining a binding ctx and performing substitution
+and recursive reduction when necessary.
+-}
 module PL.Reduce where
 
 import PL.Binds

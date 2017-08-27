@@ -1,8 +1,18 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , RankNTypes 
+           , MultiWayIf 
+           , ScopedTypeVariables 
+           , GeneralizedNewtypeDeriving
+           #-}
+{-|
+Module      : PL.ExprLike
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Classes of things which are like expressions. Types and kinds have a similar
+structure.
+-}
 module PL.ExprLike where
 
 import PL.Binds.Ix

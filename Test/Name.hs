@@ -1,5 +1,14 @@
 {-# LANGUAGE TypeSynonymInstances #-}
-module Test.Name where
+{-|
+Module      : Name
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Functions used for testing PL.Name
+-}
+
+module Name where
 
 import Test.QuickCheck
 

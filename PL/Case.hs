@@ -1,3 +1,11 @@
+{-|
+Module      : PL.Case
+Copyright   : (c) Samuel A. Yallop, 2016
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Case analysis on... things.
+-}
 module PL.Case where
 
 import Prelude hiding (sequence,mapM,foldr)

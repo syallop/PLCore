@@ -67,7 +67,7 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat ["~>",documen
   TypeBinding b
     -> traceStep ("Lookup binding"::Text.Text) $ pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
          Unbound   -> traceIndent i ("Unbound. No reduction":: Text.Text) $ TypeBinding b
-         Bound ty' -> traceIndent i ("Bound" :: Text.Text) $ ty' -- maybe should reduce again?
+         Bound ty' -> traceIndent i ("Bound" :: Text.Text) ty' -- maybe should reduce again?
 
   TypeApp f x
     -> do x' <- reduceTypeStep' (i+1) bindings typeNameCtx x

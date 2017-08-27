@@ -93,7 +93,7 @@ a --> b = Arrow a b
 
 -- | Construct a simple named type
 ty :: TypeName -> Type tb
-ty b = Named b
+ty = Named
 
 instance Document tb => Document (Type tb) where
   document t = case t of
@@ -131,7 +131,7 @@ instance Document tb => Document (Type tb) where
 -- etc
 arrowise :: [Type tb] -> Type tb
 arrowise []        = error "Can't arrowise empty list of Types"
-arrowise (t:[])    = t
+arrowise [t]       = t
 arrowise (t:t':ts) = t --> arrowise (t':ts)
 
 -- a           ~> [a]
@@ -176,7 +176,7 @@ instance Ord tb => HasNonAbs (Type tb) where
     ty -> ty
 
 instantiate :: forall tb. (Ord tb,BindingIx tb) => Type tb -> Type tb -> Type tb
-instantiate instType inType = instantiate' 0 instType inType
+instantiate = instantiate' 0
   where
     instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb
     instantiate' i instType inType = case inType of

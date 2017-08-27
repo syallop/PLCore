@@ -22,8 +22,10 @@ import PL.ExprLike
 import PL.Printer
 import PL.Printer.Debug
 
+import Data.Maybe
 import Data.Proxy
 import qualified Data.Set as Set
+import Control.Monad
 import Control.Applicative
 import qualified Data.Text as Text
 import Data.Monoid
@@ -86,7 +88,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   -- propogating this unification? If so, the current data structures and
   -- algorithm is not appropriate.
   (TypeBinding b0,TypeBinding b1)
-    -> let binding0 = maybe (error "") id $ safeIndex (Proxy :: Proxy tb) typeBindings (bindDepth b0)
+    -> let binding0 = fromMaybe (error "") $ safeIndex (Proxy :: Proxy tb) typeBindings (bindDepth b0)
            binding1 = index (Proxy :: Proxy tb) typeBindings (bindDepth b1)
           in traceStep ("Lookup both bindings"::Text.Text) $ case (binding0,binding1) of
                -- Two unbound are unified
@@ -182,7 +184,7 @@ typeEqs = typeEqs' 0
 
 typeEqs' :: (Eq tb,Ord tb,Document tb,Binds tb Kind,HasBinding (Type tb) tb) => Int -> BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
 typeEqs' i typeBindCtx typeBindings typeNameCtx ts0 ts1
-  | length ts0 == length ts1 = let mEq = fmap and $ mapM (\(t0, t1) -> typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1) $ zip ts0 ts1
+  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEq' i typeBindCtx typeBindings typeNameCtx) ts0 ts1
                                   in case mEq of
                                        Just True -> traceIndent i ("T"::Text.Text) mEq
                                        _         -> traceIndent i ("F"::Text.Text) mEq

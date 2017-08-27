@@ -66,15 +66,15 @@ charSpec = describe "Single characters" $ do
 -- A character parses as a singleton string
 prop_charParse :: Char -> Bool
 prop_charParse c =
-  charIs c `parses` (Text.singleton c)
+  charIs c `parses` Text.singleton c
 
 -- A character parses with any amount of trailing characters of any kind
 -- AND The remaining characters left in the cursor have their leading spaces and newlines dropped.
 prop_charTrailingParse :: Char -> Text -> Bool
 prop_charTrailingParse c trailing =
-  charIs c `parsesSuchThat` (Text.cons c trailing)
+  charIs c `parsesSuchThat` Text.cons c trailing
            $ \() csr
-              -> remainder csr == (Text.dropWhile (`elem` [' ','\n']) trailing)
+              -> remainder csr == Text.dropWhile (`elem` [' ','\n']) trailing
 
 -- Test the text parsers
 textSpec :: Spec
@@ -95,9 +95,9 @@ prop_textParse txt =
 -- The remaining txt has leading spaces and newlines dropped.
 prop_textTrailingParse :: Text -> Text -> Bool
 prop_textTrailingParse txt trailing =
-  (textIs txt) `parsesSuchThat` (txt <> " " <> trailing)
+  textIs txt `parsesSuchThat` (txt <> " " <> trailing)
                $ \() csr
-                  -> remainder csr == (Text.dropWhile (`elem` [' ','\n']) trailing)
+                  -> remainder csr == Text.dropWhile (`elem` [' ','\n']) trailing
 
 -- Text appended between a space is parsed by appending textIs parsers
 -- (textIs txt0 <> textIs txt1) `parses` (txt0 <> " " <> txt1)
@@ -107,10 +107,10 @@ prop_textAppendParse txt0 txt1 =
 
 -- An alternative of two 'textIs's succeeds on both text
 prop_textAltParse :: TokenText -> TokenText -> Bool
-prop_textAltParse txt0 txt1 = and
-  [(textIs (coerce txt0) <|> textIs (coerce txt1)) `parses` (coerce txt0)
-  ,(textIs (coerce txt0) <|> textIs (coerce txt1)) `parses` (coerce txt1)
-  ]
+prop_textAltParse txt0 txt1 =
+  ((textIs (coerce txt0) <|> textIs (coerce txt1)) `parses` (coerce txt0))
+  &&
+  ((textIs (coerce txt0) <|> textIs (coerce txt1)) `parses` (coerce txt1))
 
 
 -- An alternative backtracks by default

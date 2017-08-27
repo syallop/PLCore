@@ -224,14 +224,14 @@ flattenExpected e = case e of
 
 showOneOf :: [Text] -> String
 showOneOf []       = "NOTHING"
-showOneOf (x:[])   = Text.unpack x
-showOneOf (x:y:[]) = Text.unpack x <> "," <> Text.unpack y
+showOneOf [x]      = Text.unpack x
+showOneOf [x,y]    = Text.unpack x <> "," <> Text.unpack y
 showOneOf (x:y:zs) = Text.unpack x <> "," <> Text.unpack y <> "," <> showOneOf zs
 
 
 data Predicate a
   = Predicate
-    {_predicate       :: (a -> Bool)
+    {_predicate       :: a -> Bool
     ,_predicateExpect :: Expected -- What does the predicate expect? Could fall back to a simple label
     }
 
@@ -311,11 +311,11 @@ pSucceed = Parser $ ParseSuccess ()
 
 -- | Require a parse must succeed, but any result is discarded
 req :: Parser a -> Parser ()
-req p = p >>= \_ -> pSucceed
+req p = p >>= const pSucceed
 
 -- | A parse must suceed and satisfy a predicate.
 sat :: Predicate a -> Parser a -> Parser a
-sat pred p = p >>= \a -> if _predicate pred $ a then return a else pFail (_predicateExpect pred)
+sat pred p = p >>= \a -> if _predicate pred a then return a else pFail (_predicateExpect pred)
 
 -- | Pretend no input has been consumed if a parse fails
 try :: Parser a -> Parser a
@@ -337,8 +337,7 @@ recoverWith f (Parser p) = Parser $ \c -> case p c of
 
 -- | Try each parser in succession, backtracking on failure.
 alternatives :: [Parser a] -> Parser a
-alternatives []     = pFail expectNothing
-alternatives (p:ps) = p <|> alternatives ps
+alternatives = foldr (<|>) (pFail expectNothing)
 
 
 
@@ -349,7 +348,7 @@ takeChar = Parser $ \c -> case Text.uncons (_cursorNext c) of
     -> ParseFailure ExpectAnything c
 
   Just (a,next)
-    -> ParseSuccess a (Cursor (Text.singleton a : (_cursorPrev c)) next (incPastChar a (_cursorPos c)))
+    -> ParseSuccess a (Cursor (Text.singleton a : _cursorPrev c) next (incPastChar a (_cursorPos c)))
 
 -- Take a character that must satisfy a predicate
 takeCharIf :: Predicate Char -> Parser Char
@@ -427,7 +426,7 @@ takeN i
     -- Less than the required number of characters until a space
     LT -> ParseFailure (ExpectN i ExpectAnything) c
     _  -> let (a,next) = Text.splitAt i (_cursorNext c)
-             in ParseSuccess a $ Cursor (a : (_cursorPrev c)) next $ incPast a $ _cursorPos c
+             in ParseSuccess a $ Cursor (a : _cursorPrev c) next $ incPast a $ _cursorPos c
 
 
 -- Take a number of chars if the resulting text passes a predicate
@@ -445,13 +444,13 @@ textIs t = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
 -- (possibly empty)
 takeWhile :: (Char -> Bool) -> Parser Text
 takeWhile pred = Parser $ \c -> let (a,next) = Text.span pred (_cursorNext c)
-                                   in ParseSuccess a $ Cursor (a : (_cursorPrev c)) next $ incPast a $ _cursorPos c
+                                   in ParseSuccess a $ Cursor (a : _cursorPrev c) next $ incPast a $ _cursorPos c
 
 -- Takewhile, but must take at least one character => not the empty text
 takeWhile1 :: Predicate Char -> Parser Text
 takeWhile1 pred = Parser $ \c -> case Text.span (_predicate pred) (_cursorNext c) of
   ("",_)   -> ParseFailure (_predicateExpect pred) c
-  (a,next) -> ParseSuccess a $ Cursor (a : (_cursorPrev c)) next $ incPast a $ _cursorPos c
+  (a,next) -> ParseSuccess a $ Cursor (a : _cursorPrev c) next $ incPast a $ _cursorPos c
 
 -- Drop the longest text that matches a predicate on the characters
 -- (possibly empty)

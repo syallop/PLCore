@@ -71,7 +71,7 @@ typeChecksTo typeCtx name expr expectTy = it name $ case topExprType typeCtx exp
 
   Right exprTy
     -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
-         Nothing    -> expectationFailure $ Text.unpack $ render $ "A given type name does not exist in the context"
+         Nothing    -> expectationFailure $ Text.unpack $ render "A given type name does not exist in the context"
          Just False -> expectationFailure $ Text.unpack $ render $ "Expected: " <> document expectTy <> " got: " <> document exprTy
          Just True  -> return ()
 
@@ -80,11 +80,11 @@ typeChecksTo typeCtx name expr expectTy = it name $ case topExprType typeCtx exp
 -- Name an expression, apply it to a list of (argnames,argument,expected result) tuples.
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 manyAppliedReducesToSpec :: String -> TestExpr -> [(String,[TestExpr],TestExpr)] -> Spec
-manyAppliedReducesToSpec name expr reductions = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult) $ reductions
+manyAppliedReducesToSpec name expr reductions = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult) reductions
 
 -- Name an expression, apply it to a list of expressions. Does it reduce to the given expression?
 appliedReducesToSpec :: TestExpr -> String -> [TestExpr] -> TestExpr -> Spec
-appliedReducesToSpec expr name apps eqExpr = reduceToSpec name (appise (expr:apps)) eqExpr
+appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 
 -- Name an expression. Check it reduces to an expression.
 reduceToSpec :: String -> TestExpr -> TestExpr -> Spec
@@ -110,7 +110,7 @@ reduceToSpec name expr eqExpr = it name $ case reduce expr of
                        else expectationFailure "target and expected expression both reduce BUT they are not equal"
 
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
-uncurry3 f = \(a,b,c) -> f a b c
+uncurry3 f (a,b,c) = f a b c
 
 testExprP :: Parser TestExpr
 testExprP = expr var (typ tyVar) tyVar

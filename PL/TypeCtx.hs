@@ -138,7 +138,7 @@ resolveTypeInitialInfo t ctx = case t of
 traceResolveTypeInitialInfo :: Type tb -> TypeCtx tb -> Maybe (TypeInfo tb,[TypeInfo tb])
 traceResolveTypeInitialInfo t ctx = case t of
   Named n -> traceLookupTypeNameInitialInfo n ctx
-  t       -> Just (mkTypeInfo t $ ctx,[])
+  t       -> Just (mkTypeInfo t ctx,[])
 
 
 -- Insert a Non-recursive type into the context with a given name, only if
@@ -187,13 +187,13 @@ validDefinition t ctx = case t of
     -> validDefinition from ctx && validDefinition to ctx
 
   SumT ts
-    -> and $ map (`validDefinition` ctx) ts
+    -> all (`validDefinition` ctx) ts
 
   ProductT ts
-    -> and $ map (`validDefinition` ctx) ts
+    -> all (`validDefinition` ctx) ts
 
   UnionT ts
-    -> and . map (`validDefinition` ctx) $ Set.toList ts
+    -> all (`validDefinition` ctx) . Set.toList $ ts
 
   BigArrow _ toTy
     -> validDefinition toTy ctx

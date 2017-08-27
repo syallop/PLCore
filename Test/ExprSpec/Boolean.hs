@@ -76,15 +76,15 @@ andExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust boolTypeCtx
-    e   = Lam boolTypeName $ Lam boolTypeName $      -- \x:Bool y:Bool ->
+    e   = Lam boolTypeName $ Lam boolTypeName $          -- \x:Bool y:Bool ->
         CaseAnalysis $ Case (Binding VZ)                 -- case y of
           $ CaseBranches                                 --
-            ((CaseBranch falsePat falseTerm) :| []       --     False -> False
+            (CaseBranch falsePat falseTerm :| []         --     False -> False
             )                                            --
             (Just                                        --     _      ->
                 (CaseAnalysis $ Case (Binding $ VS VZ)   --               case x of
                   $ CaseBranches                         --
-                    ((CaseBranch falsePat falseTerm):|[] --                 False -> False
+                    (CaseBranch falsePat falseTerm :|[]  --                 False -> False
                     )                                    --
                     (Just                                --                        _     ->
                         trueTerm                         --                                 True

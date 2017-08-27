@@ -108,7 +108,7 @@ renderWith fmt doc = fst $ renderWith' fmt doc
                -- The amount of characters remaining on the last line filled is either the length of the last line
                -- , or if there isnt one, we're still on the same line and so its the original position plus however much we added
                lastLineRemaining   = maybe (_colPosition fmt + Text.length endFirstLine)
-                                           (Text.length)
+                                           Text.length
                                    . safeHead
                                    . reverse
                                    $ restChunks
@@ -116,7 +116,7 @@ renderWith fmt doc = fst $ renderWith' fmt doc
                -- If we didnt fill the first line, then no new line is required and the 'restChunks' must be empty.
                resultText          = endFirstLine
                                   <> if filledFirstLine
-                                       then "\n" <> (Text.intercalate "\n" $ restChunks)
+                                       then "\n" <> Text.intercalate "\n" restChunks
                                        else ""
               in (resultText,fmt{_colPosition = lastLineRemaining})
 

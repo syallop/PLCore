@@ -52,8 +52,7 @@ spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parses
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
 typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type"
-               . sequence_
-               . map (\(name,testCase) -> typeChecksTo typeCtx name (_isExpr testCase) (_typed testCase))
+               . mapM_ (\(name,testCase) -> typeChecksTo typeCtx name (_isExpr testCase) (_typed testCase))
                $
   [("booleans"      , andExprTestCase)
   ,("naturals"      , subTwoExprTestCase)
@@ -64,13 +63,11 @@ typeChecksSpec = describe "An expression fully typechecks AND typechecks to the 
   ,("const"         , constExprTestCase)
   ,("list of nats"  , listNatExprTestCase)
   ]
-  where
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec :: Spec
 reducesToSpec = describe "An expression when applied to a list of arguments must reduce to an expected expression"
-              . sequence_
-              . map (\(name,testCase,reductionTests) -> manyAppliedReducesToSpec name (_isExpr testCase) reductionTests)
+              . mapM_ (\(name,testCase,reductionTests) -> manyAppliedReducesToSpec name (_isExpr testCase) reductionTests)
               $
   [("boolean and"
    ,andExprTestCase
@@ -129,8 +126,7 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
 -- Test that Text strings parse to an expected expression
 parsesToSpec :: Spec
 parsesToSpec = describe "Strings should parse to expected expressions"
-             . sequence_
-             . map (\(name,testCase) -> parseToSpec name (_parsesFrom testCase) (_isExpr testCase))
+             . mapM_ (\(name,testCase) -> parseToSpec name (_parsesFrom testCase) (_isExpr testCase))
              $
   [("boolean and"       , andExprTestCase)
   ,("sutract two"       , subTwoExprTestCase)
@@ -138,13 +134,11 @@ parsesToSpec = describe "Strings should parse to expected expressions"
   ,("product expression", productThreeExprTestCase)
   ,("union expression"  , unionTwoExprTestCase)
   ]
-  where
 
 -- type context of bools and nats
 typeCtx :: TypeCtx TyVar
-typeCtx = foldr unionTypeCtx emptyTypeCtx . map fromJust $
+typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
   [ boolTypeCtx
   , natTypeCtx
   , listTypeCtx
   ]
-

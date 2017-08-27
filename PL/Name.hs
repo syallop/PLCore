@@ -1,5 +1,4 @@
-{-# LANGUAGE OverloadedStrings
-           , GeneralizedNewtypeDeriving
+{-# LANGUAGE GeneralizedNewtypeDeriving
            , TypeSynonymInstances
            #-}
 {-|

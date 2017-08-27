@@ -33,7 +33,7 @@ instance Enum Var where
   toEnum i = VS (toEnum (i-1))
 
   fromEnum VZ     = 0
-  fromEnum (VS v) = 1+(fromEnum v)
+  fromEnum (VS v) = 1 + fromEnum v
 
 mkVar :: Int -> Var
 mkVar 0 = VZ
@@ -56,10 +56,10 @@ instance Binds Var (Type tb) where
   addBinding t (VarCtx ts) = VarCtx (t:ts)
 
   lookupBindingTy :: Var -> BindCtx Var (Type tb) -> Maybe (Type tb)
-  lookupBindingTy b (VarCtx ts) =  Just $ ts !! (bindDepth b)
+  lookupBindingTy b (VarCtx ts) =  Just $ ts !! bindDepth b
 
   toList :: BindCtx Var (Type tb) -> [(Var,Type tb)]
-  toList (VarCtx ts) = (enumFrom VZ) `zip` ts
+  toList (VarCtx ts) = enumFrom VZ `zip` ts
 
 instance BindingIx Var where
   bindDepth :: Var -> Int

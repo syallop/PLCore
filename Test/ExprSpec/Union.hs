@@ -12,8 +12,6 @@ module ExprSpec.Union
   )
   where
 
-import ExprSpec.Boolean
-
 import PL.Binds
 import PL.Case
 import PL.Error
@@ -54,7 +52,7 @@ unionTwoExprTestCase = ExprTestCase
     e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ -- \x : <Nat|Bool>
             CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --
-                ((CaseBranch (MatchUnion natTypeName   zPat)      falseTerm)    -- Nat | Z    -> False
+                (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm    -- Nat | Z    -> False
                  :| [CaseBranch (MatchUnion natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
                     ,CaseBranch (MatchUnion boolTypeName  truePat)   trueTerm   -- Bool| True -> True
                     ]                                                           --

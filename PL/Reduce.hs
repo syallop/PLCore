@@ -26,6 +26,7 @@ import PL.Type
 import PL.Name
 
 import Control.Applicative
+import Control.Monad
 import Control.Arrow (second)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Proxy
@@ -34,7 +35,7 @@ import Data.Maybe
 
 -- | Reduce an 'Expr'.
 reduce :: forall b abs tb. (BindAbs b abs tb,Eq b) => Expr b abs tb -> Either (Error tb) (Expr b abs tb)
-reduce expr = reduceRec emptyBindings expr
+reduce = reduceRec emptyBindings
   where
   -- Recursively reduce an expression until it no longer reduces
   reduceRec :: Bindings (Expr b abs tb) -> Expr b abs tb -> Either (Error tb) (Expr b abs tb)
@@ -81,7 +82,7 @@ reduce expr = reduceRec emptyBindings expr
       CaseAnalysis (Case caseScrutinee caseBranches)
         -> do reducedCaseScrutinee <- reduceStep bindings caseScrutinee
               case reducedCaseScrutinee of
-                Binding _ -> (CaseAnalysis . (Case reducedCaseScrutinee)) <$> reducePossibleCaseRHSs bindings caseBranches
+                Binding _ -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSs bindings caseBranches
                 _         -> reducePossibleCaseBranches bindings reducedCaseScrutinee caseBranches
 
 
@@ -109,7 +110,7 @@ reduce expr = reduceRec emptyBindings expr
     where
       -- The first 'Just'
       firstMatch :: NonEmpty (Maybe a) -> Maybe a
-      firstMatch (h :| t) = safeHead . map fromJust . filter isJust $ h:t
+      firstMatch (h :| t) = safeHead . catMaybes $ h:t
 
       safeHead (x:xs) = Just x
       safeHead []     = Nothing
@@ -133,22 +134,22 @@ reduce expr = reduceRec emptyBindings expr
              Unbound     -> Nothing
 
              -- Do the two expressions reduce to exactly the same value?
-             Bound bExpr -> do case exprEq bindings expr bExpr of
+             Bound bExpr -> case exprEq bindings expr bExpr of
 
-                                   -- One of the expressions is invalid.
-                                   -- We're assuming this cant happen because:
-                                   -- - The case expression should have been checked before now
-                                   -- - All expressions in 'Bindings' should be checked as they are entered
-                                   --
-                                   -- - TODO: second point isnt strongly guaranteed by anything but how the current
-                                   -- implementation happens to (hopefully) currently act.
-                                   Left e -> error $ show e
+                                -- One of the expressions is invalid.
+                                -- We're assuming this cant happen because:
+                                -- - The case expression should have been checked before now
+                                -- - All expressions in 'Bindings' should be checked as they are entered
+                                --
+                                -- - TODO: second point isnt strongly guaranteed by anything but how the current
+                                -- implementation happens to (hopefully) currently act.
+                                Left e -> error $ show e
 
-                                   -- Non match!
-                                   Right False -> Nothing
+                                -- Non match!
+                                Right False -> Nothing
 
-                                   -- Match! No patterns are allowed in regular expressions so nothing to bind
-                                   Right True  -> Just []
+                                -- Match! No patterns are allowed in regular expressions so nothing to bind
+                                Right True  -> Just []
 
     (Sum sumExpr sumIx sumTys, MatchSum ix matchArg)
       | sumIx == ix -> patternBinding bindings sumExpr matchArg -- matches this ix. Try match further
@@ -173,7 +174,7 @@ reduce expr = reduceRec emptyBindings expr
   --
   -- (Type checking ensures same length lists and valid patterns)
   patternBindings :: Bindings (Expr b abs tb) -> [Expr b abs tb] -> [MatchArg b tb] -> Maybe [Expr b abs tb]
-  patternBindings bindings exprs matchArgs = fmap concat $ mapM (uncurry $ patternBinding bindings) $ zip exprs matchArgs
+  patternBindings bindings exprs matchArgs = concat <$> zipWithM (patternBinding bindings) exprs matchArgs
 
   -- | Are two expressions identical under the same bindings?
   exprEq :: Bindings (Expr b abs tb) -> Expr b abs tb -> Expr b abs tb -> Either (Error tb) Bool

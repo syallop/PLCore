@@ -53,7 +53,7 @@ unionTyp tb = UnionT . Set.fromList <$> (union *> many (typ tb))
 
 -- A '^' followed by two or more types
 arrowTyp :: Ord tb => Parser tb -> Parser (Type tb)
-arrowTyp tb = arrowise <$> (arrow *> (typ tb)) <*> typ tb <*> many (typ tb)
+arrowTyp tb = arrowise <$> (arrow *> typ tb) <*> typ tb <*> many (typ tb)
 
 -- A "/\" followed by an abstracted kind, then a type
 typeLamTyp :: Ord tb => Parser tb -> Parser (Type tb)
@@ -66,7 +66,7 @@ typeLamTyp tb = lamise <$> (bigLambda *> kindAbs) <*> many kindAbs <*> typ tb
 
 -- An "@@" followed by two or more types
 typeAppTyp :: Ord tb => Parser tb -> Parser (Type tb)
-typeAppTyp tb = appise <$> (bigAt *> (typ tb)) <*> typ tb <*> many (typ tb)
+typeAppTyp tb = appise <$> (bigAt *> typ tb) <*> typ tb <*> many (typ tb)
   where
     appise :: Type tb -> Type tb -> [Type tb] -> Type tb
     appise f x []     = TypeApp f x

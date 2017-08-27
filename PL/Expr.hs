@@ -396,7 +396,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                    Nothing    -> Left $ EMsg "A named type in a union doesnt exist"
 
           -- Type must be in the set somewhere...
-          _ <- if Set.member (Just True) . Set.map (\unionTy -> typeEq typeBindCtx typeBindings typeCtx exprTy unionTy) $ unionTypes
+          _ <- if Set.member (Just True) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
                  then Right ()
                  else Left $ EMsg "Expressions type is not within the union"
 
@@ -444,7 +444,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                     branchTys <- mapM (\branch -> branchType (i+1) branch scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx) branches
 
                     -- Check the default branch if it exists
-                    mDefExprTy <- maybe (Right Nothing) (\defExpr -> Just <$> exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx defExpr) mDefExpr
+                    mDefExprTy <- maybe (Right Nothing) (fmap Just . exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx) mDefExpr
 
                     -- If the default branch exists, its type must be the same as the first branch
                     _ <- maybe (Right ())
@@ -452,7 +452,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                                                   Nothing -> Left $ EMsg "First branch has a unresolvable type name"
                                                   Just isSameType
                                                     | isSameType -> Right ()
-                                                    | otherwise  -> Left $ EMsg $ Text.unpack $ render $ mconcat $
+                                                    | otherwise  -> Left . EMsg . Text.unpack . render . mconcat $
                                                                       ["Default branch and first case branch have different result types"
                                                                       ,document defExprTy
                                                                       ,document branch0Ty
@@ -556,7 +556,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
     MatchSum sumIndex nestedMatchArg
       -> do sumTypes <- case rExpectTy of
                       SumT sumTypes -> Right sumTypes
-                      _             -> Left $ EMsg $ "Expected sum type in pattern match"
+                      _             -> Left . EMsg $ "Expected sum type in pattern match"
 
             -- index must be within the number of alternative in the sum type
             matchedTy <- if length sumTypes < sumIndex then Left $ EMsg "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
@@ -609,11 +609,11 @@ checkMatchesWith matches types exprBindCtx typeBindCtx typeBindings typeCtx = ca
 
 appise :: [Expr b abs tb] -> Expr b abs tb
 appise []        = error "Cant appise empty list of expressions"
-appise (e:[])    = e
-appise (e:e':es) = appise ((App e e'):es)
+appise [e]       = e
+appise (e:e':es) = appise (App e e' : es)
 
 lamise :: [abs] -> Expr b abs tb -> Expr b abs tb
 lamise []        _ = error "Cant lamise empty list of abstractions"
-lamise (t:[])    e = Lam t e
+lamise [t]       e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
 

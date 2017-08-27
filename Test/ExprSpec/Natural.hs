@@ -64,7 +64,7 @@ natSumType = [ProductT []
 zTerm      =                     Sum (Product [])        0 natSumType
 sTerm      = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
 zPat       = MatchSum 0 (MatchProduct [])
-sPat p     = MatchSum 1 p
+sPat       = MatchSum 1
 
 zTermText, sTermText, zPatText :: Text
 zTermText  = "+0(*) (*) Nat"
@@ -94,7 +94,7 @@ subTwoExprTestCase = ExprTestCase
     e   = Lam natTypeName $                                         -- \n : Nat ->
             CaseAnalysis $ Case (Binding VZ)                        -- case n of
               $ CaseBranches                                        --
-                ((CaseBranch (sPat $ sPat Bind) (Binding VZ)) :| [] --   S S n -> n
+                (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| []   --   S S n -> n
                 )                                                   --
                 (Just                                               --
                     zTerm                                           --   _     -> Z
@@ -103,7 +103,7 @@ subTwoExprTestCase = ExprTestCase
 
     txt = Text.unlines
       ["\\Nat (CASE 0"
-      ,"         (|"<>(sPatText $ sPatText "?")<>" 0)"
+      ,"         (|" <> sPatText (sPatText "?") <>" 0)"
       ,"         "<>zTermText
       ,"     )"
       ]

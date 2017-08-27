@@ -1,8 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving
+{-# LANGUAGE AllowAmbiguousTypes
            , MultiWayIf
-           , AllowAmbiguousTypes
-           , ScopedTypeVariables
            , OverloadedStrings
+           , ScopedTypeVariables
            #-}
 {-|
 Module      : PL.Bindings
@@ -98,8 +97,7 @@ bind = ConsBinding . Bound
 
 -- | Binds 'e's
 bindAll :: [e] -> Bindings e -> Bindings e
-bindAll []     = id
-bindAll (e:es) = bind e . bindAll es
+bindAll = foldr ((.) . bind) id
 
 -- | Create a Bindings from a list of bound 'e's
 bindFromList :: [e] -> Bindings e
@@ -130,7 +128,5 @@ safeIndex bindType bs ix
 
 -- | A 'safeIndex' assuming the index is contained in the bindings.
 index :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Binding e
-index bindType bs ix = case safeIndex bindType bs ix of
-  Nothing -> error "index: given ix is not contained in the bindings"
-  Just b  -> b
+index bindType bs ix = fromMaybe (error "index: given ix is not contained in the bindings") $ safeIndex bindType bs ix
 

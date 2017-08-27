@@ -51,7 +51,7 @@ sumThreeExprTestCase = ExprTestCase
     e   = Lam (SumT [natTypeName,boolTypeName,natTypeName]) $   -- \x : Nat|Bool|Nat ->
             CaseAnalysis $ Case (Binding VZ)                                 -- case x of
               $ CaseBranches                                                 --
-                ((CaseBranch (MatchSum 0 $ sPat Bind) (Binding VZ))          --  0| S n   -> n
+                (CaseBranch (MatchSum 0 $ sPat Bind) (Binding VZ)            --  0| S n   -> n
                  :| [CaseBranch (MatchSum 0   zPat)      zTerm               --  0| Z     -> Z
                     ,CaseBranch (MatchSum 1   falsePat)  zTerm               --  1| False -> Z
                     ,CaseBranch (MatchSum 1   truePat)   (sTerm `App` zTerm) --  1| True  -> S Z

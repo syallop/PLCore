@@ -47,10 +47,10 @@ instance Binds TyVar Kind where
   addBinding k (TyVarCtx ks) = TyVarCtx (k:ks)
 
   lookupBindingTy :: TyVar -> BindCtx TyVar Kind -> Maybe Kind
-  lookupBindingTy b (TyVarCtx ks) = Just $ ks !! (bindDepth b)
+  lookupBindingTy b (TyVarCtx ks) = Just $ ks !! bindDepth b
 
   toList :: BindCtx TyVar Kind -> [(TyVar,Kind)]
-  toList (TyVarCtx ks) = (enumFrom (TyVar VZ)) `zip` ks
+  toList (TyVarCtx ks) = enumFrom (TyVar VZ) `zip` ks
 
 instance BindingIx TyVar where
   bindDepth :: TyVar -> Int

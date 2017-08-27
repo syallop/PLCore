@@ -112,7 +112,7 @@ instance (Document e
       -> parens (document def)
 
     CaseBranches bs mDef
-      -> (foldr (\b acc -> acc <> document b) emptyDoc $ bs) <> (maybe emptyDoc (parens . document) $ mDef)
+      -> foldr (\b acc -> acc <> document b) emptyDoc bs <> maybe emptyDoc (parens . document) mDef
 
 instance (Document e
          ,Document m

@@ -43,51 +43,62 @@ spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parses
 
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
-typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type" $ sequence_ . map (uncurry3 $ typeChecksTo typeCtx) $
-  [("booleans"      , _isExpr andExprTestCase         ,_typed andExprTestCase)
-  ,("naturals"      , _isExpr subTwoExprTestCase      ,_typed subTwoExprTestCase)
-  ,("sum types"     , _isExpr sumThreeExprTestCase    ,_typed sumThreeExprTestCase)
-  ,("product types" , _isExpr productThreeExprTestCase,_typed productThreeExprTestCase)
-  ,("union types"   , _isExpr unionTwoExprTestCase    ,_typed unionTwoExprTestCase)
-  ,("id"            , _isExpr idExprTestCase          ,_typed idExprTestCase)
-  ,("const"         , _isExpr constExprTestCase       ,_typed constExprTestCase)
-  ,("list of nats"  , _isExpr listNatExprTestCase     ,_typed listNatExprTestCase)
+typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type"
+               . sequence_
+               . map (\(name,testCase) -> typeChecksTo typeCtx name (_isExpr testCase) (_typed testCase))
+               $
+  [("booleans"      , andExprTestCase)
+  ,("naturals"      , subTwoExprTestCase)
+  ,("sum types"     , sumThreeExprTestCase)
+  ,("product types" , productThreeExprTestCase)
+  ,("union types"   , unionTwoExprTestCase)
+  ,("id"            , idExprTestCase)
+  ,("const"         , constExprTestCase)
+  ,("list of nats"  , listNatExprTestCase)
   ]
   where
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec :: Spec
-reducesToSpec = describe "An expression when applied to a list of arguments must reduce to an expected expression" $ sequence_ . map (uncurry3 manyAppliedReducesToSpec) $
-  [("boolean and"        ,_isExpr andExprTestCase
-                        ,[andOneTrue
-                         ,andFalseTrue
-                         ,andTrueTrue
-                         ])
+reducesToSpec = describe "An expression when applied to a list of arguments must reduce to an expected expression"
+              . sequence_
+              . map (\(name,testCase,reductionTests) -> manyAppliedReducesToSpec name (_isExpr testCase) reductionTests)
+              $
+  [("boolean and"
+   ,andExprTestCase
+   ,[andOneTrue
+    ,andFalseTrue
+    ,andTrueTrue
+    ])
 
-  ,("subtract 2"         ,_isExpr subTwoExprTestCase
-                         ,[("3 - 2 ~> 1", [three], one)
-                          ,("2 - 2 ~> 0", [two]  , zero)
-                          ,("1 - 2 ~> 0", [one]  , zero)
-                          ])
+  ,("subtract 2"
+   ,subTwoExprTestCase
+   ,[("3 - 2 ~> 1", [three], one)
+    ,("2 - 2 ~> 0", [two]  , zero)
+    ,("1 - 2 ~> 0", [one]  , zero)
+    ])
 
-  ,("sum expressions"    ,_isExpr sumThreeExprTestCase
-                         ,[("+1 False ~> 0", [Sum falseTerm 1 [natTypeName,boolTypeName,natTypeName]], zero)
-                          ,("+0 0     ~> 0", [Sum zero      0 [natTypeName,boolTypeName,natTypeName]], zero)
-                          ,("+2 0     ~> 1", [Sum zero      2 [natTypeName,boolTypeName,natTypeName]], one)
-                          ])
+  ,("sum expressions"
+   ,sumThreeExprTestCase
+   ,[("+1 False ~> 0", [Sum falseTerm 1 [natTypeName,boolTypeName,natTypeName]], zero)
+    ,("+0 0     ~> 0", [Sum zero      0 [natTypeName,boolTypeName,natTypeName]], zero)
+    ,("+2 0     ~> 1", [Sum zero      2 [natTypeName,boolTypeName,natTypeName]], one)
+    ])
 
-  ,("product expressions",_isExpr productThreeExprTestCase
-                         ,[("* 1 True  0 ~> True" , [Product [one,trueTerm,zero]] , trueTerm)
-                           ,("* 1 False 0 ~> False", [Product [one,falseTerm,zero]], falseTerm)
-                           ,("* 1 True  1 ~> False", [Product [one,trueTerm,one]]  , falseTerm)
-                           ,("* 4 False 1 ~> False", [Product [four,falseTerm,one]], falseTerm)
-                          ])
+  ,("product expressions"
+   ,productThreeExprTestCase
+   ,[("* 1 True  0 ~> True" , [Product [one,trueTerm,zero]] , trueTerm)
+    ,("* 1 False 0 ~> False", [Product [one,falseTerm,zero]], falseTerm)
+    ,("* 1 True  1 ~> False", [Product [one,trueTerm,one]]  , falseTerm)
+    ,("* 4 False 1 ~> False", [Product [four,falseTerm,one]], falseTerm)
+    ])
 
-  ,("union expressions"  ,_isExpr unionTwoExprTestCase
-                         ,[("∪ 1     Nat   Nat Bool ~> True"                                   , [Union one       natTypeName  $ Set.fromList [natTypeName,boolTypeName]], trueTerm)
-                          ,("∪ False Bool  Nat Bool ~> False"                                  , [Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]], falseTerm)
-                          ,("∪ True  Bool  Bool Nat ~> False -- order of union does not matter", [Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]], falseTerm)
-                          ])
+  ,("union expressions"
+   ,unionTwoExprTestCase
+   ,[("∪ 1     Nat   Nat Bool ~> True"                                   , [Union one       natTypeName  $ Set.fromList [natTypeName,boolTypeName]], trueTerm)
+    ,("∪ False Bool  Nat Bool ~> False"                                  , [Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]], falseTerm)
+    ,("∪ True  Bool  Bool Nat ~> False -- order of union does not matter", [Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]], falseTerm)
+    ])
   ]
   where
 
@@ -109,12 +120,15 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
 
 -- Test that Text strings parse to an expected expression
 parsesToSpec :: Spec
-parsesToSpec = describe "Strings should parse to expected expressions" $ sequence_ . map (uncurry3 parseToSpec) $
-  [("boolean and"       , _parsesFrom andExprTestCase         , _isExpr andExprTestCase)
-  ,("sutract two"       , _parsesFrom subTwoExprTestCase      , _isExpr subTwoExprTestCase)
-  ,("sum expression"    , _parsesFrom sumThreeExprTestCase    , _isExpr sumThreeExprTestCase)
-  ,("product expression", _parsesFrom productThreeExprTestCase, _isExpr productThreeExprTestCase)
-  ,("union expression"  , _parsesFrom unionTwoExprTestCase    , _isExpr unionTwoExprTestCase)
+parsesToSpec = describe "Strings should parse to expected expressions"
+             . sequence_
+             . map (\(name,testCase) -> parseToSpec name (_parsesFrom testCase) (_isExpr testCase))
+             $
+  [("boolean and"       , andExprTestCase)
+  ,("sutract two"       , subTwoExprTestCase)
+  ,("sum expression"    , sumThreeExprTestCase)
+  ,("product expression", productThreeExprTestCase)
+  ,("union expression"  , unionTwoExprTestCase)
   ]
   where
 

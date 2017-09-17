@@ -24,6 +24,7 @@ module PL.Parser
   ,try
   ,recoverWith
   ,alternatives
+  ,labeled, (<?>)
 
    -- Functions on characters
   ,takeChar
@@ -89,6 +90,7 @@ import Data.Monoid
 import Data.Char
 
 import PL.Printer hiding (between)
+
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
 -- Instances for Monad & Applicative sequence Parsers together left-to-right, propogating failure.
@@ -200,6 +202,7 @@ data Expected
   | ExpectPredicate Text           -- Failed predicate with label
   | ExpectAnything                 -- Expected anything => got an EOF
   | ExpectN Int Expected           -- Expected a N repetitions
+  | ExpectLabel Text Expected      -- Expected something with a label
   deriving Show
 
 instance Document Expected where
@@ -231,6 +234,9 @@ flattenExpected e = case e of
 
   ExpectN i e
     -> ["__EXACTLY__" <> (Text.pack . show $ i) <> "__{" <> showExpected e <> "}__"]
+
+  ExpectLabel l e
+    -> [mconcat ["__LABEL__",l,"__{",showExpected e,"}__"]]
 
 showOneOf :: [Text] -> String
 showOneOf []       = "NOTHING"
@@ -349,6 +355,18 @@ recoverWith f (Parser p) = Parser $ \c -> case p c of
 alternatives :: [Parser a] -> Parser a
 alternatives = foldr (<|>) (pFail expectNothing)
 
+-- | Label a parser. If it fails, the label will appear in the 'Expected'
+-- section of the output.
+labeled :: Text -> Parser a -> Parser a
+labeled label (Parser f) = Parser $ \c -> case f c of
+  ParseFailure e c'
+    -> ParseFailure (ExpectLabel label e) c'
+
+  success
+    -> success
+
+(<?>) :: Parser a -> Text -> Parser a
+(<?>) = flip labeled
 
 
 -- Take a single character (if there are any left that is..)
@@ -392,7 +410,7 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = charIs 'Λ'
+bigLambda  = textIs "Λ"
 bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline

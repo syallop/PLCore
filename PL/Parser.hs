@@ -465,8 +465,13 @@ takeNIf pred i = sat pred $ takeN i
 -- Take a string of text
 -- The text must not be followed by another regular character, only spaces or an end of input.
 textIs :: Text -> Parser ()
-textIs t = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
+textIs t = Parser $ \c ->
+  let Parser f = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
+   in case f c of
+        ParseFailure _e c
+          -> ParseFailure (ExpectOneOf [t]) c
 
+        s -> s
 
 -- Take the longest text that matches a predicate on the characters
 -- (possibly empty)

@@ -1,7 +1,8 @@
-{-# LANGUAGE MultiParamTypeClasses
-            , TypeFamilies
-            , OverloadedStrings
-            #-}
+{-# LANGUAGE
+    MultiParamTypeClasses
+  , OverloadedStrings
+  , TypeFamilies
+  #-}
 {-|
 Module      : PL.Binds
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -11,10 +12,9 @@ Stability   : experimental
 -}
 module PL.Binds where
 
-import PL.Type
 import PL.Binds.Ix
-
 import PL.Printer
+import PL.Type
 
 import Data.Monoid
 

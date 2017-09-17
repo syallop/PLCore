@@ -1,10 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables
-           , LambdaCase
-           , OverloadedStrings
-           , FlexibleContexts
-           , TupleSections
-           , ConstraintKinds
-           #-}
+{-# LANGUAGE
+    ConstraintKinds
+  , FlexibleContexts
+  , LambdaCase
+  , OverloadedStrings
+  , ScopedTypeVariables
+  , TupleSections
+  #-}
 {-|
 Module      : PL.Reduce
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -16,22 +17,21 @@ and recursive reduction when necessary.
 -}
 module PL.Reduce where
 
+import PL.Bindings
 import PL.Binds
 import PL.Binds.Ix
-import PL.Bindings
 import PL.Case
-import PL.Expr
 import PL.Error
-import PL.Type
+import PL.Expr
 import PL.Name
+import PL.Type
 
 import Control.Applicative
-import Control.Monad
 import Control.Arrow (second)
+import Control.Monad
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Proxy
-
 import Data.Maybe
+import Data.Proxy
 
 -- | Reduce an 'Expr'.
 reduce :: forall b abs tb. (BindAbs b abs tb,Eq b) => Expr b abs tb -> Either (Error tb) (Expr b abs tb)

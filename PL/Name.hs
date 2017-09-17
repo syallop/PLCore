@@ -1,6 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving
-           , TypeSynonymInstances
-           #-}
+{-# LANGUAGE
+    GeneralizedNewtypeDeriving
+  , TypeSynonymInstances
+  #-}
 {-|
 Module      : PL.Name
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -12,9 +13,9 @@ Type and variable names for example.
 -}
 module PL.Name where
 
+import Data.Monoid
 import Data.Text
 import GHC.Exts (IsString(..))
-import Data.Monoid
 
 import PL.Printer
 

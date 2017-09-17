@@ -13,8 +13,8 @@ module ExprSpec where
 import ExprTestCase
 
 -- Some specific ExprSpec tests
-import ExprSpec.Boolean
 import ExprSpec.BigLam
+import ExprSpec.Boolean
 import ExprSpec.Function
 import ExprSpec.Lam
 import ExprSpec.List

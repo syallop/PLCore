@@ -1,7 +1,8 @@
-{-# LANGUAGE ConstraintKinds
-           , ImplicitParams
-           , OverloadedStrings
-           #-}
+{-# LANGUAGE
+    ConstraintKinds
+  , ImplicitParams
+  , OverloadedStrings
+  #-}
 {-|
 Module      : PL.Parser.Lispy.Expr
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -17,14 +18,15 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Set as Set
 
 import PL.Parser
-import PL.Parser.Lispy.Type
 import PL.Parser.Lispy.Kind
+import PL.Parser.Lispy.Type
 
 import PL.Case
 import PL.Expr hiding (appise,lamise)
-import PL.Type
 import PL.Kind
+import PL.Type
 import PL.Var
+
 
 typeAbs :: Ord tb => Parser tb -> Parser (Type tb)
 typeAbs tb = typ tb
@@ -40,8 +42,11 @@ lamise a0 (a:as) e = Lam a0 $ lamise a as e
 
 
 -- A big lambda followed by one or more kind abstractions then an expression
+{-bigLamExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)-}
+{-bigLamExpr = bigLamise <$> (bigLambda *> kind) <*> many kind  <*> exprI-}
+
 bigLamExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)
-bigLamExpr = bigLamise <$> (bigLambda *> kind) <*> many kind  <*> exprI
+bigLamExpr = BigLam <$> (bigLambda *> kind) <*> exprI
 
 -- Chain big lambda
 bigLamise :: Kind -> [Kind] -> Expr b abs tb -> Expr b abs tb
@@ -168,17 +173,18 @@ type Implicits b abs tb = (?eb :: Parser b,?abs :: Parser abs,?tb :: Parser tb)
 -- - ?abs Expression abstraction (E.G. Type)
 -- - ?tb  Type bindings          (E.G. Var)
 exprI :: (Ord tb, Implicits b abs tb) => Parser (Expr b abs tb)
-exprI
-  =  lamExpr
- <|> bigLamExpr
- <|> appExpr
- <|> bigAppExpr
- <|> sumExpr
- <|> productExpr
- <|> unionExpr
- <|> caseExpr
- <|> bindingExpr ?eb
- <|> betweenParens exprI
+exprI = alternatives
+  [lamExpr
+  ,bigLamExpr
+  ,appExpr
+  ,bigAppExpr
+  ,sumExpr
+  ,productExpr
+  ,unionExpr
+  ,caseExpr
+  ,bindingExpr ?eb
+  ,betweenParens exprI
+  ]
 
 -- Parse an expression given parsers for:
 -- - Expression bindings    (E.G. Var)

@@ -1,5 +1,6 @@
-{-# LANGUAGE OverloadedStrings
-           , OverlappingInstances
+{-# LANGUAGE 
+    OverlappingInstances
+  , OverloadedStrings
   #-}
 {-|
 Module      : PL.Kind
@@ -12,6 +13,7 @@ The Type of Types.
 module PL.Kind where
 
 import PL.Printer
+
 import Data.Monoid
 
 -- Describe properties of types

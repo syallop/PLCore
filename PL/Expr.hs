@@ -1,15 +1,16 @@
-{-# LANGUAGE LambdaCase
-           , StandaloneDeriving 
-           , RankNTypes 
-           , ScopedTypeVariables 
-           , ConstraintKinds 
-           , GADTs 
-           , FlexibleContexts 
-           , FlexibleInstances 
-           , MultiParamTypeClasses 
-           , OverlappingInstances 
-           , OverloadedStrings
-           #-}
+{-# LANGUAGE
+     ConstraintKinds
+   , FlexibleContexts 
+   , FlexibleInstances 
+   , GADTs 
+   , LambdaCase
+   , MultiParamTypeClasses 
+   , OverlappingInstances 
+   , OverloadedStrings
+   , RankNTypes 
+   , ScopedTypeVariables 
+   , StandaloneDeriving 
+   #-}
 {-|
 Module      : PL.Expr
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -21,29 +22,26 @@ Indexed by de bruijn indexes and with some level of type functions.
 -}
 module PL.Expr where
 
+import PL.Abstracts
+import PL.Bindings
+import PL.Binds
 import PL.Case
+import PL.Error
+import PL.ExprLike
+import PL.Kind
+import PL.Name
+import PL.Printer
+import PL.Printer.Debug
 import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx
-import PL.Name
-import PL.Error
-import PL.Kind
 
-import PL.ExprLike
-import PL.Binds
-import PL.Abstracts
-import PL.Bindings
-
-import PL.Printer
-import PL.Printer.Debug
-
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import Control.Applicative
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Monoid hiding (Sum,Product)
-import Control.Applicative
-
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Text as Text
 
 type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)

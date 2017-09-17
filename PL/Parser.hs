@@ -1,9 +1,10 @@
-{-# LANGUAGE InstanceSigs
-           , ScopedTypeVariables
-           , OverloadedStrings
-           , TupleSections
-           , OverlappingInstances
-           #-}
+{-# LANGUAGE
+    InstanceSigs
+  , OverlappingInstances
+  , OverloadedStrings
+  , ScopedTypeVariables
+  , TupleSections
+  #-}
 {-|
 Module      : PL.Parser
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -81,13 +82,13 @@ module PL.Parser
 
 import Prelude hiding (takeWhile,dropWhile,exp)
 
-import Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.List as List
 import Control.Applicative
 import Control.Monad
-import Data.Monoid
 import Data.Char
+import Data.Monoid
+import Data.Text (Text)
+import qualified Data.List as List
+import qualified Data.Text as Text
 
 import PL.Printer hiding (between)
 
@@ -410,7 +411,7 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = textIs "Λ"
+bigLambda  = charIs 'Λ'
 bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline
@@ -465,7 +466,7 @@ takeNIf pred i = sat pred $ takeN i
 -- Take a string of text
 -- The text must not be followed by another regular character, only spaces or an end of input.
 textIs :: Text -> Parser ()
-textIs t = Parser $ \c ->
+textIs t = labeled "textIs" $ Parser $ \c ->
   let Parser f = req $ takeNIf (Predicate (== t) (ExpectOneOf [t])) (Text.length t)
    in case f c of
         ParseFailure _e c

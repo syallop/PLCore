@@ -28,16 +28,16 @@ module PL.TypeCtx
   )
   where
 
+import PL.Binds
+import PL.Kind
 import PL.Name
 import PL.Type
-import PL.Kind
-import PL.Binds
 
 import Control.Applicative
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 data Rec
   = Rec

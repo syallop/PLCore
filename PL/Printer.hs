@@ -1,9 +1,10 @@
-{-# LANGUAGE OverloadedStrings
-           , FlexibleInstances
-           , UndecidableInstances
-           , OverlappingInstances
-           , RankNTypes
-           #-}
+{-# LANGUAGE
+    FlexibleInstances
+  , OverlappingInstances
+  , OverloadedStrings
+  , RankNTypes
+  , UndecidableInstances
+  #-}
 {-|
 Module      : PL.Printer
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -54,11 +55,11 @@ module PL.Printer
   )
   where
 
-import Data.Text (Text)
-import qualified Data.Text as Text
 import Data.List
 import Data.Monoid
 import Data.String
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 data Doc
   = DocText Text      -- Literal text

@@ -1,8 +1,9 @@
-{-# LANGUAGE AllowAmbiguousTypes
-           , MultiWayIf
-           , OverloadedStrings
-           , ScopedTypeVariables
-           #-}
+{-# LANGUAGE
+    AllowAmbiguousTypes
+  , MultiWayIf
+  , OverloadedStrings
+  , ScopedTypeVariables
+  #-}
 {-|
 Module      : PL.Bindings
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -37,7 +38,6 @@ import Data.Monoid
 import PL.Binds
 import PL.Binds.Ix
 import PL.ExprLike
-
 import PL.Printer
 
 

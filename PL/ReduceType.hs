@@ -1,6 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables
-           , OverloadedStrings
-           #-}
+{-# LANGUAGE
+    OverloadedStrings
+  , ScopedTypeVariables
+  #-}
 {-|
 Module      : PL.ReduceType
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -16,21 +17,20 @@ module PL.ReduceType
   )
   where
 
+import PL.Bindings
 import PL.Binds
 import PL.Binds.Ix
-import PL.Bindings
 import PL.Error
+import PL.Name
 import PL.Type
 import PL.TypeCtx
-import PL.Name
-
 import PL.Printer
 import PL.Printer.Debug
 
 import Control.Applicative
 import Control.Arrow (second)
-import Data.Proxy
 import Data.Monoid
+import Data.Proxy
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 

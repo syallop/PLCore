@@ -11,8 +11,8 @@ module PL.Parser.Lispy.Kind where
 
 import Control.Applicative
 
-import PL.Parser
 import PL.Kind
+import PL.Parser
 
 kindAbs :: Parser Kind
 kindAbs = kind

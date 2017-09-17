@@ -1,8 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses
-           , TypeFamilies
-           , FlexibleInstances
-           , InstanceSigs
-           #-}
+{-# LANGUAGE
+     FlexibleInstances
+   , InstanceSigs
+   , MultiParamTypeClasses
+   , TypeFamilies
+   #-}
 {-|
 Module      : PL.Var
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -15,8 +16,8 @@ module PL.Var where
 
 import PL.Binds
 import PL.Binds.Ix
-import PL.Type
 import PL.Printer
+import PL.Type
 
 import Data.Monoid
 

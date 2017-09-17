@@ -13,12 +13,12 @@ import Prelude hiding (sequence,mapM,foldr)
 import PL.ExprLike
 import PL.Printer
 
-import Data.List.NonEmpty
-import qualified Data.List.NonEmpty as NonEmpty
 import Control.Applicative
-import Data.Traversable (sequence,mapM)
-import Data.Monoid
 import Data.Foldable
+import Data.List.NonEmpty
+import Data.Monoid
+import Data.Traversable (sequence,mapM)
+import qualified Data.List.NonEmpty as NonEmpty
 
 -- | Case analysis on a scrutinee 'e' which either:
 -- - Is just a default match 'e'

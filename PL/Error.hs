@@ -10,11 +10,10 @@ Errors that may be throws in various compilation stages.
 
 module PL.Error where
 
-import PL.Name
-import PL.Type
 import PL.Kind
-
+import PL.Name
 import PL.Printer
+import PL.Type
 
 import Data.Monoid
 

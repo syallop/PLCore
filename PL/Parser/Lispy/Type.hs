@@ -12,17 +12,16 @@ import Prelude hiding (takeWhile)
 
 import Control.Applicative
 import Data.Char
-import qualified Data.Text as Text
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 import PL.Parser
-
 import PL.Parser.Lispy.Kind
 
-import PL.Type hiding (arrowise)
-import PL.Name
 import PL.Kind
+import PL.Name
 import PL.TyVar
+import PL.Type hiding (arrowise)
 
 tyVar :: Parser TyVar
 tyVar = mkTyVar <$> natural

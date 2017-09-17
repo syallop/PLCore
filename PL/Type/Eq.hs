@@ -1,7 +1,9 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , OverlappingInstances
+  , OverloadedStrings
+  , ScopedTypeVariables
+  #-}
 module PL.Type.Eq
   (typeEq
   ,typeEqs
@@ -9,26 +11,25 @@ module PL.Type.Eq
   )
   where
 
-import PL.Kind
+import PL.Bindings
 import PL.Binds
 import PL.Binds.Ix
 import PL.Error
-import PL.Type
-import PL.TypeCtx
-import PL.Bindings
-import PL.ReduceType
 import PL.ExprLike
-
+import PL.Kind
 import PL.Printer
 import PL.Printer.Debug
+import PL.ReduceType
+import PL.Type
+import PL.TypeCtx
 
+import Control.Applicative
+import Control.Monad
 import Data.Maybe
+import Data.Monoid
 import Data.Proxy
 import qualified Data.Set as Set
-import Control.Monad
-import Control.Applicative
 import qualified Data.Text as Text
-import Data.Monoid
 
 import Debug.Trace
 

@@ -14,6 +14,7 @@ import ExprTestCase
 
 -- Some specific ExprSpec tests
 import ExprSpec.Boolean
+import ExprSpec.BigLam
 import ExprSpec.Function
 import ExprSpec.Lam
 import ExprSpec.List
@@ -60,6 +61,7 @@ typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
 testCases :: [(Text.Text,ExprTestCase)]
 testCases = mconcat
   [lamTestCases
+  ,bigLamTestCases
   ,[("booleans"      , andExprTestCase)
    ,("naturals"      , subTwoExprTestCase)
    ,("sum types"     , sumThreeExprTestCase)

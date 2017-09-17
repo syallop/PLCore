@@ -9,15 +9,20 @@ HSpec tests for PL.Expr
 -}
 module ExprSpec where
 
+-- Abstracts the pattern of testing expressions parsing, reducing and typechecking
 import ExprTestCase
-import ExprSpec.Boolean
-import ExprSpec.Natural
-import ExprSpec.List
-import ExprSpec.Sum
-import ExprSpec.Product
-import ExprSpec.Union
-import ExprSpec.Function
 
+-- Some specific ExprSpec tests
+import ExprSpec.Boolean
+import ExprSpec.Function
+import ExprSpec.Lam
+import ExprSpec.List
+import ExprSpec.Natural
+import ExprSpec.Product
+import ExprSpec.Sum
+import ExprSpec.Union
+
+import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
@@ -25,26 +30,46 @@ import PL.Expr
 import PL.Kind
 import PL.Parser
 import PL.Parser.Lispy hiding (appise,lamise)
+import PL.Printer
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
-import PL.Bindings
-
-import PL.Printer
 
 import Control.Applicative
 import Control.Monad
+import Data.List
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.List
 
 import Test.Hspec
+
+-- type context of bools and nats
+typeCtx :: TypeCtx TyVar
+typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
+  [ boolTypeCtx
+  , natTypeCtx
+  , listTypeCtx
+  ]
+-- A List of named TestCase structures
+testCases :: [(Text.Text,ExprTestCase)]
+testCases = mconcat
+  [lamTestCases
+  ,[("booleans"      , andExprTestCase)
+   ,("naturals"      , subTwoExprTestCase)
+   ,("sum types"     , sumThreeExprTestCase)
+   ,("product types" , productThreeExprTestCase)
+   ,("union types"   , unionTwoExprTestCase)
+   {-,("id"            , idExprTestCase)-}
+   {-,("const"         , constExprTestCase)-}
+   {-,("list of nats"  , listNatExprTestCase)-}
+   ]
+  ]
 
 spec :: Spec
 spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parsesToSpec]
@@ -52,17 +77,8 @@ spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parses
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
 typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type"
-               . mapM_ (\(name,testCase) -> typeChecksTo typeCtx name (_isExpr testCase) (_typed testCase))
-               $
-  [("booleans"      , andExprTestCase)
-  ,("naturals"      , subTwoExprTestCase)
-  ,("sum types"     , sumThreeExprTestCase)
-  ,("product types" , productThreeExprTestCase)
-  ,("union types"   , unionTwoExprTestCase)
-  ,("id"            , idExprTestCase)
-  ,("const"         , constExprTestCase)
-  ,("list of nats"  , listNatExprTestCase)
-  ]
+               . mapM_ (\(name,testCase) -> typeChecksTo (_underTypeCtx testCase) name (_isExpr testCase) (_typed testCase))
+               $ testCases
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec :: Spec
@@ -127,18 +143,6 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
 parsesToSpec :: Spec
 parsesToSpec = describe "Strings should parse to expected expressions"
              . mapM_ (\(name,testCase) -> parseToSpec name (_parsesFrom testCase) (_isExpr testCase))
-             $
-  [("boolean and"       , andExprTestCase)
-  ,("sutract two"       , subTwoExprTestCase)
-  ,("sum expression"    , sumThreeExprTestCase)
-  ,("product expression", productThreeExprTestCase)
-  ,("union expression"  , unionTwoExprTestCase)
-  ]
+             $ testCases
 
--- type context of bools and nats
-typeCtx :: TypeCtx TyVar
-typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
-  [ boolTypeCtx
-  , natTypeCtx
-  , listTypeCtx
-  ]
+

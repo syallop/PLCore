@@ -64,8 +64,8 @@ data ExprTestCase = ExprTestCase
 
 -- | Test whether an expression typechecks.
 -- Name an expression, check it fully typechecks AND type checks to the given type
-typeChecksTo :: TypeCtx TyVar -> String -> TestExpr -> TestType -> Spec
-typeChecksTo typeCtx name expr expectTy = it name $ case topExprType typeCtx expr of
+typeChecksTo :: TypeCtx TyVar -> Text -> TestExpr -> TestType -> Spec
+typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprType typeCtx expr of
   Left err
     -> expectationFailure $ Text.unpack $ renderDocument err
 
@@ -116,8 +116,8 @@ testExprP :: Parser TestExpr
 testExprP = expr var (typ tyVar) tyVar
 
 -- | Test whether some text parses to some expression
-parseToSpec :: String -> Text.Text -> TestExpr -> Spec
-parseToSpec name txt expectExpr = it name $ case runParser testExprP txt of
+parseToSpec :: Text.Text -> Text.Text -> TestExpr -> Spec
+parseToSpec name txt expectExpr = it (Text.unpack name) $ case runParser testExprP txt of
   ParseFailure e c
     -> expectationFailure $ Text.unpack $ render $ mconcat ["Unexpected parse failure: "
                                                            ,document e

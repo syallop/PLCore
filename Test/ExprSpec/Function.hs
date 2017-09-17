@@ -8,11 +8,7 @@ Stability   : experimental
 HSpec tests for PL.Expr using 'function' types.
 -}
 module ExprSpec.Function
-  ( identityTypeName
-  , identityType
-  , identityTerm
-
-  , idExprTestCase
+  ( idExprTestCase
   , constExprTestCase
   )
   where
@@ -36,10 +32,6 @@ import Data.Text (Text)
 
 import ExprTestCase
 
-identityTypeName = Named "Identity"
-identityType     = TypeLam Kind $ ProductT [TypeBinding $ TyVar VZ]
-identityTerm     = undefined
-
 -- The polymorphic identity function
 idExprTestCase :: ExprTestCase
 idExprTestCase = ExprTestCase
@@ -50,9 +42,11 @@ idExprTestCase = ExprTestCase
   }
   where
     ctx = emptyTypeCtx
+
+    -- forall a::k. a -> a
     e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
     ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
-    txt = undefined
+    txt = "/\\KIND (\\0 (0))"
 
 constExprTestCase :: ExprTestCase
 constExprTestCase = ExprTestCase
@@ -65,5 +59,5 @@ constExprTestCase = ExprTestCase
     ctx = emptyTypeCtx
     e   = BigLam Kind $ BigLam Kind $ Lam (TypeBinding . TyVar . VS $ VZ) $ Lam (TypeBinding . TyVar $ VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
     ty  = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding . TyVar . VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding . TyVar . VS $ VZ)
-    txt = undefined
+    txt = "(/\\KIND (/\\KIND (\\1 (\\0 (1)))))"
 

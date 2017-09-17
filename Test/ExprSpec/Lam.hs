@@ -39,16 +39,21 @@ import ExprTestCase
 lamTypeCtx   = insertType "Foo" fooType
              . fromJust
              . insertType "Bar" barType
+             . fromJust
+             . insertType "Baz" bazType
              $ emptyTypeCtx
 fooTypeName = Named "Foo"
 fooType     = SumT []
 barTypeName = Named "Bar"
 barType     = SumT []
+bazTypeName = Named "Baz"
+bazType     = SumT []
 
 lamTestCases :: [(Text,ExprTestCase)]
 lamTestCases =
-  [("Single lambda", singleLamTestCase)
-  ,("Nested lambda", nestedLamTestCase)
+  [("Single lambda" , singleLamTestCase)
+  ,("Nested lambda" , nestedLamTestCase)
+  ,("Chained lambda", chainedLamTestCase)
   ]
 
 -- \() -> ()
@@ -68,7 +73,7 @@ singleLamTestCase = ExprTestCase
     txt = "\\Foo 0"
 
 -- \Foo -> \Bar -> Foo
--- Test a nested labda that takes two different named types and returns the first.
+-- Test a nested lambda that takes two different named types and returns the first.
 -- (Specialised const).
 nestedLamTestCase :: ExprTestCase
 nestedLamTestCase = ExprTestCase
@@ -82,4 +87,30 @@ nestedLamTestCase = ExprTestCase
     e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
     ty  = Arrow fooType (Arrow barType fooType)
     txt = "\\Foo (\\Bar (1))"
+
+-- \Foo Bar -> Foo
+-- Test a chained lambda that takes two different named types in succession and
+-- returns the first.
+-- (Specialised const2).
+chainedLamTestCase :: ExprTestCase
+chainedLamTestCase = nestedLamTestCase
+  {_underTypeCtx = ctx
+  ,_isExpr       = e
+  ,_typed        = ty
+  ,_parsesFrom   = txt
+  }
+  where
+    ctx = fromJust lamTypeCtx
+    e   = Lam fooTypeName
+        . Lam barTypeName
+        . Lam bazTypeName
+        . Binding
+        . VS
+        . VS
+        $ VZ
+    ty  = Arrow fooType
+        . Arrow barType
+        . Arrow bazType
+        $ fooType
+    txt = "\\Foo Bar Baz 2"
 

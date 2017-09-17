@@ -88,7 +88,7 @@ import Control.Monad
 import Data.Monoid
 import Data.Char
 
-import PL.Printer (Document(document),int,renderDocument,text)
+import PL.Printer hiding (between)
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
 -- Instances for Monad & Applicative sequence Parsers together left-to-right, propogating failure.
@@ -106,13 +106,11 @@ data Pos
   deriving Show
 
 instance Document Pos where
-  document (Pos t l c) = mconcat ["["
-                                 ,int t
-                                 ,"] Line "
-                                 ,int l
-                                 ," : Character "
-                                 ,int c
-                                 ]
+  document (Pos t l c) = mconcat
+    [" Line:     ", int l,"\n"
+    ,"Character:", int c,"\n"
+    ,"Total:    ", int t,"\n"
+    ]
 
 -- A cursor is a position within some text, where we remember how much text we've passed,
 -- how many newlines and how much into the current line we are but not the prior text itself
@@ -132,9 +130,11 @@ instance Document Cursor where
 pointTo :: Cursor -> Text
 pointTo (Cursor prev next (Pos t l c))
   = let (untilLineEnd,rest) = Text.span (/= '\n') next
-       in Text.concat prev <> untilLineEnd <> "\n"
-       <> Text.replicate c "-" <> "^ " <> renderDocument (Pos t l c) <> "\n"
-       <> rest
+       in mconcat [Text.concat prev, untilLineEnd, "\n"
+                  ,Text.replicate c "-","^ ","\n"
+                  ,renderDocument (Pos t l c) <> "\n"
+                  ,rest
+                  ]
 
 
 -- Increment a number of character along a line
@@ -181,7 +181,13 @@ instance Document a
       -> "Parsed: " <> document a <> "with leftovers" <> document leftovers
 
     ParseFailure e c
-      -> "Expected: " <> document e <> "at" <> document c
+      -> mconcat
+           ["Parse failure.",lineBreak,lineBreak
+           ,"Expected one of: ",lineBreak
+           ,document e,lineBreak,lineBreak
+           ,"At this position in the input:",lineBreak,lineBreak
+           ,document c
+           ]
 
 parseResult :: (a -> Cursor -> b) -> (Expected -> Cursor -> b) -> ParseResult a -> b
 parseResult sF fF r = case r of
@@ -202,8 +208,12 @@ instance Document Expected where
 expectNothing :: Expected
 expectNothing = ExpectOneOf []
 
+-- Turn an 'Expected' into a bulleted list of each unique expected alternative.
 showExpected :: Expected -> Text
-showExpected = Text.intercalate " " . List.nub . flattenExpected
+showExpected = ("- "<>)
+             . Text.intercalate "\n - "
+             . List.nub
+             . flattenExpected
 
 flattenExpected :: Expected -> [Text]
 flattenExpected e = case e of
@@ -214,13 +224,13 @@ flattenExpected e = case e of
     -> ts
 
   ExpectPredicate t
-    -> ["Predicate " <> t]
+    -> ["__PREDICATE__" <> t]
 
   ExpectAnything
-    -> ["_ANYTHING_"]
+    -> ["__ANYTHING__"]
 
   ExpectN i e
-    -> ["Exactly " <> (Text.pack . show $ i) <> " {" <> showExpected e <> "} "]
+    -> ["__EXACTLY__" <> (Text.pack . show $ i) <> "__{" <> showExpected e <> "}__"]
 
 showOneOf :: [Text] -> String
 showOneOf []       = "NOTHING"
@@ -361,9 +371,9 @@ charIs c = req $ takeCharIf (Predicate (== c) (ExpectOneOf [Text.singleton c]))
 
 
 
-upper = takeCharIf (Predicate isUpper (ExpectPredicate "isUpper")) :: Parser Char
-lower = takeCharIf (Predicate isLower (ExpectPredicate "isLower")) :: Parser Char
-digit = takeCharIf (Predicate isDigit (ExpectPredicate "isDigit")) :: Parser Char
+upper = takeCharIf (Predicate isUpper (ExpectPredicate "ISUPPER")) :: Parser Char
+lower = takeCharIf (Predicate isLower (ExpectPredicate "ISLOWER")) :: Parser Char
+digit = takeCharIf (Predicate isDigit (ExpectPredicate "ISDIGIT")) :: Parser Char
 
 
 space      = req $ takeCharIf (Predicate isSpace (ExpectOneOf [" "]))
@@ -465,7 +475,7 @@ dropWhile1 = req . takeWhile1
 
 -- A natural number: zero and positive integers
 natural :: Parser Int
-natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate "isDigit")
+natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate "ISNATURAL")
 
 -- | Discard the result of two wrapping parsers.
 between :: Parser l -> Parser a -> Parser r -> Parser a

@@ -116,14 +116,14 @@ testExprP :: Parser TestExpr
 testExprP = expr var (typ tyVar) tyVar
 
 -- | Test whether some text parses to some expression
-parseToSpec :: Text.Text -> Text.Text -> TestExpr -> Spec
+parseToSpec
+  :: Text.Text
+  -> Text.Text
+  -> TestExpr
+  -> Spec
 parseToSpec name txt expectExpr = it (Text.unpack name) $ case runParser testExprP txt of
-  ParseFailure e c
-    -> expectationFailure $ Text.unpack $ render $ mconcat ["Unexpected parse failure: "
-                                                           ,document e
-                                                           ,lineBreak
-                                                           ,text $ pointTo c
-                                                           ]
+  (f@(ParseFailure e c))
+    -> expectationFailure $ Text.unpack $ render $ document f
 
   ParseSuccess expr c
     -> if expr == expectExpr

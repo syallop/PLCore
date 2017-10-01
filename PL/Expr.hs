@@ -364,7 +364,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                    Nothing -> Left $ EMsg "An expressions indexed type in a sum is an unknown type name"
                    Just isSameType
                      | isSameType -> Right ()
-                     | otherwise  -> Left $ EMsg $ Text.unpack $ render $ "Expression doesnt have the type of the position in a sum type it claims it has. Has: " <> document exprTy <> " Expected: " <> document (inTypr !! ix)
+                     | otherwise  -> Left $ EMsg $ render $ "Expression doesnt have the type of the position in a sum type it claims it has. Has: " <> document exprTy <> " Expected: " <> document (inTypr !! ix)
 
           -- Allow the other types in the sum to not exist...
           _ <- Right ()
@@ -450,7 +450,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                                                   Nothing -> Left $ EMsg "First branch has a unresolvable type name"
                                                   Just isSameType
                                                     | isSameType -> Right ()
-                                                    | otherwise  -> Left . EMsg . Text.unpack . render . mconcat $
+                                                    | otherwise  -> Left . EMsg . render . mconcat $
                                                                       ["Default branch and first case branch have different result types"
                                                                       ,document defExprTy
                                                                       ,document branch0Ty

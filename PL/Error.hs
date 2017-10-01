@@ -16,11 +16,12 @@ import PL.Printer
 import PL.Type
 
 import Data.Monoid
+import Data.Text
 
 data Error tb
 
   -- ^ Generic error
-  = EMsg String
+  = EMsg Text
 
   -- No such name
   | ETypeNotDefined TypeName -- ^ No such type
@@ -39,7 +40,7 @@ data Error tb
 instance Document tb => Document (Error tb) where
   document e = "ERROR: " <> case e of
     EMsg msg
-      -> string msg
+      -> DocText msg
 
     ETypeNotDefined name
       -> "Type named '" <> document name <> "' is not defined."

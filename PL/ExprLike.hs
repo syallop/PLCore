@@ -1,9 +1,9 @@
 {-# LANGUAGE
     GeneralizedNewtypeDeriving
   , MultiParamTypeClasses
-  , MultiWayIf 
-  , RankNTypes 
-  , ScopedTypeVariables 
+  , MultiWayIf
+  , RankNTypes
+  , ScopedTypeVariables
   #-}
 {-|
 Module      : PL.ExprLike

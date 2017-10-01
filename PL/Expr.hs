@@ -1,15 +1,15 @@
 {-# LANGUAGE
      ConstraintKinds
-   , FlexibleContexts 
-   , FlexibleInstances 
-   , GADTs 
+   , FlexibleContexts
+   , FlexibleInstances
+   , GADTs
    , LambdaCase
-   , MultiParamTypeClasses 
-   , OverlappingInstances 
+   , MultiParamTypeClasses
+   , OverlappingInstances
    , OverloadedStrings
-   , RankNTypes 
-   , ScopedTypeVariables 
-   , StandaloneDeriving 
+   , RankNTypes
+   , ScopedTypeVariables
+   , StandaloneDeriving
    #-}
 {-|
 Module      : PL.Expr

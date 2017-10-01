@@ -67,8 +67,8 @@ testCases = mconcat
    ,("sum types"     , sumThreeExprTestCase)
    ,("product types" , productThreeExprTestCase)
    ,("union types"   , unionTwoExprTestCase)
-   {-,("id"            , idExprTestCase)-}
-   {-,("const"         , constExprTestCase)-}
+   ,("id"            , idExprTestCase)
+   ,("const"         , constExprTestCase)
    {-,("list of nats"  , listNatExprTestCase)-}
    ]
   ]

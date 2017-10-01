@@ -62,7 +62,7 @@ sumThreeExprTestCase = ExprTestCase
                 Nothing
     ty  = Arrow (SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
     txt = Text.unlines
-      ["\\(+Nat Bool Nat) (CASE 0"
+      ["λ(+Nat Bool Nat) (CASE 0"
       ,"                   (| (+0 +1 ?)    (0))"
       ,"                   (| (+0 +0 (*))  (+0 (*) (*) Nat))"
       ,"                   (| (+1 +0 (*))  (+0 (*) (*) Nat))"

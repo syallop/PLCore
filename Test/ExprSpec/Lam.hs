@@ -86,7 +86,7 @@ nestedLamTestCase = ExprTestCase
     ctx = fromJust lamTypeCtx
     e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
     ty  = Arrow fooType (Arrow barType fooType)
-    txt = "\\Foo (\\Bar (1))"
+    txt = "λFoo (λBar 1)"
 
 -- \Foo Bar -> Foo
 -- Test a chained lambda that takes two different named types in succession and
@@ -112,5 +112,5 @@ chainedLamTestCase = nestedLamTestCase
         . Arrow barType
         . Arrow bazType
         $ fooType
-    txt = "\\Foo Bar Baz 2"
+    txt = "λFoo Bar Baz 2"
 

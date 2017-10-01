@@ -62,7 +62,7 @@ unionTwoExprTestCase = ExprTestCase
                 )
     ty  = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
     txt = Text.unlines
-      ["\\(∪ Bool Nat) (CASE 0"
+      ["λ(∪ Bool Nat) (CASE 0"
       ,"                (| (∪ Nat  (+0 (*))) (+0 (*) (*) (*)))"
       ,"                (| (∪ Nat  (+1 ?))   (+1 (*) (*) (*)))"
       ,"                (| (∪ Bool (+1 (*))) (+1 (*) (*) (*)))"

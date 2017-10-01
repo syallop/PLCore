@@ -58,7 +58,7 @@ productThreeExprTestCase = ExprTestCase
           )
     ty = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
     txt = Text.unlines
-      ["\\(* Nat Bool Nat) (CASE 0"
+      ["λ(* Nat Bool Nat) (CASE 0"
       ,"                    (| (* (+0 (*)) (?) (+0 (*))) (0))"
       ,"                    (| (* (?)      (?) (+0 (*))) (0))"
       ,""

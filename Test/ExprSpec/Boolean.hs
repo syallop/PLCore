@@ -93,7 +93,7 @@ andExprTestCase = ExprTestCase
             )
     ty  = Arrow boolType (Arrow boolType boolType)
     txt = Text.unlines
-      ["\\Bool Bool (CASE 0"
+      ["λBool Bool (CASE 0"
       ,"               (| "<>falsePatText<>" "<>falseTermText<>")"
       ,""
       ,"               (CASE 1"

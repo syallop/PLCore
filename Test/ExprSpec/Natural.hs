@@ -68,7 +68,7 @@ sPat       = MatchSum 1
 
 zTermText, sTermText, zPatText :: Text
 zTermText  = "+0(*) (*) Nat"
-sTermText  = "\\Nat (+1 0 (*) Nat)"
+sTermText  = "λNat (+1 0 (*) Nat)"
 zPatText   = "+0(*)"
 sPatText p = "+1"<>p
 
@@ -102,7 +102,7 @@ subTwoExprTestCase = ExprTestCase
     ty = Arrow natType natType
 
     txt = Text.unlines
-      ["\\Nat (CASE 0"
+      ["λNat (CASE 0"
       ,"         (|" <> sPatText (sPatText "?") <>" 0)"
       ,"         "<>zTermText
       ,"     )"

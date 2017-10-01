@@ -34,6 +34,7 @@ import Data.Monoid hiding (Sum,Product)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import System.IO
 
 import Data.Text (Text)
 import qualified Data.Text.IO as Text
@@ -44,6 +45,9 @@ main = repl emptyReplCtx
     myReplStep = replStep var (typ tyVar) tyVar
 
     repl ctx = do
+      putStr "PL> "
+      hFlush stdout
+
       line <- Text.getLine
       let (ctx', res) = (_unRepl $ myReplStep line) ctx
       case res of

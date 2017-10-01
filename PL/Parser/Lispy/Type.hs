@@ -24,7 +24,7 @@ import PL.TyVar
 import PL.Type hiding (arrowise)
 
 tyVar :: Parser TyVar
-tyVar = mkTyVar <$> natural
+tyVar = charIs '?' *> (mkTyVar <$> natural)
 
 -- A name is an uppercase followed by zero or more lower case characters
 name :: Parser Text.Text
@@ -77,14 +77,14 @@ typeBindingTyp = fmap TypeBinding
 
 -- A type is one of several variants, and may be nested in parenthesis
 typ :: Ord tb => Parser tb -> Parser (Type tb)
-typ tb
-  = namedTyp
- <|> sumTyp tb
- <|> productTyp tb
- <|> unionTyp tb
- <|> arrowTyp tb
- <|> typeLamTyp tb
- <|> typeAppTyp tb
- {-<|> typeBindingTyp tb-}
- <|> betweenParens (typ tb)
+typ tb = alternatives
+  [typeLamTyp tb
+  ,typeAppTyp tb
+  ,sumTyp tb
+  ,productTyp tb
+  ,unionTyp tb
+  ,namedTyp
+  ,typeBindingTyp tb
+  ,betweenParens $ typ tb
+  ]
 

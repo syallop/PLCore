@@ -42,11 +42,8 @@ lamise a0 (a:as) e = Lam a0 $ lamise a as e
 
 
 -- A big lambda followed by one or more kind abstractions then an expression
-{-bigLamExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)-}
-{-bigLamExpr = bigLamise <$> (bigLambda *> kind) <*> many kind  <*> exprI-}
-
 bigLamExpr :: (Ord tb,Implicits b abs tb) => Parser (Expr b abs tb)
-bigLamExpr = BigLam <$> (bigLambda *> kind) <*> exprI
+bigLamExpr = bigLamise <$> (bigLambda *> kind) <*> many kind  <*> exprI
 
 -- Chain big lambda
 bigLamise :: Kind -> [Kind] -> Expr b abs tb -> Expr b abs tb

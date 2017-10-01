@@ -61,12 +61,14 @@ import Data.String
 import Data.Text (Text)
 import qualified Data.Text as Text
 
+-- | A 'Doc'ument is something that can be printed nicely and appended to
+-- efficiently.
 data Doc
-  = DocText Text      -- Literal text
-  | DocIndent Int Doc -- Indent a Doc by an additional amount
-  | DocAppend Doc Doc -- Append two documents
-  | DocEmpty          -- Empty document
-  | DocBreak          -- Line break
+  = DocText Text      -- ^ Literal text
+  | DocIndent Int Doc -- ^ Indent a Doc by an additional amount
+  | DocAppend Doc Doc -- ^ Append two documents
+  | DocEmpty          -- ^ Empty document
+  | DocBreak          -- ^ Line break
 
 data DocFmt = DocFmt
   {_lineLength  :: Int -- maximum total length of a line of text before a new line is inserted
@@ -88,6 +90,7 @@ docFmt = DocFmt 80 0 0
 mkDocFmt :: Int -> DocFmt
 mkDocFmt lineLength = DocFmt lineLength 0 0
 
+-- | Render a document to Text with some 'DocFmt' formatting settings.
 renderWith :: DocFmt -> Doc -> Text
 renderWith fmt doc = fst $ renderWith' fmt doc
   where
@@ -166,9 +169,9 @@ maximumUsableLength fmt = _lineLength fmt - _colPosition fmt
 indentSpaces :: DocFmt -> Text
 indentSpaces fmt = Text.replicate (_indent fmt) " "
 
+-- | Render a 'Doc'ument to Text with default formatting settings.
 render :: Doc -> Text
 render = renderWith docFmt
-
 
 -- Print a single char
 char :: Char -> Doc

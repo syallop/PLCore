@@ -185,11 +185,14 @@ instance Document a
 
     ParseFailure e c
       -> mconcat
-           ["Parse failure.",lineBreak,lineBreak
-           ,"Expected one of: ",lineBreak
-           ,document e,lineBreak,lineBreak
-           ,"At this position in the input:",lineBreak,lineBreak
-           ,document c
+           ["Parse failure."
+           ,indent 2 "Expected one of: "
+
+           ,indent 4 $ document $ mconcat [document e
+                                          ,"At this position in the input:"
+                                          ,lineBreak
+                                          ,document c
+                                          ]
            ]
 
 parseResult :: (a -> Cursor -> b) -> (Expected -> Cursor -> b) -> ParseResult a -> b
@@ -411,7 +414,7 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = charIs 'Λ'
+bigLambda  = charIs '¬'
 bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline

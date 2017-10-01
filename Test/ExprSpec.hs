@@ -69,6 +69,7 @@ testCases = mconcat
    ,("union types"   , unionTwoExprTestCase)
    ,("id"            , idExprTestCase)
    ,("const"         , constExprTestCase)
+   ,("apply"         , applyExprTestCase)
    {-,("list of nats"  , listNatExprTestCase)-}
    ]
   ]

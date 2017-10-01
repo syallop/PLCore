@@ -405,7 +405,7 @@ star       = charIs '*'
 plus       = charIs '+'
 comma      = charIs ','
 upArrow    = charIs '^'
-lambda     = charIs '\\'
+lambda     = charIs 'λ' <|> charIs '\\'
 langle     = charIs '<'
 rangle     = charIs '>'
 lparen     = charIs '('
@@ -414,7 +414,7 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = charIs 'Λ'
+bigLambda  = charIs 'Λ' <|> textIs "/\\"
 bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline

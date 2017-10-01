@@ -399,7 +399,7 @@ digit = takeCharIf (Predicate isDigit (ExpectPredicate "ISDIGIT")) :: Parser Cha
 
 
 space      = req $ takeCharIf (Predicate isSpace (ExpectOneOf [" "]))
-arrow      = textIs "->"
+arrow      = charIs '→' <|> textIs "->"
 bar        = charIs '|'
 star       = charIs '*'
 plus       = charIs '+'

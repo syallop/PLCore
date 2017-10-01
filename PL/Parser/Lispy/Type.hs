@@ -80,6 +80,7 @@ typ :: Ord tb => Parser tb -> Parser (Type tb)
 typ tb = alternatives
   [typeLamTyp tb
   ,typeAppTyp tb
+  ,arrowTyp tb
   ,sumTyp tb
   ,productTyp tb
   ,unionTyp tb

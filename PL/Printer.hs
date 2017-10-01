@@ -236,6 +236,7 @@ instance Document String where document = string
 instance Document Bool   where document = bool
 instance Document Int    where document = int
 instance Document Doc    where document = id
+instance Document [Doc]  where document = foldr DocAppend DocEmpty
 
 instance IsString Doc where
   fromString = string

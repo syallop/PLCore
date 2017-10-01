@@ -66,6 +66,5 @@ singleBigLamTestCase = ExprTestCase
             (Arrow (TypeBinding . TyVar $ VZ)
                    (TypeBinding . TyVar $ VZ)
             )
-    {-txt = "¬ KIND (\\Foo (\\Bar (1)))"-}
-    txt = "¬ KIND (\\?0 0)"
+    txt = "Λ KIND (\\?0 0)"
 

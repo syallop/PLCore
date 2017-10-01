@@ -414,7 +414,7 @@ underscore = charIs '_'
 union      = charIs '∪'
 question   = charIs '?'
 at         = charIs '@'
-bigLambda  = charIs '¬'
+bigLambda  = charIs 'Λ'
 bigAt      = charIs '#'
 
 -- number of characters until one is a space or a newline

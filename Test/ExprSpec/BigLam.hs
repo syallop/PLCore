@@ -13,20 +13,20 @@ module ExprSpec.BigLam
   )
   where
 
+import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Parser
-import PL.Parser.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
-import PL.Bindings
 
 import Data.Maybe
 import Data.Text (Text)

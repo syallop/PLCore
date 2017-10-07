@@ -41,10 +41,14 @@ import PL.Name               as X
 -- A NIH parser with backtracking, leftovers and automatic whitespace consumption.
 import PL.Parser             as X
 
--- A Parser for PL which consumes a lisp-like syntax.
-import PL.Parser.Lispy       as X
-import PL.Parser.Lispy.Expr  as X
-import PL.Parser.Lispy.Type  as X
+-- A description of a languages grammar. Can be translated to a Parser and
+-- eventually to a corresponing printer.
+import PL.Grammar            as X
+
+-- A Grammar for PL with a lisp-like syntax.
+import PL.Grammar.Lispy       as X
+import PL.Grammar.Lispy.Expr  as X
+import PL.Grammar.Lispy.Type  as X
 
 -- A NIH Pretty-Printer
 import PL.Printer            as X

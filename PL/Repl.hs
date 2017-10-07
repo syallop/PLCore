@@ -14,6 +14,8 @@ import PL.Expr
 import PL.ExprLike
 import PL.Kind
 import PL.Parser
+import PL.Grammar
+import PL.Grammar.Lispy
 import PL.Name
 import PL.Reduce
 import PL.Printer
@@ -31,8 +33,6 @@ import Data.Monoid hiding (Sum,Product)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-
-import PL.Parser.Lispy
 
 -- | The current ctx of the repl is a consistent view of type and expression bindings.
 data ReplCtx b tb = ReplCtx
@@ -98,12 +98,12 @@ replRead
      ,Document abs
      ,Document tb
      )
-  => Text       -- ^ Input text
-  -> Parser b   -- ^ Expression bindings (E.G. Var)
-  -> Parser abs -- ^ Expression abstraction (E.G. Type)
-  -> Parser tb  -- ^ Type bindings (E.G. Var)
+  => Text        -- ^ Input text
+  -> Grammar b   -- ^ Expression bindings (E.G. Var)
+  -> Grammar abs -- ^ Expression abstraction (E.G. Type)
+  -> Grammar tb  -- ^ Type bindings (E.G. Var)
   -> Repl b abs tb (Expr b abs tb)
-replRead input b abs tb = case runParser (expr b abs tb) input of
+replRead input b abs tb = case runParser (toParser $ expr b abs tb) input of
   f@(ParseFailure expected cursor)
     -> replError . EMsg . render . document $ f
 
@@ -197,9 +197,9 @@ replStep
      ,Abstracts abs tb
      ,Eq b
      )
-  => Parser b
-  -> Parser abs
-  -> Parser tb
+  => Grammar b
+  -> Grammar abs
+  -> Grammar tb
   -> Text
   -> Repl b abs tb Text
 replStep b abs tb txt = do

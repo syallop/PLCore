@@ -5,7 +5,6 @@
   #-}
 module Main where
 
-import PL.Repl
 import PL.Abstracts
 import PL.Bindings
 import PL.Binds
@@ -13,17 +12,18 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.ExprLike
+import PL.Grammar.Lispy
 import PL.Kind
-import PL.Parser
 import PL.Name
-import PL.Reduce
+import PL.Parser
 import PL.Printer
 import PL.Printer.Debug
+import PL.Reduce
+import PL.Repl
 import PL.TyVar
 import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx
-import PL.Parser.Lispy
 import PL.Var
 
 import Control.Applicative

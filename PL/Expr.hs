@@ -117,7 +117,7 @@ instance (Document abs
       => Document (Expr b abs tb) where
   document e = case e of
     Lam takeTy expr
-      -> char '\\' <> parens (document takeTy) <> parens (document expr)
+      -> char 'λ' <> parens (document takeTy) <> parens (document expr)
 
     App f x
       -> char '@' <> parens (document f) <> parens (document x)
@@ -138,7 +138,7 @@ instance (Document abs
       -> "U" <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
 
     BigLam takeKy expr
-      -> "/\\" <> parens (document takeKy) <> parens (document expr)
+      -> "Λ" <> parens (document takeKy) <> parens (document expr)
 
     BigApp f xTy
       -> "@@" <> parens (document f) <> parens (document xTy)

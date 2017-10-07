@@ -21,6 +21,7 @@ library
                      , PL.Error
                      , PL.Expr
                      , PL.ExprLike
+                     , PL.Grammar
                      , PL.Kind
                      , PL.Name
                      , PL.Parser
@@ -67,6 +68,7 @@ executable pl
                    , PL.Error
                    , PL.Expr
                    , PL.ExprLike
+                   , PL.Grammar
                    , PL.Kind
                    , PL.Name
                    , PL.Parser

@@ -13,6 +13,10 @@ A description of a grammar. The intent is that it can be used as either a
 parser or a printer depending on context. This could prevent round-trip
 properties from being accidentally violated for example, by adjusting a parser 
 but not the printer.
+
+Note: WIP. Currently only suitable for translation to a Parser (and maybe not
+even that). Some constructors may be missing/ some may be unneccessary and in
+general the entire type is likely to change.
 -}
 module PL.Grammar
   ( Grammar()
@@ -46,6 +50,13 @@ module PL.Grammar
 
   , between
   , betweenParens
+
+  , longestMatching
+  , longestMatching1
+
+  , natural
+
+  , alternatives
   )
   where
 
@@ -73,6 +84,16 @@ data Grammar a where
   GCharWhen
     :: P.Predicate Char
     -> Grammar Char
+
+  -- Longest matching text
+  GLongestMatching
+    :: (Char -> Bool)
+    -> Grammar Text
+
+  -- Longest matching text. At least one character.
+  GLongestMatching1
+    :: P.Predicate Char
+    -> Grammar Text
 
   -- Monoid mempty
   GMEmpty
@@ -119,11 +140,6 @@ data Grammar a where
     -> (b -> Grammar a)
     -> Grammar a
 
-  GProd
-    :: Grammar a
-    -> Grammar b
-    -> Grammar (a,b)
-
 instance Foldable Grammar where
   foldMap f gr = fold $ fmap f gr
 
@@ -157,6 +173,12 @@ toParser grammar = case grammar of
 
   GCharWhen pred
     -> P.takeCharIf pred
+
+  GLongestMatching p
+    -> P.takeWhile p
+
+  GLongestMatching1 pred
+    -> P.takeWhile1 pred
 
   GMEmpty
     -> mempty
@@ -229,7 +251,23 @@ bigAt      = charIs '#'
 between :: Grammar l -> Grammar a -> Grammar r -> Grammar a
 between l a r = l *> a <* r
 
--- A Grammar between parentheses.
+-- | A Grammar between parentheses.
 betweenParens :: Grammar a -> Grammar a
 betweenParens a = between lparen a rparen
+
+-- | Longest matching text.
+longestMatching :: (Char -> Bool) -> Grammar Text
+longestMatching = GLongestMatching
+
+-- | Longest matching text. At least one character.
+longestMatching1 :: P.Predicate Char -> Grammar Text
+longestMatching1 = GLongestMatching1
+
+-- | A natural number: zero and positive integers
+natural :: Grammar Int
+natural = read . T.unpack <$> longestMatching1 (P.Predicate isDigit $ P.ExpectPredicate "ISNATURAL")
+
+-- | A list of alternative Grammars.
+alternatives :: [Grammar a] -> Grammar a
+alternatives = foldr (<|>) GEmpty
 

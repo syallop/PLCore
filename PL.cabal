@@ -22,6 +22,10 @@ library
                      , PL.Expr
                      , PL.ExprLike
                      , PL.Grammar
+                     , PL.Grammar.Lispy
+                     , PL.Grammar.Lispy.Expr
+                     , PL.Grammar.Lispy.Kind
+                     , PL.Grammar.Lispy.Type
                      , PL.Kind
                      , PL.Name
                      , PL.Parser

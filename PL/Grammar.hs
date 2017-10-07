@@ -36,6 +36,10 @@ data Grammar a where
     :: Text
     -> Grammar ()
 
+  -- Any character
+  GAnyChar
+    :: Grammar Char
+
   -- Monoid mempty
   GMEmpty
     :: Monoid a
@@ -108,6 +112,9 @@ toParser :: Grammar a -> Parser a
 toParser grammar = case grammar of
   GText txt
     -> P.textIs txt
+
+  GAnyChar
+    -> P.takeChar
 
   GMEmpty
     -> mempty

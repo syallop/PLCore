@@ -28,8 +28,9 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.Parser
-import PL.Parser.Lispy hiding (appise,lamise)
+import PL.Parser (runParser,Parser,ParseResult(..),pointTo)
+import PL.Grammar
+import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
 import PL.Type
@@ -113,7 +114,7 @@ uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
 testExprP :: Parser TestExpr
-testExprP = expr var (typ tyVar) tyVar
+testExprP = toParser $ expr var (typ tyVar) tyVar
 
 -- | Test whether some text parses to some expression
 parseToSpec

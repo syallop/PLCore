@@ -5,7 +5,6 @@
    , GADTs
    , LambdaCase
    , MultiParamTypeClasses
-   , OverlappingInstances
    , OverloadedStrings
    , RankNTypes
    , ScopedTypeVariables

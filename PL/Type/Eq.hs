@@ -1,6 +1,5 @@
 {-# LANGUAGE
     FlexibleContexts
-  , OverlappingInstances
   , OverloadedStrings
   , ScopedTypeVariables
   #-}

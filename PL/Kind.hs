@@ -1,6 +1,5 @@
 {-# LANGUAGE
-    OverlappingInstances
-  , OverloadedStrings
+    OverloadedStrings
   #-}
 {-|
 Module      : PL.Kind

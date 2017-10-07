@@ -1,6 +1,5 @@
 {-# LANGUAGE
     InstanceSigs
-  , OverlappingInstances
   , OverloadedStrings
   , ScopedTypeVariables
   , TupleSections

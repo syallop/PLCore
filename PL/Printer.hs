@@ -1,6 +1,5 @@
 {-# LANGUAGE
     FlexibleInstances
-  , OverlappingInstances
   , OverloadedStrings
   , RankNTypes
   , UndecidableInstances

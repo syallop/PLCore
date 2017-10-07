@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances
            , MultiParamTypeClasses
            , ScopedTypeVariables
-           , OverlappingInstances
            , OverloadedStrings
            #-}
 {-|

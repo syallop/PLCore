@@ -18,10 +18,36 @@ module PL.Grammar
   ( Grammar()
   , charIs
   , textIs
+
+  , anyChar
+  , charWhen
+
+  , upper
+  , lower
+  , digit
+
+  , arrow
+  , bar
+  , star
+  , plus
+  , comma
+  , upArrow
+  , lambda
+  , langle
+  , rangle
+  , lparen
+  , rparen
+  , underscore
+  , union
+  , question
+  , at
+  , bigLambda
+  , bigAt
   )
   where
 
 import Data.Text (Text)
+import Data.Char
 import qualified Data.Text as T
 import Data.Foldable
 import Data.Monoid
@@ -39,6 +65,11 @@ data Grammar a where
   -- Any character
   GAnyChar
     :: Grammar Char
+
+  -- A matching character
+  GCharWhen
+    :: P.Predicate Char
+    -> Grammar Char
 
   -- Monoid mempty
   GMEmpty
@@ -85,6 +116,11 @@ data Grammar a where
     -> (b -> Grammar a)
     -> Grammar a
 
+  GProd
+    :: Grammar a
+    -> Grammar b
+    -> Grammar (a,b)
+
 instance Foldable Grammar where
   foldMap f gr = fold $ fmap f gr
 
@@ -115,6 +151,9 @@ toParser grammar = case grammar of
 
   GAnyChar
     -> P.takeChar
+
+  GCharWhen pred
+    -> P.takeCharIf pred
 
   GMEmpty
     -> mempty
@@ -148,3 +187,37 @@ charIs = GText . T.singleton
 textIs :: Text -> Grammar ()
 textIs = GText
 
+-- | Any single character
+anyChar :: Grammar Char
+anyChar = GAnyChar
+
+-- | A character that matches a predicate
+charWhen :: P.Predicate Char -> Grammar Char
+charWhen = GCharWhen
+
+upper :: Grammar Char
+upper = charWhen (P.Predicate isUpper (P.ExpectPredicate "ISUPPER"))
+
+lower :: Grammar Char
+lower = charWhen (P.Predicate isLower (P.ExpectPredicate "ISLOWER"))
+
+digit :: Grammar Char
+digit = charWhen (P.Predicate isDigit (P.ExpectPredicate "ISDIGIT"))
+
+arrow      = charIs '→' <|> textIs "->"
+bar        = charIs '|'
+star       = charIs '*'
+plus       = charIs '+'
+comma      = charIs ','
+upArrow    = charIs '^'
+lambda     = charIs 'λ' <|> charIs '\\'
+langle     = charIs '<'
+rangle     = charIs '>'
+lparen     = charIs '('
+rparen     = charIs ')'
+underscore = charIs '_'
+union      = charIs '∪'
+question   = charIs '?'
+at         = charIs '@'
+bigLambda  = charIs 'Λ' <|> textIs "/\\"
+bigAt      = charIs '#'

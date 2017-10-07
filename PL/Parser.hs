@@ -28,6 +28,8 @@ module PL.Parser
 
    -- Functions on characters
   ,takeChar
+  ,Expected(..)
+  ,Predicate(..)
   ,takeCharIf
   ,charIs
 

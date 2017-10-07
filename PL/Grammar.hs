@@ -43,6 +43,9 @@ module PL.Grammar
   , at
   , bigLambda
   , bigAt
+
+  , between
+  , betweenParens
   )
   where
 
@@ -221,3 +224,12 @@ question   = charIs '?'
 at         = charIs '@'
 bigLambda  = charIs 'Λ' <|> textIs "/\\"
 bigAt      = charIs '#'
+
+-- | A Grammar between two others.
+between :: Grammar l -> Grammar a -> Grammar r -> Grammar a
+between l a r = l *> a <* r
+
+-- A Grammar between parentheses.
+betweenParens :: Grammar a -> Grammar a
+betweenParens a = between lparen a rparen
+

@@ -20,6 +20,8 @@ general the entire type is likely to change.
 -}
 module PL.Grammar
   ( Grammar()
+  , toParser
+
   , charIs
   , textIs
 
@@ -74,6 +76,11 @@ data Grammar a where
   -- Literal text
   GText
     :: Text
+    -> Grammar ()
+
+  -- Literal character
+  GChar
+    :: Char
     -> Grammar ()
 
   -- Any character
@@ -134,6 +141,11 @@ data Grammar a where
     -> Grammar a
     -> Grammar a
 
+  -- Monad return
+  GReturn
+    :: a
+    -> Grammar a
+
    -- Monad bind
   GBind
     :: Grammar b
@@ -159,7 +171,7 @@ instance Alternative Grammar where
   (<|>) = GAlt
 
 instance Monad Grammar where
-  return = pure
+  return = GReturn
   (>>=) = GBind
 
 -- | Convert a Grammar to a Parser that accepts it.
@@ -167,6 +179,9 @@ toParser :: Grammar a -> Parser a
 toParser grammar = case grammar of
   GText txt
     -> P.textIs txt
+
+  GChar c
+    -> P.charIs c
 
   GAnyChar
     -> P.takeChar
@@ -201,12 +216,15 @@ toParser grammar = case grammar of
   GAlt g0 g1
     -> toParser g0 <|> toParser g1
 
+  GReturn a
+    -> return a
+
   GBind g0 f
     -> toParser g0 >>= toParser . f
 
 -- | A single character.
 charIs :: Char -> Grammar ()
-charIs = GText . T.singleton
+charIs = GChar
 
 -- | A string of Text.
 textIs :: Text -> Grammar ()

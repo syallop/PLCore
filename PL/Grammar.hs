@@ -103,11 +103,6 @@ data Grammar a where
   GAnyChar
     :: Grammar Char
 
-  -- A matching character
-  GCharWhen
-    :: P.Predicate Char
-    -> Grammar Char
-
   -- Longest matching text
   GLongestMatching
     :: (Char -> Bool)
@@ -156,9 +151,6 @@ toParser grammar = case grammar of
   GAnyChar
     -> P.takeChar
 
-  GCharWhen pred
-    -> P.takeCharIf pred
-
   GLongestMatching p
     -> P.takeWhile p
 
@@ -187,9 +179,6 @@ toPrinter :: Grammar a -> D.Printer a
 toPrinter grammar = case grammar of
   GAnyChar
     -> D.anyCharPrinter
-
-  {-GCharWhen pred-}
-    {--> P.takeCharIf pred-}
 
   {-GLongestMatching p-}
     {--> P.takeWhile p-}
@@ -244,17 +233,21 @@ anyChar :: Grammar Char
 anyChar = GAnyChar
 
 -- | A character that matches a predicate
-charWhen :: P.Predicate Char -> Grammar Char
-charWhen = GCharWhen
+charWhen :: (Char -> Bool) -> Grammar Char
+charWhen p = predI \$/ anyChar
+  where
+    predI = Iso
+      (\c -> if p c then Just c else Nothing)
+      (\c -> if p c then Just c else Nothing)
 
 upper :: Grammar Char
-upper = charWhen (P.Predicate isUpper (P.ExpectPredicate "ISUPPER"))
+upper = charWhen isUpper
 
 lower :: Grammar Char
-lower = charWhen (P.Predicate isLower (P.ExpectPredicate "ISLOWER"))
+lower = charWhen isLower
 
 digit :: Grammar Char
-digit = charWhen (P.Predicate isDigit (P.ExpectPredicate "ISDIGIT"))
+digit = charWhen isDigit
 
 arrow      = charIs '→' \|/ textIs "->"
 bar        = charIs '|'

@@ -538,14 +538,14 @@ isoMapParser iso (Parser f) = Parser $ \cur -> case f cur of
 
 -- = Parser (\s ->  [((x, y), s'') |  (x, s') <- p  s,  (y, s'') <- q  s' ])
 productMapParser :: Parser a -> Parser b -> Parser (a,b)
-productMapParser (Parser fa) (Parser fb) = Parser $ \cur -> case fa cur of
+productMapParser (Parser fa) (Parser fb) = Parser $ \cur -> case fa (dropSpaceLikes cur) of
   ParseFailure expected cur'
-    -> ParseFailure expected cur'
+    -> ParseFailure expected (dropSpaceLikes cur')
 
   ParseSuccess a cur'
     -> case fb (dropSpaceLikes cur') of
          ParseFailure expected cur'
-           -> ParseFailure (ExpectLabel "productMap failed" expected) cur'
+           -> ParseFailure (ExpectLabel "productMap failed" expected) (dropSpaceLikes cur')
 
          ParseSuccess b cur''
            -> ParseSuccess (a,b) (dropSpaceLikes cur'')

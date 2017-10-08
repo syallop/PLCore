@@ -62,13 +62,13 @@ sumThreeExprTestCase = ExprTestCase
                 Nothing
     ty  = Arrow (SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
     txt = Text.unlines
-      ["λ(+Nat Bool Nat) (CASE 0"
-      ,"                   (| (+0 +1 ?)    (0))"
-      ,"                   (| (+0 +0 (*))  (+0 (*) (*) Nat))"
-      ,"                   (| (+1 +0 (*))  (+0 (*) (*) Nat))"
-      ,"                   (| (+1 +1 (*))  (@ (\\Nat (+1 0 (*) Nat))  (+0 (*) (*) Nat) ))"
-      ,"                   (| (+2 +1 ?)    (+0 (*) (*) Nat))"
-      ,"                   (| (+2 +0 (*))  (@ (\\Nat (+1 0 (*) Nat))  (+0 (*) (*) Nat) ))"
+      ["λ(+ Nat Bool Nat) (CASE 0"
+      ,"                   (| (+ 0 +1 ?)  (0))"
+      ,"                   (| (+ 0 +0 *)  (+0 (*) (*) Nat))"
+      ,"                   (| (+ 1 +0 *)  (+0 (*) (*) Nat))"
+      ,"                   (| (+ 1 +1 *)  (@ (λNat (+1 (0) (*) Nat))  (+0 (*) (*) Nat)))"
+      ,"                   (| (+ 2 +1 ?)  (+0 (*) (*) Nat))"
+      ,"                   (| (+ 2 +0 *)  (@ (λNat (+1 (0) (*) Nat))  (+0 (*) (*) Nat)))"
       ,"                 )"
       ]
 

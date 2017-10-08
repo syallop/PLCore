@@ -47,7 +47,7 @@ idExprTestCase = ExprTestCase
     -- forall a::k. a -> a
     e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
     ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
-    txt = "Λ KIND λ?0 0"
+    txt = "Λ KIND λ?0 (0)"
 
 constExprTestCase :: ExprTestCase
 constExprTestCase = ExprTestCase
@@ -60,7 +60,7 @@ constExprTestCase = ExprTestCase
     ctx = emptyTypeCtx
     e   = BigLam Kind $ BigLam Kind $ Lam (TypeBinding . TyVar . VS $ VZ) $ Lam (TypeBinding . TyVar $ VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
     ty  = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding . TyVar . VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding . TyVar . VS $ VZ)
-    txt = "Λ KIND KIND λ?1 ?0 1"
+    txt = "Λ KIND KIND λ?1 ?0 (1)"
 
 applyExprTestCase :: ExprTestCase
 applyExprTestCase = ExprTestCase
@@ -82,5 +82,5 @@ applyExprTestCase = ExprTestCase
         $ Arrow (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
         $ Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ)
 
-    txt = "ΛKIND KIND λ(→ ?1 ?0) ?1 (@1 0)"
+    txt = "Λ KIND KIND λ(→ ?1 ?0) ?1 (@1 (0))"
 

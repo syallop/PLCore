@@ -103,11 +103,6 @@ data Grammar a where
   GAnyChar
     :: Grammar Char
 
-  -- Longest matching text. At least one character.
-  GLongestMatching1
-    :: P.Predicate Char
-    -> Grammar Text
-
   -- Applicative-like pure
   GPure
     :: Eq a
@@ -146,9 +141,6 @@ toParser grammar = case grammar of
   GAnyChar
     -> P.takeChar
 
-  GLongestMatching1 pred
-    -> P.takeWhile1 pred
-
   GPure a
     -> pure a
 
@@ -171,12 +163,6 @@ toPrinter :: Grammar a -> D.Printer a
 toPrinter grammar = case grammar of
   GAnyChar
     -> D.anyCharPrinter
-
-  {-GLongestMatching p-}
-    {--> P.takeWhile p-}
-
-  {-GLongestMatching1 pred-}
-    {--> P.takeWhile1 pred-}
 
   GPure a
     -> D.purePrinter a
@@ -277,12 +263,17 @@ longestMatching p = concatI \$/ grammarMany (charWhen p)
       (Just . T.unpack)
 
 -- | Longest matching text. At least one character.
-longestMatching1 :: P.Predicate Char -> Grammar Text
-longestMatching1 = GLongestMatching1
+longestMatching1 :: (Char -> Bool) -> Grammar Text
+longestMatching1 p = concatI \$/ grammarMany1 (charWhen p)
+  where
+    concatI :: Iso String Text
+    concatI = Iso
+      (Just . T.pack)
+      (Just . T.unpack)
 
 -- | A natural number: zero and positive integers
 natural :: Grammar Int
-natural = naturalI \$/ longestMatching1 (P.Predicate isDigit $ P.ExpectPredicate "ISNATURAL")
+natural = naturalI \$/ longestMatching1 isDigit
   where
     naturalI :: Iso Text Int
     naturalI = Iso
@@ -293,13 +284,11 @@ natural = naturalI \$/ longestMatching1 (P.Predicate isDigit $ P.ExpectPredicate
 alternatives :: [Grammar a] -> Grammar a
 alternatives = foldr GAlt GEmpty
 
-grammarMany :: Grammar a -> Grammar [a]
-grammarMany g
-  = consI \$/ g \*/ grammarMany g
- \|/ nilI \$/ GPure ()
+grammarMany :: Eq a => Grammar a -> Grammar [a]
+grammarMany g = grammarMany1 g \|/ GPure []
 
-grammarMany1 :: Grammar a -> Grammar [a]
-grammarMany1 g = consI \$/ g \*/ grammarMany1 g
+grammarMany1 :: Eq a => Grammar a -> Grammar [a]
+grammarMany1 g = consI \$/ g \*/ grammarMany g
 
 infixl 3 \|/
 infixr 6 \*/

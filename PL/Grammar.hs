@@ -103,11 +103,6 @@ data Grammar a where
   GAnyChar
     :: Grammar Char
 
-  -- Longest matching text
-  GLongestMatching
-    :: (Char -> Bool)
-    -> Grammar Text
-
   -- Longest matching text. At least one character.
   GLongestMatching1
     :: P.Predicate Char
@@ -150,9 +145,6 @@ toParser :: Grammar a -> Parser a
 toParser grammar = case grammar of
   GAnyChar
     -> P.takeChar
-
-  GLongestMatching p
-    -> P.takeWhile p
 
   GLongestMatching1 pred
     -> P.takeWhile1 pred
@@ -277,7 +269,12 @@ betweenParens a = between lparen a rparen
 
 -- | Longest matching text.
 longestMatching :: (Char -> Bool) -> Grammar Text
-longestMatching = GLongestMatching
+longestMatching p = concatI \$/ grammarMany (charWhen p)
+  where
+    concatI :: Iso String Text
+    concatI = Iso
+      (Just . T.pack)
+      (Just . T.unpack)
 
 -- | Longest matching text. At least one character.
 longestMatching1 :: P.Predicate Char -> Grammar Text

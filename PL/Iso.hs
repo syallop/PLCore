@@ -22,8 +22,12 @@ module PL.Iso
 
   , unitI
   , flipI
+
+  , elementIso
   )
   where
+
+import Prelude hiding ((.),id)
 
 import Control.Monad
 import Control.Category
@@ -86,4 +90,9 @@ flipI :: Iso (a,b) (b,a)
 flipI = Iso
   (\(a,b) -> Just (b,a))
   (\(b,a) -> Just (a,b))
+
+elementIso :: Eq a => a -> Iso () a
+elementIso a0 = Iso
+  (const . Just $ a0)
+  (\a1 -> if a0 == a1 then Just () else Nothing)
 

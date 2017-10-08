@@ -19,12 +19,12 @@ even that). Some constructors may be missing/ some may be unneccessary and in
 general the entire type is likely to change.
 
 Correspondance to invertable-syntax:
-  - <$>: GIsoMap
-  - <*>: GProductMap
-  - <|>: GAlt
+  - <$>: GIsoMap:     \$/
+  - <*>: GProductMap: \*/
+  - <|>: GAlt:        \|/
   - empty: GEmpty
   - pure: GPure
-  - token: GAnyChar
+  - token: GAnyChar:  anyChar
 -}
 module PL.Grammar
   ( Grammar(..)
@@ -99,11 +99,6 @@ import Control.Category
 
 -- | The grammar of some language.
 data Grammar a where
-  -- Literal text
-  GText
-    :: Text
-    -> Grammar ()
-
   -- Literal character
   GChar
     :: Char
@@ -163,9 +158,6 @@ data Grammar a where
 -- | Convert a Grammar to a Parser that accepts it.
 toParser :: Grammar a -> Parser a
 toParser grammar = case grammar of
-  GText txt
-    -> P.textIs txt
-
   GChar c
     -> P.charIs c
 
@@ -201,9 +193,6 @@ toParser grammar = case grammar of
 
 toPrinter :: Grammar a -> D.Printer a
 toPrinter grammar = case grammar of
-  {-GText txt-}
-    {--> P.textIs txt-}
-
   {-GChar c-}
     {--> P.charIs c-}
 
@@ -246,13 +235,20 @@ seqL :: Grammar a -> Grammar () -> Grammar a
 seqL g0 g1 = inverseIso unitI \$/ g0 \*/ g1
 (\*) = seqL
 
+-- | A string of Text
+textIs :: Text -> Grammar ()
+textIs txt = case T.uncons txt of
+  Nothing
+    -> GPure ()
+
+  Just (c,cs)
+    ->  inverseIso (elementIso ((), ()))
+    \$/ (inverseIso (elementIso c) \$/ anyChar)
+    \*/ (textIs cs)
+
 -- | A single character.
 charIs :: Char -> Grammar ()
 charIs = GChar
-
--- | A string of Text.
-textIs :: Text -> Grammar ()
-textIs = GText
 
 -- | Any single character
 anyChar :: Grammar Char
@@ -333,4 +329,5 @@ infix 5 \$/
 (\|/) = GAlt
 (\*/) = GProductMap
 (\$/) = GIsoMap
+
 

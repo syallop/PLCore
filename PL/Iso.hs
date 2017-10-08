@@ -24,6 +24,7 @@ module PL.Iso
   , flipI
 
   , elementIso
+  , ignoreIso
   )
   where
 
@@ -95,4 +96,9 @@ elementIso :: Eq a => a -> Iso () a
 elementIso a0 = Iso
   (const . Just $ a0)
   (\a1 -> if a0 == a1 then Just () else Nothing)
+
+ignoreIso :: a -> Iso a ()
+ignoreIso a = Iso
+  (const $ Just ())
+  (const $ Just a)
 

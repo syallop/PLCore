@@ -99,11 +99,6 @@ import Control.Category
 
 -- | The grammar of some language.
 data Grammar a where
-  -- Literal character
-  GChar
-    :: Char
-    -> Grammar ()
-
   -- Any character
   GAnyChar
     :: Grammar Char
@@ -158,9 +153,6 @@ data Grammar a where
 -- | Convert a Grammar to a Parser that accepts it.
 toParser :: Grammar a -> Parser a
 toParser grammar = case grammar of
-  GChar c
-    -> P.charIs c
-
   GAnyChar
     -> P.takeChar
 
@@ -193,9 +185,6 @@ toParser grammar = case grammar of
 
 toPrinter :: Grammar a -> D.Printer a
 toPrinter grammar = case grammar of
-  {-GChar c-}
-    {--> P.charIs c-}
-
   GAnyChar
     -> D.anyCharPrinter
 
@@ -248,7 +237,7 @@ textIs txt = case T.uncons txt of
 
 -- | A single character.
 charIs :: Char -> Grammar ()
-charIs = GChar
+charIs = textIs . T.singleton
 
 -- | Any single character
 anyChar :: Grammar Char
@@ -329,5 +318,4 @@ infix 5 \$/
 (\|/) = GAlt
 (\*/) = GProductMap
 (\$/) = GIsoMap
-
 

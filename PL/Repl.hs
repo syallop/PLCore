@@ -94,6 +94,8 @@ replError err = Repl $ \ctx -> (ctx,Left err)
 -- Read text and parse it into an expr
 replRead
   :: (Ord tb
+     ,Eq b
+     ,Eq abs
      ,Document b
      ,Document abs
      ,Document tb

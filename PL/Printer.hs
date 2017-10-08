@@ -51,6 +51,14 @@ module PL.Printer
   , Document
   , document
   , renderDocument
+
+  , Printer
+  , isoMapPrinter
+  , productMapPrinter
+  , emptyPrinter
+  , altPrinter
+  , purePrinter
+  , anyCharPrinter
   )
   where
 
@@ -59,6 +67,15 @@ import Data.Monoid
 import Data.String
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Control.Monad
+import Control.Applicative
+
+import PL.Iso
+
+newtype Printer a = Printer {_unPPrint :: a -> Maybe Doc}
+
+pprint :: Printer a -> a -> Maybe Doc
+pprint = _unPPrint
 
 -- | A 'Doc'ument is something that can be printed nicely and appended to
 -- efficiently.
@@ -239,4 +256,24 @@ instance Document [Doc]  where document = foldr DocAppend DocEmpty
 
 instance IsString Doc where
   fromString = string
+
+isoMapPrinter :: Iso a b -> Printer a -> Printer b
+isoMapPrinter iso (Printer p) = Printer $ printIso iso >=> p
+
+productMapPrinter :: Printer a -> Printer b -> Printer (a,b)
+productMapPrinter (Printer p) (Printer q) = Printer $ \(a,b) -> liftM2 mappend (p a) (q b)
+
+-- These functions cant form an Alternative because we can't implement
+-- the superclass Functor as we're a contravariant functor.
+emptyPrinter :: Printer a
+emptyPrinter = Printer . const $ Nothing
+
+altPrinter :: Printer a -> Printer a -> Printer a
+altPrinter (Printer p) (Printer q) = Printer $ \a -> mplus (p a) (q a)
+
+purePrinter :: Eq a => a -> Printer a
+purePrinter a = Printer $ \a' -> if a == a' then Just "" else Nothing
+
+anyCharPrinter :: Printer Char
+anyCharPrinter = Printer $ Just . char
 

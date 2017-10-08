@@ -28,6 +28,7 @@ library
                      , PL.Grammar.Lispy.Type
                      , PL.Kind
                      , PL.Name
+                     , PL.Iso
                      , PL.Parser
                      , PL.Printer
                      , PL.Printer.Debug
@@ -71,9 +72,13 @@ executable pl
                    , PL.Grammar
                    , PL.Kind
                    , PL.Name
+                   , PL.Iso
                    , PL.Parser
                    , PL.Grammar
                    , PL.Grammar.Lispy
+                   , PL.Grammar.Lispy.Expr
+                   , PL.Grammar.Lispy.Type
+                   , PL.Grammar.Lispy.Kind
                    , PL.Printer
                    , PL.Printer.Debug
                    , PL.Reduce

@@ -79,6 +79,9 @@ module PL.Parser
   ,parseResult
 
   ,Cursor(..)
+
+  ,isoMapParser
+  ,productMapParser
   ) where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
@@ -92,6 +95,8 @@ import qualified Data.List as List
 import qualified Data.Text as Text
 
 import PL.Printer hiding (between)
+
+import PL.Iso
 
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
@@ -518,3 +523,29 @@ whitespace  = dropWhile isSpace
 
 helloWorldP = textIs "Hello" *> textIs "World!"
 
+isoMapParser :: Iso a b -> Parser a -> Parser b
+isoMapParser iso (Parser f) = Parser $ \cur -> case f cur of
+  ParseSuccess a cur'
+    -> case parseIso iso a of
+         Just b
+           -> ParseSuccess b cur'
+
+         Nothing
+           -> ParseFailure (ExpectLabel "isoMap failed" ExpectAnything) cur'
+
+  ParseFailure expected cur'
+    -> ParseFailure expected cur'
+
+-- = Parser (\s ->  [((x, y), s'') |  (x, s') <- p  s,  (y, s'') <- q  s' ])
+productMapParser :: Parser a -> Parser b -> Parser (a,b)
+productMapParser (Parser fa) (Parser fb) = Parser $ \cur -> case fa cur of
+  ParseFailure expected cur'
+    -> ParseFailure expected cur'
+
+  ParseSuccess a cur'
+    -> case fb (dropSpaceLikes cur') of
+         ParseFailure expected cur'
+           -> ParseFailure (ExpectLabel "productMap failed" expected) cur'
+
+         ParseSuccess b cur''
+           -> ParseSuccess (a,b) (dropSpaceLikes cur'')

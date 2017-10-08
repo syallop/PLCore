@@ -109,12 +109,6 @@ data Grammar a where
     => a
     -> Grammar a
 
-  -- Applicative ap
-  GAp
-    :: Grammar (b -> a)
-    -> Grammar b
-    -> Grammar a
-
  -- Alternative empty
   GEmpty
     :: Grammar a
@@ -144,9 +138,6 @@ toParser grammar = case grammar of
   GPure a
     -> pure a
 
-  GAp g0 g1
-    -> toParser g0 <*> toParser g1
-
   GEmpty
     -> empty
 
@@ -166,9 +157,6 @@ toPrinter grammar = case grammar of
 
   GPure a
     -> D.purePrinter a
-
-  {-GAp g0 g1-}
-    {--> toParser g0 <*> toParser g1-}
 
   GEmpty
     -> D.emptyPrinter

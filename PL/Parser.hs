@@ -1,5 +1,6 @@
 {-# LANGUAGE
     InstanceSigs
+  , GADTs
   , OverloadedStrings
   , ScopedTypeVariables
   , TupleSections
@@ -13,73 +14,54 @@ Stability   : experimental
 A NIH parser with backtracking, leftovers and automatic whitespace consumption.
 -}
 module PL.Parser
-  (-- Core parser functions
-   ParseResult(..)
-  ,Parser()
-  ,runParser
-  ,pFail
-  ,pSucceed
-  ,req
-  ,sat
-  ,try
-  ,recoverWith
-  ,alternatives
-  ,labeled, (<?>)
+  ( -- Core parser functions
+    ParseResult(..)
+  , Parser()
+  , runParser
+  , pFail
+  , pSucceed
+  , req
+  , sat
+  , try
+  , recoverWith
+  , alternatives
+  , labeled, (<?>)
 
    -- Functions on characters
-  ,takeChar
-  ,Expected(..)
-  ,Predicate(..)
-  ,takeCharIf
-  ,charIs
+  , takeChar
+  , Expected(..)
+  , Predicate(..)
+  , takeCharIf
+  , charIs
 
-  -- Take kinds of character
-  ,upper
-  ,lower
-  ,digit
+   -- Take kinds of character
+  , upper
+  , lower
+  , digit
 
-  -- Match kinds of character
-  ,space
-  ,arrow
-  ,bar
-  ,star
-  ,plus
-  ,comma
-  ,upArrow
-  ,lambda
-  ,langle
-  ,rangle
-  ,lparen
-  ,rparen
-  ,underscore
-  ,union
-  ,question
-  ,at
-  ,bigLambda
-  ,bigAt
+   -- Functions on Text/ many characters
+  , takeN
+  , takeNIf
+  , textIs
+  , takeWhile
+  , takeWhile1
+  , dropWhile
+  , dropWhile1
 
-  -- Functions on Text/ many characters
-  ,takeN
-  ,takeNIf
-  ,textIs
-  ,takeWhile
-  ,takeWhile1
-  ,dropWhile
-  ,dropWhile1
+   -- Misc
+  , natural
+  , whitespace
 
-  -- Misc
-  ,natural
-  ,whitespace
+  , pointTo
+  , remainder
+  , showExpected
+  , parseResult
 
-  ,pointTo
-  ,remainder
-  ,showExpected
-  ,parseResult
+  , Cursor(..)
 
-  ,Cursor(..)
-
-  ,isoMapParser
-  ,productMapParser
+  , isoMapParser
+  , productMapParser
+  , toParser
   ) where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
@@ -93,6 +75,7 @@ import qualified Data.List as List
 import qualified Data.Text as Text
 
 import PL.Iso
+import qualified PL.Grammar as G
 import PL.Printer.Doc
 
 
@@ -400,26 +383,6 @@ upper = takeCharIf (Predicate isUpper (ExpectPredicate "ISUPPER")) :: Parser Cha
 lower = takeCharIf (Predicate isLower (ExpectPredicate "ISLOWER")) :: Parser Char
 digit = takeCharIf (Predicate isDigit (ExpectPredicate "ISDIGIT")) :: Parser Char
 
-
-space      = req $ takeCharIf (Predicate isSpace (ExpectOneOf [" "]))
-arrow      = charIs '→' <|> textIs "->"
-bar        = charIs '|'
-star       = charIs '*'
-plus       = charIs '+'
-comma      = charIs ','
-upArrow    = charIs '^'
-lambda     = charIs 'λ' <|> charIs '\\'
-langle     = charIs '<'
-rangle     = charIs '>'
-lparen     = charIs '('
-rparen     = charIs ')'
-underscore = charIs '_'
-union      = charIs '∪'
-question   = charIs '?'
-at         = charIs '@'
-bigLambda  = charIs 'Λ' <|> textIs "/\\"
-bigAt      = charIs '#'
-
 -- number of characters until one is a space or a newline
 spaceLikeDistance :: Text -> Int
 spaceLikeDistance txt = spaceLikeDistance' (0,txt)
@@ -518,8 +481,6 @@ natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate
 whitespace :: Parser ()
 whitespace  = dropWhile isSpace
 
-helloWorldP = textIs "Hello" *> textIs "World!"
-
 isoMapParser :: Iso a b -> Parser a -> Parser b
 isoMapParser iso (Parser f) = Parser $ \cur -> case f cur of
   ParseSuccess a cur'
@@ -546,3 +507,25 @@ productMapParser (Parser fa) (Parser fb) = Parser $ \cur -> case fa (dropSpaceLi
 
          ParseSuccess b cur''
            -> ParseSuccess (a,b) (dropSpaceLikes cur'')
+
+-- | Convert a Grammar to a Parser that accepts it.
+toParser :: G.Grammar a -> Parser a
+toParser grammar = case grammar of
+  G.GAnyChar
+    -> takeChar
+
+  G.GPure a
+    -> pure a
+
+  G.GEmpty
+    -> empty
+
+  G.GAlt g0 g1
+    -> toParser g0 <|> toParser g1
+
+  G.GIsoMap iso ga
+    -> isoMapParser iso (toParser ga)
+
+  G.GProductMap ga gb
+    -> productMapParser (toParser ga) (toParser gb)
+

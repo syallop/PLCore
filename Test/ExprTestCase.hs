@@ -39,6 +39,7 @@ import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
+import PL.Parser
 import PL.Printer
 
 import Control.Applicative

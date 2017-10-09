@@ -28,7 +28,6 @@ Correspondance to invertable-syntax:
 -}
 module PL.Grammar
   ( Grammar(..)
-  , toParser
 
   , charIs
   , textIs
@@ -87,8 +86,6 @@ import Data.Foldable
 import Data.Monoid
 import Control.Applicative
 import Control.Monad
-import PL.Parser (Parser)
-import qualified PL.Parser as P
 
 import PL.Iso
 import Prelude hiding ((.),id)
@@ -125,29 +122,6 @@ data Grammar a where
     :: Grammar a
     -> Grammar b
     -> Grammar (a,b)
-
--- | Convert a Grammar to a Parser that accepts it.
-toParser :: Grammar a -> Parser a
-toParser grammar = case grammar of
-  GAnyChar
-    -> P.takeChar
-
-  GPure a
-    -> pure a
-
-  GEmpty
-    -> empty
-
-  GAlt g0 g1
-    -> toParser g0 <|> toParser g1
-
-  GIsoMap iso ga
-    -> P.isoMapParser iso (toParser ga)
-
-  GProductMap ga gb
-    -> P.productMapParser (toParser ga) (toParser gb)
-
-
 
 -- Takes () on discarded result unlike Applicative
 seqR :: Grammar () -> Grammar a -> Grammar a

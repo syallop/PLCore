@@ -19,7 +19,8 @@ import PL.Name
 import PL.Kind
 import PL.ExprLike
 
-import PL.Printer
+import PL.Printer hiding (parens,between)
+import PL.Printer.Doc
 
 import Data.List
 import qualified Data.Set as Set

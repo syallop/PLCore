@@ -15,7 +15,7 @@ module PL.Printer.Debug
   )
   where
 
-import PL.Printer
+import PL.Printer.Doc
 
 import qualified Debug.Trace as D
 import qualified Data.Text as Text
@@ -42,5 +42,6 @@ traceIndent i d = trace (indent i . document $ d)
 -- Trace a Document d. Formatted between braces and indented by 4 spaces.
 -- Similar to a step in a mathematical derivation.
 traceStep :: Document d => d -> a -> a
-traceStep d = traceIndent 4 (between (char '{',char '}') . document $ d)
+traceStep d = traceIndent 4 (between (char '{') (char '}') . document $ d)
+
 

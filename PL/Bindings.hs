@@ -38,7 +38,8 @@ import Data.Monoid
 import PL.Binds
 import PL.Binds.Ix
 import PL.ExprLike
-import PL.Printer
+import PL.Printer hiding (parens,between)
+import PL.Printer.Doc
 
 
 data Binding e
@@ -64,7 +65,7 @@ instance Document e
 
 instance Document e
       => Document (Bindings e) where
-  document bs = between (char '[',char ']') $ case bs of
+  document bs = between (char '[') (char ']') $ case bs of
                   EmptyBindings
                     -> emptyDoc
 
@@ -72,7 +73,7 @@ instance Document e
                     -> document b <> char ',' <> document bs
 
                   Buried bs
-                    -> between (char '[',char ']') $ document bs
+                    -> between (char '[') (char ']') $ document bs
 
 -- | No bindings
 emptyBindings :: Bindings e

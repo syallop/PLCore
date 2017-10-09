@@ -31,6 +31,7 @@ library
                      , PL.Iso
                      , PL.Parser
                      , PL.Printer
+                     , PL.Printer.Doc
                      , PL.Printer.Debug
                      , PL.Reduce
                      , PL.Repl
@@ -80,6 +81,7 @@ executable pl
                    , PL.Grammar.Lispy.Type
                    , PL.Grammar.Lispy.Kind
                    , PL.Printer
+                   , PL.Printer.Doc
                    , PL.Printer.Debug
                    , PL.Reduce
                    , PL.ReduceType

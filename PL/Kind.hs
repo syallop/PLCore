@@ -12,6 +12,7 @@ The Type of Types.
 module PL.Kind where
 
 import PL.Printer
+import PL.Printer.Doc
 
 import Data.Monoid
 

@@ -90,9 +90,6 @@ import Control.Monad
 import PL.Parser (Parser)
 import qualified PL.Parser as P
 
-import qualified PL.Printer as D
-import PL.Printer (Doc)
-
 import PL.Iso
 import Prelude hiding ((.),id)
 import Control.Category
@@ -150,25 +147,7 @@ toParser grammar = case grammar of
   GProductMap ga gb
     -> P.productMapParser (toParser ga) (toParser gb)
 
-toPrinter :: Grammar a -> D.Printer a
-toPrinter grammar = case grammar of
-  GAnyChar
-    -> D.anyCharPrinter
 
-  GPure a
-    -> D.purePrinter a
-
-  GEmpty
-    -> D.emptyPrinter
-
-  GAlt g0 g1
-    -> D.altPrinter (toPrinter g0) (toPrinter g1)
-
-  GIsoMap iso ga
-    -> D.isoMapPrinter iso (toPrinter ga)
-
-  GProductMap ga gb
-    -> D.productMapPrinter (toPrinter ga) (toPrinter gb)
 
 -- Takes () on discarded result unlike Applicative
 seqR :: Grammar () -> Grammar a -> Grammar a

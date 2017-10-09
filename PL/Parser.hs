@@ -69,8 +69,6 @@ module PL.Parser
 
   -- Misc
   ,natural
-  ,between
-  ,betweenParens
   ,whitespace
 
   ,pointTo
@@ -94,9 +92,8 @@ import Data.Text (Text)
 import qualified Data.List as List
 import qualified Data.Text as Text
 
-import PL.Printer hiding (between)
-
 import PL.Iso
+import PL.Printer.Doc
 
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
@@ -511,12 +508,12 @@ natural :: Parser Int
 natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate "ISNATURAL")
 
 -- | Discard the result of two wrapping parsers.
-between :: Parser l -> Parser a -> Parser r -> Parser a
-between pl pa pr = pl *> pa <* pr
+{-between :: Parser l -> Parser a -> Parser r -> Parser a-}
+{-between pl pa pr = pl *> pa <* pr-}
 
 -- | Run a parser between two parenthesis '(' ')'.
-betweenParens :: Parser a -> Parser a
-betweenParens pa = between lparen pa rparen
+{-betweenParens :: Parser a -> Parser a-}
+{-betweenParens pa = between lparen pa rparen-}
 
 whitespace :: Parser ()
 whitespace  = dropWhile isSpace

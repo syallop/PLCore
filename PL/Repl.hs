@@ -14,12 +14,11 @@ import PL.Expr
 import PL.ExprLike
 import PL.Kind
 import PL.Parser
+import PL.Printer
 import PL.Grammar
 import PL.Grammar.Lispy
 import PL.Name
 import PL.Reduce
-import PL.Printer
-import PL.Printer.Debug
 import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx

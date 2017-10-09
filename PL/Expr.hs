@@ -30,6 +30,7 @@ import PL.ExprLike
 import PL.Kind
 import PL.Name
 import PL.Printer
+import PL.Printer.Doc
 import PL.Printer.Debug
 import PL.Type hiding (parens)
 import PL.Type.Eq

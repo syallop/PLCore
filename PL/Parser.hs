@@ -338,9 +338,9 @@ charIs c = req $ takeCharIf (Predicate (== c) (ExpectOneOf [Text.singleton c]))
 
 
 
-upper = takeCharIf (Predicate isUpper (ExpectPredicate "ISUPPER")) :: Parser Char
-lower = takeCharIf (Predicate isLower (ExpectPredicate "ISLOWER")) :: Parser Char
-digit = takeCharIf (Predicate isDigit (ExpectPredicate "ISDIGIT")) :: Parser Char
+upper = takeCharIf (Predicate isUpper (ExpectPredicate "ISUPPER" Nothing)) :: Parser Char
+lower = takeCharIf (Predicate isLower (ExpectPredicate "ISLOWER" Nothing)) :: Parser Char
+digit = takeCharIf (Predicate isDigit (ExpectPredicate "ISDIGIT" Nothing)) :: Parser Char
 
 -- number of characters until one is a space or a newline
 spaceLikeDistance :: Text -> Int
@@ -427,7 +427,7 @@ dropWhile1 = req . takeWhile1
 
 -- A natural number: zero and positive integers
 natural :: Parser Int
-natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate "ISNATURAL")
+natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate "ISNATURAL" Nothing)
 
 -- | Discard the result of two wrapping parsers.
 {-between :: Parser l -> Parser a -> Parser r -> Parser a-}
@@ -464,7 +464,8 @@ productMapParser (Parser fa) (Parser fb) = Parser $ \cur -> case fa (dropSpaceLi
   ParseSuccess a cur'
     -> case fb (dropSpaceLikes cur') of
          ParseFailure expected cur'
-           -> ParseFailure (ExpectLabel "productMap failed" expected) (dropSpaceLikes cur')
+           {--> ParseFailure (ExpectLabel "productMap failed" expected) (dropSpaceLikes cur')-}
+           -> ParseFailure expected (dropSpaceLikes cur')
 
          ParseSuccess b cur''
            -> ParseSuccess (a,b) (dropSpaceLikes cur'')
@@ -484,10 +485,17 @@ toParser grammar = case grammar of
   G.GAlt g0 g1
     -> toParser g0 <|> toParser g1
 
-  -- Pass the grammar into isoMapParser so we can describe the grammar in the expected case?
   G.GIsoMap iso ga
     -> isoMapParser iso ga
 
   G.GProductMap ga gb
     -> productMapParser (toParser ga) (toParser gb)
+
+  -- Enhance a failing parse with a given Expect label.
+  G.GLabel l g
+    -> let Parser f = toParser g
+        in Parser $ \cur0 -> case f cur0 of
+             ParseFailure e cur1
+               -> ParseFailure (ExpectLabel l e) cur1
+             s -> s
 

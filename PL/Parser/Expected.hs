@@ -14,6 +14,7 @@ Stability   : experimental
 
 Describe what a Parser expected to see at a position.
 -}
+-- TODO: Switch text functions to Doc's
 module PL.Parser.Expected where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
@@ -30,12 +31,12 @@ import PL.Printer.Doc
 import PL.Grammar
 
 data Expected
-  = ExpectEither Expected Expected -- Expected either of
-  | ExpectOneOf [Text]             -- Expected any of
-  | ExpectPredicate Text           -- Failed predicate with label
-  | ExpectAnything                 -- Expected anything => got an EOF
-  | ExpectN Int Expected           -- Expected a N repetitions
-  | ExpectLabel Text Expected      -- Expected something with a label
+  = ExpectEither Expected Expected        -- Expected either of
+  | ExpectOneOf [Text]                    -- Expected any of
+  | ExpectPredicate Text (Maybe Expected) -- Failed predicate with label
+  | ExpectAnything                        -- Expected anything => got an EOF
+  | ExpectN Int Expected                  -- Expected a N repetitions
+  | ExpectLabel Text Expected             -- Expected something with a label
   deriving Show
 
 instance Document Expected where
@@ -51,6 +52,7 @@ showExpected = ("- "<>)
              . List.nub
              . flattenExpected
 
+-- Turn an 'Expected' into a list of each expected alternative
 flattenExpected :: Expected -> [Text]
 flattenExpected e = case e of
   ExpectEither es0 es1
@@ -59,8 +61,8 @@ flattenExpected e = case e of
   ExpectOneOf ts
     -> ts
 
-  ExpectPredicate t
-    -> ["__PREDICATE__" <> t]
+  ExpectPredicate label mE
+    -> map (("__PREDICATE__" <> label) <>) $ maybe [] flattenExpected mE
 
   ExpectAnything
     -> ["__ANYTHING__"]
@@ -69,7 +71,8 @@ flattenExpected e = case e of
     -> ["__EXACTLY__" <> (Text.pack . show $ i) <> "__{" <> showExpected e <> "}__"]
 
   ExpectLabel l e
-    -> [mconcat ["__LABEL__",l,"__{",showExpected e,"}__"]]
+    {--> [mconcat ["__LABEL__",l,"__{",showExpected e,"}__"]]-}
+    -> [mconcat [l," AKA ",showExpected e]]
 
 -- | A Grammar's parser expected to see:
 grammarExpects :: forall a. Show a => Grammar a -> Expected
@@ -93,10 +96,12 @@ grammarExpects g0 = case g0 of
   -- Expects something AND a predicate to succeed.
   -- TODO: Capture this desired predicate?
   GIsoMap iso g1
-    -> grammarExpects g1
+    {--> grammarExpects g1-}
+    -> ExpectPredicate "ISOMAP" . Just . grammarExpects $ g1
 
   -- Expected one thing and then another.
   -- TODO: Express what we wanted after the immediate thing?
   GProductMap g1 g2
-    -> grammarExpects g1
+    {--> grammarExpects g1-}
+    -> ExpectPredicate "THEN" . Just $ (ExpectPredicate "THEN" . Just . grammarExpects $ g1)
 

@@ -121,3 +121,6 @@ toPrinter grammar = case grammar of
   GProductMap ga gb
     -> productMapPrinter (toPrinter ga) (toPrinter gb)
 
+  GLabel _label g
+    -> toPrinter g
+

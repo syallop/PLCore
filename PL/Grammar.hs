@@ -125,6 +125,11 @@ data Grammar a where
     -> Grammar b
     -> Grammar (a,b)
 
+  GLabel
+    :: Text
+    -> Grammar a
+    -> Grammar a
+
 -- Takes () on discarded result unlike Applicative
 (*/), seqR :: Show a => Grammar () -> Grammar a -> Grammar a
 (*/) = seqR
@@ -137,7 +142,7 @@ seqL g0 g1 = inverseIso unitI \$/ g0 \*/ g1
 
 -- | A string of Text
 textIs :: Text -> Grammar ()
-textIs txt = case T.uncons txt of
+textIs txt = GLabel txt $ case T.uncons txt of
   Nothing
     -> GPure ()
 

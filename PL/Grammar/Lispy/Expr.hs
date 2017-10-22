@@ -31,11 +31,11 @@ import PL.Var
 
 import PL.Iso
 
-typeAbs :: Ord tb => Grammar tb -> Grammar (Type tb)
+typeAbs :: (Show tb,Ord tb) => Grammar tb -> Grammar (Type tb)
 typeAbs tb = typ tb
 
 -- A lambda followed by one or more type abstractions then an expression.
-lamExpr :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+lamExpr :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 lamExpr = lamiseI \$/ (lambda */ ?abs) \*/ (grammarMany ?abs) \*/ exprI
   where
     lamiseI :: Iso (abs,([abs],Expr b abs tb)) (Expr b abs tb)
@@ -61,7 +61,7 @@ lamExpr = lamiseI \$/ (lambda */ ?abs) \*/ (grammarMany ?abs) \*/ exprI
 
 
 -- A big lambda followed by one or more kind abstractions then an expression
-bigLamExpr :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+bigLamExpr :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 bigLamExpr = bigLamiseI \$/ (bigLambda */ kind) \*/ grammarMany kind  \*/ exprI
   where
     bigLamiseI :: Iso (Kind,([Kind],Expr b abs tb)) (Expr b abs tb)
@@ -87,7 +87,7 @@ bigLamExpr = bigLamiseI \$/ (bigLambda */ kind) \*/ grammarMany kind  \*/ exprI
 
 
 -- An '@' followed by two or more expressions
-appExpr :: (Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+appExpr :: (Show b,Show abs,Show tb,Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 appExpr = appiseI \$/ (at */ exprI) \*/ exprI \*/ grammarMany exprI
   where
     appiseI :: Iso (Expr b abs tb,(Expr b abs tb,[Expr b abs tb])) (Expr b abs tb)
@@ -113,7 +113,7 @@ appExpr = appiseI \$/ (at */ exprI) \*/ exprI \*/ grammarMany exprI
 
 
 -- A "@@" followed by two or more expressions
-bigAppExpr :: (Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+bigAppExpr :: (Show b,Show abs,Show tb,Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 bigAppExpr = bigAppiseI \$/ (at */ exprI) \*/ (typ ?tb) \*/ grammarMany (typ ?tb)
   where
     bigAppiseI :: Iso (Expr b abs tb,(Type tb,[Type tb])) (Expr b abs tb)
@@ -137,7 +137,7 @@ bigAppExpr = bigAppiseI \$/ (at */ exprI) \*/ (typ ?tb) \*/ grammarMany (typ ?tb
     bigAppise f x (y:ys) = bigAppise (BigApp f x) y ys
 
 
-bindingExpr :: Grammar b -> Grammar (Expr b abs tb)
+bindingExpr :: Show b => Grammar b -> Grammar (Expr b abs tb)
 bindingExpr eb = bindingI \$/ eb
   where
     bindingI :: Iso b (Expr b abs tb)
@@ -158,7 +158,7 @@ var = varI \$/ natural
       (Just . fromEnum) -- TODO: Partial
 
 -- A '+' followed by an index, an expression and two or more types
-sumExpr :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+sumExpr :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 sumExpr = sumiseI \$/ (plus */ natural) \*/ exprI \*/ typ ?tb \*/ typ ?tb \*/ grammarMany (typ ?tb)
   where
     sumiseI :: Iso (Int,(Expr b abs tb,(Type tb,(Type tb,[Type tb])))) (Expr b abs tb)
@@ -180,7 +180,7 @@ sumExpr = sumiseI \$/ (plus */ natural) \*/ exprI \*/ typ ?tb \*/ typ ?tb \*/ gr
 
 
 -- A '*' followed by zero or more expressions
-productExpr :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+productExpr :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 productExpr = productiseI \$/ (star */ grammarMany exprI)
   where
     productiseI :: Iso [Expr b abs tb] (Expr b abs tb)
@@ -194,7 +194,7 @@ productExpr = productiseI \$/ (star */ grammarMany exprI)
 
 
 -- A 'U' followed by its type index, the expression and two or more types
-unionExpr :: forall b abs tb. (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+unionExpr :: forall b abs tb. (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 unionExpr = unioniseI \$/ (union */ (typ ?tb)) \*/ exprI \*/ typ ?tb \*/ typ ?tb \*/ grammarMany (typ ?tb)
   where
     unioniseI :: Iso (Type tb,(Expr b abs tb,(Type tb,(Type tb,[Type tb])))) (Expr b abs tb)
@@ -214,7 +214,7 @@ unionExpr = unioniseI \$/ (union */ (typ ?tb)) \*/ exprI \*/ typ ?tb \*/ typ ?tb
     unionise tIx e t0 t1 ts = Union e tIx (Set.fromList $ t0:t1:ts)
 
 
-matchArg :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
+matchArg :: (Show b,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
 matchArg
   = bind
  \|/ matchBinding ?eb
@@ -224,7 +224,7 @@ matchArg
  \|/ betweenParens matchArg
 
 -- A '+' followed by an index and a matchArg
-matchSum :: (Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
+matchSum :: (Show b, Show tb, Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
 matchSum = matchSumI \$/ (plus */ natural) \*/ matchArg
   where
     matchSumI :: Iso (Int,MatchArg b tb) (MatchArg b tb)
@@ -238,7 +238,7 @@ matchSum = matchSumI \$/ (plus */ natural) \*/ matchArg
       )
 
 -- A '*' followed by zero or more matchArgs
-matchProduct :: (Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
+matchProduct :: (Show b, Show tb, Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
 matchProduct = matchProductI \$/ (star */ grammarMany matchArg)
   where
     matchProductI :: Iso [MatchArg b tb] (MatchArg b tb)
@@ -252,7 +252,7 @@ matchProduct = matchProductI \$/ (star */ grammarMany matchArg)
 
 
 -- A 'U' followed by a type index and a matchArg
-matchUnion :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
+matchUnion :: (Show b,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (MatchArg b tb)
 matchUnion = matchUnionI \$/ (union */ (typ ?tb)) \*/ matchArg
   where
     matchUnionI :: Iso (Type tb,MatchArg b tb) (MatchArg b tb)
@@ -265,7 +265,7 @@ matchUnion = matchUnionI \$/ (union */ (typ ?tb)) \*/ matchArg
       )
 
 -- A var
-matchBinding :: Grammar b -> Grammar (MatchArg b tb)
+matchBinding :: Show b => Grammar b -> Grammar (MatchArg b tb)
 matchBinding eb = matchBindingI \$/ eb
   where
     matchBindingI :: Iso b (MatchArg b tb)
@@ -278,11 +278,11 @@ matchBinding eb = matchBindingI \$/ eb
       )
 
 -- A '?'
-bind :: (Eq b,Eq tb) => Grammar (MatchArg b tb)
+bind :: (Show b,Show tb,Eq b,Eq tb) => Grammar (MatchArg b tb)
 bind = question */ GPure Bind
 
 -- "CASE", then an expr then casebranches
-caseExpr :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+caseExpr :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 caseExpr = caseAnalysisI \$/ (textIs "CASE" */ exprI) \*/ caseBody
   where
     caseAnalysisI :: Iso (Expr b abs tb,(CaseBranches (Expr b abs tb) (MatchArg b tb))) (Expr b abs tb)
@@ -295,11 +295,11 @@ caseExpr = caseAnalysisI \$/ (textIs "CASE" */ exprI) \*/ caseBody
       )
 
 -- Either someCaseBranches or
-caseBody :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
+caseBody :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
 caseBody = caseBranches \|/ defaultOnly
 
 -- One or many casebranch then a possible default expr
-caseBranches :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
+caseBranches :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
 caseBranches = caseBranchesI \$/ someCaseBranches \*/ ((justI \$/ exprI) \|/ GPure Nothing)
   where
     caseBranchesI :: Iso (NonEmpty (CaseBranch (Expr b abs tb)(MatchArg b tb))
@@ -320,7 +320,7 @@ caseBranches = caseBranchesI \$/ someCaseBranches \*/ ((justI \$/ exprI) \|/ GPu
       id
 
 -- A non-empty list of caseBranch
-someCaseBranches :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (NonEmpty (CaseBranch (Expr b abs tb) (MatchArg b tb)))
+someCaseBranches :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (NonEmpty (CaseBranch (Expr b abs tb) (MatchArg b tb)))
 someCaseBranches = nonEmptyI \$/ caseBranch \*/ grammarMany caseBranch
   where
     nonEmptyI :: Iso (a,[a]) (NonEmpty a)
@@ -331,7 +331,7 @@ someCaseBranches = nonEmptyI \$/ caseBranch \*/ grammarMany caseBranch
       )
 
 -- A single case branch is a matchArg pattern, then a result expression
-caseBranch :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranch (Expr b abs tb) (MatchArg b tb))
+caseBranch :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranch (Expr b abs tb) (MatchArg b tb))
 caseBranch = caseBranch' \|/ betweenParens caseBranch'
   where
     caseBranch' = caseBranchI \$/ (charIs '|' */ matchArg) \*/ exprI
@@ -342,7 +342,7 @@ caseBranch = caseBranch' \|/ betweenParens caseBranch'
       (\(CaseBranch m e) -> Just (m,e))
 
 -- A default case branch only
-defaultOnly :: (Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
+defaultOnly :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
 defaultOnly = defaultOnlyI \$/ exprI
   where
     defaultOnlyI :: Iso (Expr b abs tb) (CaseBranches (Expr b abs tb) (MatchArg b tb))
@@ -361,7 +361,7 @@ type Implicits b abs tb = (?eb :: Grammar b,?abs :: Grammar abs,?tb :: Grammar t
 -- - ?eb  Expression bindings    (E.G. Var)
 -- - ?abs Expression abstraction (E.G. Type)
 -- - ?tb  Type bindings          (E.G. Var)
-exprI :: (Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
+exprI :: (Show b, Show abs, Show tb, Ord tb, Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
 exprI = alternatives
   [lamExpr
   ,bigLamExpr
@@ -379,7 +379,7 @@ exprI = alternatives
 -- - Expression bindings    (E.G. Var)
 -- - Expression abstraction (E.G. Type)
 -- - Type bindings          (E.G. Var)
-expr :: (Ord tb,Eq b,Eq abs) => Grammar b -> Grammar abs -> Grammar tb -> Grammar (Expr b abs tb)
+expr :: (Show b,Show abs,Show tb,Ord tb,Eq b,Eq abs) => Grammar b -> Grammar abs -> Grammar tb -> Grammar (Expr b abs tb)
 expr eb abs tb
   = let ?eb  = eb
         ?abs = abs

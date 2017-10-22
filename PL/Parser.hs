@@ -440,18 +440,20 @@ natural = read . Text.unpack <$> takeWhile1 (Predicate isDigit $ ExpectPredicate
 whitespace :: Parser ()
 whitespace  = dropWhile isSpace
 
-isoMapParser :: Iso a b -> Parser a -> Parser b
-isoMapParser iso (Parser f) = Parser $ \cur -> case f cur of
-  ParseSuccess a cur'
-    -> case parseIso iso a of
-         Just b
-           -> ParseSuccess b cur'
+isoMapParser :: Show a => Iso a b -> G.Grammar a -> Parser b
+isoMapParser iso gr =
+  let Parser f = toParser gr
+   in Parser $ \cur -> case f cur of
+        ParseSuccess a cur'
+          -> case parseIso iso a of
+               Just b
+                 -> ParseSuccess b cur'
 
-         Nothing
-           -> ParseFailure (ExpectLabel "isoMap failed" ExpectAnything) cur'
+               Nothing
+                 -> ParseFailure (ExpectLabel "isoMap" $ grammarExpects gr) cur'
 
-  ParseFailure expected cur'
-    -> ParseFailure expected cur'
+        ParseFailure expected cur'
+          -> ParseFailure expected cur'
 
 -- = Parser (\s ->  [((x, y), s'') |  (x, s') <- p  s,  (y, s'') <- q  s' ])
 productMapParser :: Parser a -> Parser b -> Parser (a,b)
@@ -484,7 +486,7 @@ toParser grammar = case grammar of
 
   -- Pass the grammar into isoMapParser so we can describe the grammar in the expected case?
   G.GIsoMap iso ga
-    -> isoMapParser iso (toParser ga)
+    -> isoMapParser iso ga
 
   G.GProductMap ga gb
     -> productMapParser (toParser ga) (toParser gb)

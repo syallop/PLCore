@@ -114,23 +114,26 @@ data Grammar a where
     -> Grammar a
 
   GIsoMap
-    :: Iso a b
+    :: Show a
+    => Iso a b
     -> Grammar a
     -> Grammar b
 
   GProductMap
-    :: Grammar a
+    :: Show a
+    => Grammar a
     -> Grammar b
     -> Grammar (a,b)
 
 -- Takes () on discarded result unlike Applicative
-seqR :: Grammar () -> Grammar a -> Grammar a
-seqR g0 g1 = inverseIso unitI . flipI \$/ g0 \*/ g1
+(*/), seqR :: Show a => Grammar () -> Grammar a -> Grammar a
 (*/) = seqR
+seqR g0 g1 = inverseIso unitI . flipI \$/ g0 \*/ g1
 
-seqL :: Grammar a -> Grammar () -> Grammar a
-seqL g0 g1 = inverseIso unitI \$/ g0 \*/ g1
+
+(\*), seqL :: Show a => Grammar a -> Grammar () -> Grammar a
 (\*) = seqL
+seqL g0 g1 = inverseIso unitI \$/ g0 \*/ g1
 
 -- | A string of Text
 textIs :: Text -> Grammar ()
@@ -187,11 +190,11 @@ bigLambda  = charIs 'Λ' \|/ textIs "/\\"
 bigAt      = charIs '#'
 
 -- | A Grammar between two others.
-between :: Grammar () -> Grammar a -> Grammar () -> Grammar a
+between :: Show a => Grammar () -> Grammar a -> Grammar () -> Grammar a
 between l a r = l */ a \* r
 
 -- | A Grammar between parentheses.
-betweenParens :: Grammar a -> Grammar a
+betweenParens :: Show a => Grammar a -> Grammar a
 betweenParens a = between lparen a rparen
 
 -- | Longest matching text.
@@ -225,10 +228,10 @@ natural = naturalI \$/ longestMatching1 isDigit
 alternatives :: [Grammar a] -> Grammar a
 alternatives = foldr GAlt GEmpty
 
-grammarMany :: Eq a => Grammar a -> Grammar [a]
+grammarMany :: (Eq a,Show a) => Grammar a -> Grammar [a]
 grammarMany g = grammarMany1 g \|/ GPure []
 
-grammarMany1 :: Eq a => Grammar a -> Grammar [a]
+grammarMany1 :: (Eq a,Show a) => Grammar a -> Grammar [a]
 grammarMany1 g = consI \$/ g \*/ grammarMany g
 
 infixl 3 \|/
@@ -236,6 +239,10 @@ infixr 6 \*/
 infix 5 \$/
 
 (\|/) = GAlt
+
+(\*/) :: Show a => Grammar a -> Grammar b -> Grammar (a,b)
 (\*/) = GProductMap
+
+(\$/) :: Show a => Iso a b -> Grammar a -> Grammar b
 (\$/) = GIsoMap
 

@@ -99,6 +99,9 @@ replRead
      ,Document b
      ,Document abs
      ,Document tb
+     ,Show b
+     ,Show abs
+     ,Show tb
      )
   => Text        -- ^ Input text
   -> Grammar b   -- ^ Expression bindings (E.G. Var)
@@ -178,6 +181,9 @@ replPrint
      ,Ord tb
      ,Eq b
      ,Eq abs
+     ,Show b
+     ,Show abs
+     ,Show tb
      )
   => (Expr b abs tb,Expr b abs tb,Type tb)
   -> Repl b abs tb Text
@@ -204,6 +210,9 @@ replStep
      ,Binds tb Kind
      ,Abstracts abs tb
      ,Eq b
+     ,Show b
+     ,Show abs
+     ,Show tb
      )
   => Grammar b
   -> Grammar abs

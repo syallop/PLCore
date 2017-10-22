@@ -30,6 +30,7 @@ library
                      , PL.Name
                      , PL.Iso
                      , PL.Parser
+                     , PL.Parser.Expected
                      , PL.Printer
                      , PL.Printer.Doc
                      , PL.Printer.Debug
@@ -75,6 +76,7 @@ executable pl
                    , PL.Name
                    , PL.Iso
                    , PL.Parser
+                   , PL.Parser.Expected
                    , PL.Grammar
                    , PL.Grammar.Lispy
                    , PL.Grammar.Lispy.Expr

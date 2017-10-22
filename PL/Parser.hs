@@ -75,8 +75,9 @@ import qualified Data.List as List
 import qualified Data.Text as Text
 
 import PL.Iso
-import qualified PL.Grammar as G
+import PL.Parser.Expected
 import PL.Printer.Doc
+import qualified PL.Grammar as G
 
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.
@@ -185,48 +186,6 @@ parseResult :: (a -> Cursor -> b) -> (Expected -> Cursor -> b) -> ParseResult a 
 parseResult sF fF r = case r of
   ParseSuccess a c -> sF a c
   ParseFailure e c -> fF e c
-
-data Expected
-  = ExpectEither Expected Expected -- Expected either of
-  | ExpectOneOf [Text]             -- Expected any of
-  | ExpectPredicate Text           -- Failed predicate with label
-  | ExpectAnything                 -- Expected anything => got an EOF
-  | ExpectN Int Expected           -- Expected a N repetitions
-  | ExpectLabel Text Expected      -- Expected something with a label
-  deriving Show
-
-instance Document Expected where
-  document = text . showExpected
-
-expectNothing :: Expected
-expectNothing = ExpectOneOf []
-
--- Turn an 'Expected' into a bulleted list of each unique expected alternative.
-showExpected :: Expected -> Text
-showExpected = ("- "<>)
-             . Text.intercalate "\n - "
-             . List.nub
-             . flattenExpected
-
-flattenExpected :: Expected -> [Text]
-flattenExpected e = case e of
-  ExpectEither es0 es1
-    -> flattenExpected es0 ++ flattenExpected es1
-
-  ExpectOneOf ts
-    -> ts
-
-  ExpectPredicate t
-    -> ["__PREDICATE__" <> t]
-
-  ExpectAnything
-    -> ["__ANYTHING__"]
-
-  ExpectN i e
-    -> ["__EXACTLY__" <> (Text.pack . show $ i) <> "__{" <> showExpected e <> "}__"]
-
-  ExpectLabel l e
-    -> [mconcat ["__LABEL__",l,"__{",showExpected e,"}__"]]
 
 showOneOf :: [Text] -> String
 showOneOf []       = "NOTHING"
@@ -523,6 +482,7 @@ toParser grammar = case grammar of
   G.GAlt g0 g1
     -> toParser g0 <|> toParser g1
 
+  -- Pass the grammar into isoMapParser so we can describe the grammar in the expected case?
   G.GIsoMap iso ga
     -> isoMapParser iso (toParser ga)
 

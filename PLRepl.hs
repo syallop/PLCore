@@ -2,6 +2,7 @@
     RankNTypes
   , FlexibleContexts
   , OverloadedStrings
+  , ImplicitParams
   #-}
 module Main where
 
@@ -42,7 +43,12 @@ import qualified Data.Text.IO as Text
 main :: IO ()
 main = repl emptyReplCtx
   where
-    myReplStep = replStep var (typ tyVar) tyVar
+    myReplStep :: Text -> Repl Var (Type TyVar) TyVar Text
+    myReplStep =
+      let ?eb = var
+          ?abs = typ tyVar
+          ?tb = tyVar
+       in replStep var (typ tyVar) tyVar
 
     repl ctx = do
       putStr "PL> "

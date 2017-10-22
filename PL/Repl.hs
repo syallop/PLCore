@@ -25,6 +25,7 @@ import PL.TypeCtx
 
 import Control.Applicative
 import Control.Monad (ap)
+import Data.Maybe
 import Data.List (intercalate)
 import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -173,12 +174,17 @@ replPrint
   :: (Document b
      ,Document abs
      ,Document tb
+     ,Implicits b abs tb
+     ,Ord tb
+     ,Eq b
+     ,Eq abs
      )
   => (Expr b abs tb,Expr b abs tb,Type tb)
   -> Repl b abs tb Text
 replPrint (inputExpr,redExpr,ty) = pure . renderDocument $
   ["input expression:",lineBreak
-  ,document inputExpr,lineBreak
+  , fromMaybe "" $ pprint (toPrinter exprI) inputExpr
+  {-,document inputExpr,lineBreak-}
 
   ,"reduces to:",lineBreak
   ,document redExpr,lineBreak
@@ -193,6 +199,7 @@ replStep
      ,Document b
      ,Document abs
      ,Document tb
+     ,Implicits b abs tb
      ,Binds b (Type tb)
      ,Binds tb Kind
      ,Abstracts abs tb

@@ -15,39 +15,39 @@ A NIH Pretty-Printer
 -}
 module PL.Printer
   (-- * Types
-   Doc(..)
-  ,DocFmt()
+    Doc(..)
+  , DocFmt()
 
-  -- * Render a Doc
-  ,mkDocFmt
-  ,docFmt
-  ,render
-  ,renderWith
+   -- * Render a Doc
+  , mkDocFmt
+  , docFmt
+  , render
+  , renderWith
 
-  -- * Create Docs
-  -- ** From basic text
-  ,char
-  ,text
-  ,string
+   -- * Create Docs
+   -- ** From basic text
+  , char
+  , text
+  , string
 
-  ,usingShow
+  , usingShow
 
-  -- ** Indentation
-  ,indent
-  ,indent1
+   -- ** Indentation
+  , indent
+  , indent1
 
-  -- ** From primitive types
-  ,int
-  ,bool
+   -- ** From primitive types
+  , int
+  , bool
 
-  -- **
-  ,between
-  ,emptyDoc
+   -- **
+  , between
+  , emptyDoc
 
-  ,lineBreak
-  ,newLine
+  , lineBreak
+  , newLine
 
-  -- * Class of things which have a canonical Doc
+   -- * Class of things which have a canonical Doc
   , Document
   , document
   , renderDocument
@@ -59,6 +59,8 @@ module PL.Printer
   , altPrinter
   , purePrinter
   , anyCharPrinter
+  , toPrinter
+  , pprint
   )
   where
 

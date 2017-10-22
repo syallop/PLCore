@@ -40,14 +40,13 @@ data Expected
   deriving Show
 
 instance Document Expected where
-  document = text . showExpected
+  document = showExpectedDoc
 
 expectNothing :: Expected
 expectNothing = ExpectOneOf []
 
 -- Turn an 'Expected' into a bulleted list of each unique expected alternative.
 showExpected :: Expected -> Text
-{-showExpected = render . showExpectedDoc-}
 showExpected = Text.intercalate "\n - "
              . List.nub
              . flattenExpected

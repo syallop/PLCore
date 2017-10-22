@@ -47,32 +47,39 @@ expectNothing = ExpectOneOf []
 
 -- Turn an 'Expected' into a bulleted list of each unique expected alternative.
 showExpected :: Expected -> Text
-showExpected = ("- "<>)
-             . Text.intercalate "\n - "
+{-showExpected = render . showExpectedDoc-}
+showExpected = Text.intercalate "\n - "
              . List.nub
              . flattenExpected
 
--- Turn an 'Expected' into a list of each expected alternative
-flattenExpected :: Expected -> [Text]
-flattenExpected e = case e of
+showExpectedDoc :: Expected -> Doc
+showExpectedDoc = foldr (\d0 dAcc -> dAcc <> "\n - " <> d0) DocEmpty
+                . flattenExpectedDoc
+
+flattenExpectedDoc :: Expected -> [Doc]
+flattenExpectedDoc e = case e of
   ExpectEither es0 es1
-    -> flattenExpected es0 ++ flattenExpected es1
+    -> flattenExpectedDoc es0 <> flattenExpectedDoc es1
 
   ExpectOneOf ts
-    -> ts
+    -> map DocText ts
 
   ExpectPredicate label mE
-    -> map (("__PREDICATE__" <> label) <>) $ maybe [] flattenExpected mE
+    -> map (("__PREDICATE__" <> DocText label) <>) $ maybe [] flattenExpectedDoc mE
 
   ExpectAnything
     -> ["__ANYTHING__"]
 
   ExpectN i e
-    -> ["__EXACTLY__" <> (Text.pack . show $ i) <> "__{" <> showExpected e <> "}__"]
+    -> ["__EXACTLY__" <> (DocText . Text.pack . show $ i) <> "__{" <> showExpectedDoc e <> "}__"]
 
+  -- Show the label only
   ExpectLabel l e
-    {--> [mconcat ["__LABEL__",l,"__{",showExpected e,"}__"]]-}
-    -> [mconcat [l," AKA ",showExpected e]]
+    -> [DocText l]
+
+-- Turn an 'Expected' into a list of each expected alternative
+flattenExpected :: Expected -> [Text]
+flattenExpected = map render . flattenExpectedDoc
 
 -- | A Grammar's parser expected to see:
 grammarExpects :: forall a. Show a => Grammar a -> Expected

@@ -54,7 +54,7 @@ showBindCtx = (++ "]") . ("[" ++) . concat . foldr (\(b,ty) acc -> (show b ++ ":
 
 instance (Document b,Document ty, Binds b ty)
       => Document (BindCtx b ty) where
-  document = between (char '[') (char ']') . foldr (\(b,ty) acc -> mconcat [document b,":",document ty,acc]) emptyDoc . toList
+  document = between (char '[') (char ']') . foldr (\(b,ty) acc -> mconcat [document b,DocText ":",document ty,acc]) emptyDoc . toList
 
 instance (Show b,Show ty,Binds b ty) => Show (BindCtx b ty) where
   show = showBindCtx

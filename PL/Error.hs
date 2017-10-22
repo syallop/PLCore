@@ -38,22 +38,43 @@ data Error tb
   deriving (Ord,Eq,Show)
 
 instance Document tb => Document (Error tb) where
-  document e = "ERROR: " <> case e of
+  document e = DocText "ERROR: " <> case e of
     EMsg msg
       -> DocText msg
 
     ETypeNotDefined name
-      -> "Type named '" <> document name <> "' is not defined."
+      -> mconcat [DocText "Type named '"
+                 ,document name
+                 ,DocText "' is not defined."
+                 ]
 
     ETermNotDefined name
-      -> "Term named '" <> document name <> "' is not defined."
+      -> mconcat [DocText "Term named '"
+                 ,document name
+                 ,DocText "' is not defined."
+                 ]
 
     EAppMismatch fTy xTy
-      -> "Cannot apply expression typed: '" <> document fTy <> "' to expression typed: '" <> document xTy <> "'."
+      -> mconcat [DocText "Cannot apply expression typed: '"
+                 ,document fTy
+                 ,DocText "' to expression typed: '"
+                 ,document xTy
+                 ,DocText "'."
+                 ]
 
     EBigAppMismatch fTy xKy
-      -> "Cannot big-apply expression typed: '" <> document fTy <> "' to type kinded: '" <> document xKy <> "'."
+      -> mconcat [DocText "Cannot big-apply expression typed: '"
+                 ,document fTy
+                 ,DocText "' to type kinded: '"
+                 ,document xKy
+                 ,DocText "'."
+                 ]
 
     ETypeAppMismatch fKy xKy
-      -> "Cannot type-apply type kinded: '" <> document fKy <> "' to type kinded: '" <> document xKy <> "'."
+      -> mconcat [DocText "Cannot type-apply type kinded: '"
+                 ,document fKy
+                 ,DocText "' to type kinded: '"
+                 ,document xKy
+                 ,DocText "'."
+                 ]
 

@@ -73,8 +73,8 @@ typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprTy
 
   Right exprTy
     -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
-         Nothing    -> expectationFailure $ Text.unpack $ render "A given type name does not exist in the context"
-         Just False -> expectationFailure $ Text.unpack $ render $ "Expected: " <> document expectTy <> " got: " <> document exprTy
+         Nothing    -> expectationFailure $ Text.unpack $ render $ DocText "A given type name does not exist in the context"
+         Just False -> expectationFailure $ Text.unpack $ render $ DocText "Expected: " <> document expectTy <> DocText " got: " <> document exprTy
          Just True  -> return ()
 
 -- | Test whether an expression reduces to another.
@@ -92,7 +92,7 @@ appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 reduceToSpec :: String -> TestExpr -> TestExpr -> Spec
 reduceToSpec name expr eqExpr = it name $ case reduce expr of
   Left exprErr
-    -> expectationFailure $ Text.unpack $ render $ "target expression does not reduce: " <> document exprErr
+    -> expectationFailure $ Text.unpack $ render $ DocText "target expression does not reduce: " <> document exprErr
 
   Right redExpr
     -> if redExpr == eqExpr
@@ -102,7 +102,7 @@ reduceToSpec name expr eqExpr = it name $ case reduce expr of
          -- reduce that expression and check once more
          else case reduce eqExpr of
                 Left eqExprErr
-                  -> expectationFailure $ Text.unpack $ render $ mconcat ["target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
+                  -> expectationFailure $ Text.unpack $ render $ mconcat [DocText "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
                                                                          ,document eqExprErr
                                                                          ]
 
@@ -130,14 +130,17 @@ parseToSpec name txt expectExpr = it (Text.unpack name) $ case runParser testExp
   ParseSuccess expr c
     -> if expr == expectExpr
          then return ()
-         else expectationFailure $ Text.unpack $ render $ mconcat ["Parses successfully, BUT not as expected. Got:"
-                                                                  ,lineBreak
-                                                                  ,document expr
-                                                                  ,lineBreak
-                                                                  ,"expected"
-                                                                  ,lineBreak
-                                                                  ,document expectExpr
-                                                                  ]
+         else expectationFailure . Text.unpack
+                                 . render
+                                 . mconcat
+                                 $ [DocText "Parses successfully, BUT not as expected. Got:"
+                                   ,lineBreak
+                                   ,document expr
+                                   ,lineBreak
+                                   ,DocText "expected"
+                                   ,lineBreak
+                                   ,document expectExpr
+                                   ]
 
 testPipeline :: TypeCtx TyVar -> Text.Text -> String
 testPipeline typeCtx txt = case runParser testExprP txt of
@@ -151,10 +154,10 @@ testPipeline typeCtx txt = case runParser testExprP txt of
     -> case topExprType typeCtx expr of
           Left err
             -> Text.unpack . render . mconcat . intersperse lineBreak $
-                 [ "Type check failure: "
-                 , "Parses: "
+                 [ DocText "Type check failure: "
+                 , DocText "Parses: "
                  , document expr
-                 , "Type error: "
+                 , DocText "Type error: "
                  , document err
                  ]
 
@@ -165,16 +168,16 @@ testPipeline typeCtx txt = case runParser testExprP txt of
 
                  Right redExpr
                    -> Text.unpack . render . mconcat . intersperse lineBreak $
-                        ["Success"
-                        ,"Parses:"
+                        [DocText "Success"
+                        ,DocText "Parses:"
                         ,document expr
-                        ,""
+                        ,lineBreak
 
-                        ,"Type checks:"
+                        ,DocText "Type checks:"
                         ,document exprTy
-                        ,""
+                        ,lineBreak
 
-                        ,"Reduces:"
+                        ,DocText "Reduces:"
                         ,document redExpr
                         ]
 

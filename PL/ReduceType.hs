@@ -61,7 +61,7 @@ reduceTypeStep' :: forall tb
                 -> TypeCtx tb
                 -> Type tb
                 -> Either (Error tb) (Type tb)
-reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat ["~>",document bindings,document ty]) $ case ty of
+reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [DocText "~>",document bindings,document ty]) $ case ty of
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
@@ -86,7 +86,7 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat ["~>",documen
                    -- like to terminate...
                    Just ti -> Right $ TypeApp f' x'
 
-            _ -> error $ Text.unpack $ render $ "Cant reduce type application of non-lambda term: f: " <> document f'
+            _ -> error $ Text.unpack $ render $ DocText "Cant reduce type application of non-lambda term: f: " <> document f'
 
   -- Reduce under a lambda by noting the abstraction is buried and Unbound
   -- TODO: Maybe dont reduce under

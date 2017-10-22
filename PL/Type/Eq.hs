@@ -130,7 +130,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   (TypeApp f0 x0,ty1)
     -> traceStep ("Reduce application function,under arg"::Text.Text) $ case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
-           -> error $ Text.unpack $ render $ "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
+           -> error $ Text.unpack $ render $ DocText "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
 
          Right redF0
            -> case redF0 of

@@ -52,7 +52,7 @@ showExpected = Text.intercalate "\n - "
              . flattenExpected
 
 showExpectedDoc :: Expected -> Doc
-showExpectedDoc = foldr (\d0 dAcc -> dAcc <> "\n - " <> d0) DocEmpty
+showExpectedDoc = foldr (\d0 dAcc -> dAcc <> lineBreak <> DocText " - " <> d0) DocEmpty
                 . flattenExpectedDoc
 
 flattenExpectedDoc :: Expected -> [Doc]
@@ -64,13 +64,13 @@ flattenExpectedDoc e = case e of
     -> map DocText ts
 
   ExpectPredicate label mE
-    -> map (("__PREDICATE__" <> DocText label) <>) $ maybe [] flattenExpectedDoc mE
+    -> map ((DocText "__PREDICATE__" <> DocText label) <>) $ maybe [] flattenExpectedDoc mE
 
   ExpectAnything
-    -> ["__ANYTHING__"]
+    -> [DocText "__ANYTHING__"]
 
   ExpectN i e
-    -> ["__EXACTLY__" <> (DocText . Text.pack . show $ i) <> "__{" <> showExpectedDoc e <> "}__"]
+    -> [DocText "__EXACTLY__" <> (DocText . Text.pack . show $ i) <> DocText "__{" <> showExpectedDoc e <> DocText "}__"]
 
   -- Show the label only
   ExpectLabel l e

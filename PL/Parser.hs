@@ -97,9 +97,9 @@ data Pos
 
 instance Document Pos where
   document (Pos t l c) = mconcat
-    [" Line:     ", int l,"\n"
-    ,"Character:", int c,"\n"
-    ,"Total:    ", int t,"\n"
+    [DocText " Line:     ", int l,lineBreak
+    ,DocText "Character:", int c,lineBreak
+    ,DocText "Total:    ", int t,lineBreak
     ]
 
 -- A cursor is a position within some text, where we remember how much text we've passed,
@@ -168,15 +168,15 @@ instance Document a
       => Document (ParseResult a) where
   document p = case p of
     ParseSuccess a leftovers
-      -> "Parsed: " <> document a <> "with leftovers" <> document leftovers
+      -> DocText "Parsed: " <> document a <> DocText "with leftovers" <> document leftovers
 
     ParseFailure e c
       -> mconcat
-           ["Parse failure."
-           ,indent 2 "Expected one of: "
+           [DocText "Parse failure."
+           ,indent 2 $ DocText "Expected one of: "
 
            ,indent 4 $ document $ mconcat [document e
-                                          ,"At this position in the input:"
+                                          ,DocText "At this position in the input:"
                                           ,lineBreak
                                           ,document c
                                           ]

@@ -127,22 +127,22 @@ instance (Document abs
       -> document b
 
     CaseAnalysis c
-      -> "CASE" <> document c
+      -> DocText "CASE" <> document c
 
     Sum sumExpr sumIx sumTys
-      -> "+" <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
+      -> DocText "+" <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
 
     Product prodExprs
-      -> "*" <> (mconcat . map (parens . document) $ prodExprs)
+      -> DocText "*" <> (mconcat . map (parens . document) $ prodExprs)
 
     Union unionExpr tyIx unionTys
-      -> "U" <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
+      -> DocText "U" <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
 
     BigLam takeKy expr
-      -> "Λ" <> parens (document takeKy) <> parens (document expr)
+      -> DocText "Λ" <> parens (document takeKy) <> parens (document expr)
 
     BigApp f xTy
-      -> "@@" <> parens (document f) <> parens (document xTy)
+      -> DocText "@@" <> parens (document f) <> parens (document xTy)
 
 
 -- An Expr abstracts over itself
@@ -299,7 +299,7 @@ exprType':: forall b abs tb
          -> TypeCtx tb       -- Associate Named types to their TypeInfo
          -> Expr b abs tb    -- Expression to type-check
          -> Either (Error tb) (Type tb)
-exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat ["EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case e of
+exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat [DocText "EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case e of
 
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
@@ -332,21 +332,21 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                                  Just isSameType
                                    | isSameType -> Right bTy
                                    | otherwise  -> let msg = Text.unpack . render . mconcat $
-                                                             ["In expr: "
+                                                             [DocText "In expr: "
                                                              ,lineBreak
 
                                                              ,document $ App f x
                                                              ,lineBreak
 
-                                                             ,"f : "
+                                                             ,DocText "f : "
                                                              ,document fTy
                                                              ,lineBreak
 
-                                                             ,"x : "
+                                                             ,DocText "x : "
                                                              ,document xTy
                                                              ,lineBreak
 
-                                                             ,"f :~> "
+                                                             ,DocText "f :~> "
                                                              ,lineBreak
                                                              ,document resFTy
                                                              ]
@@ -364,7 +364,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                    Nothing -> Left $ EMsg "An expressions indexed type in a sum is an unknown type name"
                    Just isSameType
                      | isSameType -> Right ()
-                     | otherwise  -> Left $ EMsg $ render $ "Expression doesnt have the type of the position in a sum type it claims it has. Has: " <> document exprTy <> " Expected: " <> document (inTypr !! ix)
+                     | otherwise  -> Left $ EMsg $ render $ DocText "Expression doesnt have the type of the position in a sum type it claims it has. Has: " <> document exprTy <> DocText " Expected: " <> document (inTypr !! ix)
 
           -- Allow the other types in the sum to not exist...
           _ <- Right ()
@@ -451,7 +451,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                                                   Just isSameType
                                                     | isSameType -> Right ()
                                                     | otherwise  -> Left . EMsg . render . mconcat $
-                                                                      ["Default branch and first case branch have different result types"
+                                                                      [DocText "Default branch and first case branch have different result types"
                                                                       ,document defExprTy
                                                                       ,document branch0Ty
                                                                       ]

@@ -117,7 +117,7 @@ replRead input b abs tb = case runParser (toParser $ expr b abs tb) input of
      -> pure expr
 
     | otherwise
-     -> replError $ EMsg $ render $ "Parse succeeded but there were trailing characters: " <> document cursor
+     -> replError $ EMsg $ render $ DocText "Parse succeeded but there were trailing characters: " <> document cursor
 
 -- Type check an expression in the repl context.
 replTypeCheck
@@ -187,16 +187,22 @@ replPrint
      )
   => (Expr b abs tb,Expr b abs tb,Type tb)
   -> Repl b abs tb Text
-replPrint (inputExpr,redExpr,ty) = pure . renderDocument $
-  ["input expression:",lineBreak
-  , fromMaybe "" $ pprint (toPrinter exprI) inputExpr
-  {-,document inputExpr,lineBreak-}
+replPrint (inputExpr,redExpr,ty) = pure . render . mconcat $
+  [DocText "input expression:"
+  ,lineBreak
+  ,fromMaybe DocEmpty $ pprint (toPrinter exprI) inputExpr
 
-  ,"reduces to:",lineBreak
-  ,document redExpr,lineBreak
+  ,DocText "reduces to:"
+  ,lineBreak
 
-  ,"with type:",lineBreak
-  ,document ty,lineBreak
+  ,document redExpr
+  ,lineBreak
+
+  ,DocText "with type:"
+  ,lineBreak
+
+  ,document ty
+  ,lineBreak
   ]
 
 -- Produce the next context and parse, type-check and reduce or error.

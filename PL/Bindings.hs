@@ -60,8 +60,8 @@ data Bindings e
 instance Document e
       => Document (Binding e) where
   document b = case b of
-    Unbound -> "U"
-    Bound b -> "B:"<> document b
+    Unbound -> DocText "U"
+    Bound b -> DocText "B:" <> document b
 
 instance Document e
       => Document (Bindings e) where

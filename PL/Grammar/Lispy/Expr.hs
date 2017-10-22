@@ -128,6 +128,7 @@ bigAppExpr = bigAppiseI \$/ (at */ exprI) \*/ (typ ?tb) \*/ grammarMany (typ ?tb
 
                Nothing
                  -> Just (e1,(t0,[]))
+        _ -> Nothing
       )
 
     -- Chain big application

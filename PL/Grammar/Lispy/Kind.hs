@@ -25,10 +25,13 @@ kind =  kind'
   where kind' = simpleKind \|/ arrowKind
 
 simpleKind :: Grammar Kind
-simpleKind = textIs "KIND" `seqR` GPure Kind
+simpleKind = textIs "KIND" */ GPure Kind
 
 arrowKind :: Grammar Kind
-arrowKind = arrowiseI \$/ (arrow */ kind) \*/ kind \*/ grammarMany kind
+arrowKind = arrowiseI
+         \$/ (arrow */ kind)
+         \*/ (kind)
+         \*/ (grammarMany $ kind)
   where
     -- Iso between a Kind and its 'arrowised' form where we have a from, a to
     -- and zero or many trailing kinds

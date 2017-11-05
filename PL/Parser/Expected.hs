@@ -61,7 +61,10 @@ flattenExpectedDoc e = case e of
     -> flattenExpectedDoc es0 <> flattenExpectedDoc es1
 
   ExpectOneOf ts
-    -> map DocText ts
+    -> let oneOf = map DocText ts
+        in if null oneOf
+             then [DocText "__EXPECTNOTHING__"]
+             else oneOf
 
   ExpectPredicate label mE
     -> map ((DocText "__PREDICATE__" <> DocText label) <>) $ maybe [] flattenExpectedDoc mE

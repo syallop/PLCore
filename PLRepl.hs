@@ -41,7 +41,9 @@ import Data.Text (Text)
 import qualified Data.Text.IO as Text
 
 main :: IO ()
-main = repl emptyReplCtx
+main = do
+  hSetBuffering stdin LineBuffering
+  repl emptyReplCtx
   where
     myReplStep :: Text -> Repl Var (Type TyVar) TyVar Text
     myReplStep =
@@ -54,7 +56,7 @@ main = repl emptyReplCtx
       putStr "PL> "
       hFlush stdout
 
-      line <- Text.getLine
+      line <- Text.hGetLine stdin
       let (ctx', res) = (_unRepl $ myReplStep line) ctx
       case res of
         Left err

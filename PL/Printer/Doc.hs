@@ -14,36 +14,36 @@ A NIH Pretty-Printer
 -}
 module PL.Printer.Doc
   (-- * Types
-   Doc(..)
-  ,DocFmt()
+    Doc(..)
+  , DocFmt ()
 
   -- * Render a Doc
-  ,mkDocFmt
-  ,docFmt
-  ,render
-  ,renderWith
+  , mkDocFmt
+  , docFmt
+  , render
+  , renderWith
 
   -- * Create Docs
   -- ** From basic text
-  ,char
-  ,text
-  ,string
+  , char
+  , text
+  , string
 
-  ,usingShow
+  , usingShow
 
   -- ** Indentation
-  ,indent
-  ,indent1
+  , indent
+  , indent1
 
   -- ** From primitive types
-  ,int
-  ,bool
+  , int
+  , bool
 
   -- **
-  ,emptyDoc
+  , emptyDoc
 
-  ,lineBreak
-  ,newLine
+  , lineBreak
+  , newLine
 
   -- * Class of things which have a canonical Doc
   , Document(..)

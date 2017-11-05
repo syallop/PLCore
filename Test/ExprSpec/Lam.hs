@@ -70,7 +70,7 @@ singleLamTestCase = ExprTestCase
     ctx = fromJust lamTypeCtx
     e   = Lam fooTypeName $ Binding VZ
     ty  = Arrow fooType fooType
-    txt = "\\Foo 0"
+    txt = "\\Foo (0)"
 
 -- \Foo -> \Bar -> Foo
 -- Test a nested lambda that takes two different named types and returns the first.

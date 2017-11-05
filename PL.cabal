@@ -30,6 +30,7 @@ library
                      , PL.Name
                      , PL.Iso
                      , PL.Parser
+                     , PL.Parser.Cursor
                      , PL.Parser.Expected
                      , PL.Printer
                      , PL.Printer.Doc
@@ -76,6 +77,7 @@ executable pl
                    , PL.Name
                    , PL.Iso
                    , PL.Parser
+                   , PL.Parser.Cursor
                    , PL.Parser.Expected
                    , PL.Grammar
                    , PL.Grammar.Lispy
@@ -114,5 +116,7 @@ test-suite hspec
                      , GeneralizedNewtypeDeriving
                      , LambdaCase
     other-modules:     ExprSpec
+                     , GrammarSpec
                      , ParserSpec
+                     , MatchArgSpec
 

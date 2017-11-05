@@ -295,7 +295,7 @@ exprType':: forall b abs tb
          => Int              -- indentation level of debuging output
          -> ExprBindCtx b tb -- Associate expr bindings 'b' to their types
          -> TypeBindCtx tb   -- Associate type bindings 'tb' to their Kinds
-         -> TypeBindings tb  -- Associate type bindings 'tb' to their bound or unbound types 
+         -> TypeBindings tb  -- Associate type bindings 'tb' to their bound or unbound types
          -> TypeCtx tb       -- Associate Named types to their TypeInfo
          -> Expr b abs tb    -- Expression to type-check
          -> Either (Error tb) (Type tb)
@@ -476,7 +476,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
   --   BigLam absKind expr : kind BigArrow exprTy
   BigLam abs expr
     -> do let newTypeBindCtx  = addBinding abs typeBindCtx
-              newTypeBindings = unbound $ bury typeBindings 
+              newTypeBindings = unbound $ bury typeBindings
           exprTy <- exprType' (i+1) exprBindCtx newTypeBindCtx newTypeBindings typeCtx expr
           Right $ BigArrow abs exprTy
 

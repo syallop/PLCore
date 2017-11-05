@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# LANGUAGE
     GADTs
   , RankNTypes
@@ -11,7 +12,7 @@ Stability   : experimental
 
 A description of a grammar. The intent is that it can be used as either a
 parser or a printer depending on context. This could prevent round-trip
-properties from being accidentally violated for example, by adjusting a parser 
+properties from being accidentally violated for example, by adjusting a parser
 but not the printer.
 
 Note: WIP. Currently only suitable for translation to a Parser (and maybe not
@@ -34,6 +35,9 @@ module PL.Grammar
 
   , anyChar
   , charWhen
+
+  , anyText
+  , textWhen
 
   , upper
   , lower
@@ -76,6 +80,12 @@ module PL.Grammar
   , (*/)
   , grammarMany
   , grammarMany1
+
+  , spaceAllowed
+  , spaceRequired
+  , spacePrefered
+
+  , tokenThenMany1ThenSomething
   )
   where
 
@@ -88,6 +98,7 @@ import Control.Applicative
 import Control.Monad
 
 import PL.Iso
+import PL.Printer.Doc (Doc(..))
 import Prelude hiding ((.),id)
 import Control.Category
 
@@ -96,6 +107,10 @@ data Grammar a where
   -- Any character
   GAnyChar
     :: Grammar Char
+
+  -- Any text until a space or newline
+  GAnyText
+    :: Grammar Text
 
   -- Applicative-like pure
   GPure
@@ -120,7 +135,7 @@ data Grammar a where
     -> Grammar b
 
   GProductMap
-    :: Show a
+    :: (Show a, Show b)
     => Grammar a
     -> Grammar b
     -> Grammar (a,b)
@@ -128,6 +143,10 @@ data Grammar a where
   GLabel
     :: Text
     -> Grammar a
+    -> Grammar a
+
+  GTry
+    :: Grammar a
     -> Grammar a
 
 -- Takes () on discarded result unlike Applicative
@@ -139,17 +158,6 @@ seqR g0 g1 = inverseIso unitI . flipI \$/ g0 \*/ g1
 (\*), seqL :: Show a => Grammar a -> Grammar () -> Grammar a
 (\*) = seqL
 seqL g0 g1 = inverseIso unitI \$/ g0 \*/ g1
-
--- | A string of Text
-textIs :: Text -> Grammar ()
-textIs txt = GLabel txt $ case T.uncons txt of
-  Nothing
-    -> GPure ()
-
-  Just (c,cs)
-    ->  inverseIso (elementIso ((), ()))
-    \$/ (inverseIso (elementIso c) \$/ anyChar)
-    \*/ (textIs cs)
 
 -- | A single character.
 charIs :: Char -> Grammar ()
@@ -193,6 +201,28 @@ question   = charIs '?'
 at         = charIs '@'
 bigLambda  = charIs 'Λ' \|/ textIs "/\\"
 bigAt      = charIs '#'
+spaceLike  = alternatives . map textIs $ [" ","\t","\n","\r"]
+
+anyText :: Grammar Text
+anyText = GAnyText
+
+textWhen :: (Text -> Bool) -> Grammar Text
+textWhen p = predI \$/ anyText
+  where
+    predI = Iso
+      (\txt -> if p txt then Just txt else Nothing)
+      (\txt -> if p txt then Just txt else Nothing)
+
+-- | A string of Text
+textIs :: Text -> Grammar ()
+textIs txt = GLabel txt $ case T.uncons txt of
+  Nothing
+    -> GPure ()
+
+  Just (c,cs)
+    ->  inverseIso (elementIso ((), ()))
+    \$/ (inverseIso (elementIso c) \$/ anyChar)
+    \*/ textIs cs
 
 -- | A Grammar between two others.
 between :: Show a => Grammar () -> Grammar a -> Grammar () -> Grammar a
@@ -245,9 +275,110 @@ infix 5 \$/
 
 (\|/) = GAlt
 
-(\*/) :: Show a => Grammar a -> Grammar b -> Grammar (a,b)
+(\*/) :: (Show a,Show b) => Grammar a -> Grammar b -> Grammar (a,b)
 (\*/) = GProductMap
 
-(\$/) :: Show a => Iso a b -> Grammar a -> Grammar b
+(\$/) :: (Show a,Show b) => Iso a b -> Grammar a -> Grammar b
 (\$/) = GIsoMap
 
+-- | A grammar is permitted to parse but not printed.
+allowed :: Grammar () -> Grammar ()
+allowed g = ignoreIso [] \$/ grammarMany g
+
+-- | A grammar is required to parse, one is printed.
+required :: Grammar () -> Grammar ()
+required g = g \* allowed g
+
+-- | A grammar is required to parse, one is printed.
+prefered :: Grammar () -> Grammar ()
+prefered g = ignoreIso [()] \$/ grammarMany g
+
+-- | Space is permitted to parse but none printed.
+spaceAllowed :: Grammar ()
+spaceAllowed = allowed spaceLike
+
+-- | Space is required to parse, one is printed.
+spaceRequired :: Grammar ()
+spaceRequired = required spaceLike
+
+-- | Space prefered to parse, one is printed.
+spacePrefered :: Grammar ()
+spacePrefered = ignoreIso [()] \$/ grammarMany spaceLike
+
+class HasGrammar a where
+  grammar :: Grammar a
+
+describeGrammar :: Show a => Grammar a -> Doc
+describeGrammar gr = case gr of
+  GAnyChar
+    -> DocText "c"
+
+  GAnyText
+    -> DocText "text"
+
+  GPure a
+    -> DocText $ "=" <> (T.pack . show $ a)
+
+  GEmpty
+    -> DocText "FAIL"
+
+  GAlt g0 g1
+    -> mconcat [DocText "either"
+               ,describeGrammar g0
+               ,DocText "or"
+               ,describeGrammar g1
+               ]
+
+  GIsoMap iso g
+    -> mconcat [describeGrammar g
+               ,DocText "but then some iso must succeed"
+               ]
+
+  GProductMap g0 g1
+    -> mconcat [describeGrammar g0
+               ,DocText "and then"
+               ,describeGrammar g1
+               ]
+
+  GLabel l _g
+    -> mconcat [DocText "labeled"
+               ,DocText l
+               ]
+
+  GTry g0
+    -> mconcat [ DocText "Try"
+               , describeGrammar g0
+               ]
+
+tokenThenMany1ThenSomething
+  :: ( Eq xs
+     , Show xs
+     , Show r
+     , Show a
+     )
+  => Grammar ()
+  -> Grammar xs
+  -> Grammar a
+  -> Iso ([xs],a) r
+  -> Grammar r
+tokenThenMany1ThenSomething token many something iso
+  = (spaceAllowed */ token)
+  */ (iso \$/ grammarMany1 (many \* spaceRequired)
+          \*/ (something)
+     )
+
+combiner :: (a -> x -> x) -> [a] -> x -> x
+combiner f []     _ = error "Cant combine empty list"
+combiner f [a]    x = f a x
+combiner f (a:as) x = f a $ combiner f as x
+
+
+{-combinerI-}
+  {-:: (a -> x -> x)-}
+  {--> (x -> Maybe ([a],x))-}
+  {--> Iso ([a], x) x-}
+{-combinerI c f = Iso-}
+  {-(\(as, x) -> Just $ combiner c as x)-}
+  {-(\x -> case f x of-}
+    {-Nothing -> Just -}
+  {-)-}

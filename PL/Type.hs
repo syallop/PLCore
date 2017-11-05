@@ -18,6 +18,7 @@ import PL.Binds.Ix
 import PL.Name
 import PL.Kind
 import PL.ExprLike
+import PL.Grammar
 
 import PL.Printer hiding (parens,between)
 import PL.Printer.Doc

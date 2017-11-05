@@ -2,7 +2,7 @@
            , FlexibleInstances
   #-}
 {-|
-Module      : ExprSpec.Boolean
+Module      : ParserSpec
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -12,7 +12,9 @@ HSpec tests for PL.Parser.
 module ParserSpec where
 
 import PL.Parser
+import PL.Parser.Expected
 import PL.Printer
+import Data.Char (ord,chr)
 import Data.Text (Text)
 import Data.Monoid
 import qualified Data.Text as Text
@@ -27,8 +29,11 @@ import Data.Coerce
 
 spec :: Spec
 spec = describe "Parser" $ sequence_
-  [charSpec
-  ,textSpec
+  [ charSpec
+  , textSpec
+  , altSpec
+  , appSpec
+  , appSpec
   ]
 
 -- True if the text is parsed successfully to some result, perhaps with some leftovers
@@ -44,7 +49,7 @@ parsesSuchThat p txt pred = case runParser p txt of
     -> pred a c
 
 -- A string of text with no spaces
-newtype TokenText = TokenText{_unTokenText :: Text} deriving Show
+newtype TokenText = TokenText {_unTokenText :: Text} deriving Show
 
 instance Arbitrary TokenText where
   arbitrary = TokenText <$> spaceLessText
@@ -84,13 +89,12 @@ charSpec = describe "Single characters" $ do
     prop_charParse c =
       charIs c `parses` Text.singleton c
 
-    -- A character parses with any amount of trailing characters of any kind
-    -- AND The remaining characters left in the cursor have their leading spaces and newlines dropped.
+    -- A character parses regardless of trailing text, which is unchanged.
     prop_charTrailingParse :: Char -> Text -> Bool
     prop_charTrailingParse c trailing =
       charIs c `parsesSuchThat` Text.cons c trailing
                $ \() csr
-                  -> remainder csr == Text.dropWhile (`elem` [' ','\n']) trailing
+                  -> remainder csr == trailing
 
 -- Test the text parsers
 textSpec :: Spec
@@ -98,8 +102,6 @@ textSpec = describe "Text" $ do
   prop "exact matches"         prop_textParse
   prop "with trailing text"    prop_textTrailingParse
   prop "appended"              prop_textAppendParse
-  prop "alternative"           prop_textAltParse
-  prop "backtrack alternative" prop_textAltBacktracksParse
   where
 
     -- 'textIs txt' parses 'txt'
@@ -107,32 +109,50 @@ textSpec = describe "Text" $ do
     prop_textParse txt =
       textIs txt `parses` txt
 
-    -- 'textIs txt' parses 'txt' appended to a space and some arbitrary trailing txt.
-    -- The remaining txt has leading spaces and newlines dropped.
+    -- Text parses with any amount of trailing text, which is unaltered.
     prop_textTrailingParse :: Text -> Text -> Bool
     prop_textTrailingParse txt trailing =
-      textIs txt `parsesSuchThat` (txt <> " " <> trailing)
+      textIs txt `parsesSuchThat` (txt <> trailing)
                    $ \() csr
-                      -> remainder csr == Text.dropWhile (`elem` [' ','\n']) trailing
+                      -> remainder csr == trailing
 
-    -- Text appended between a space is parsed by appending textIs parsers
-    -- (textIs txt0 <> textIs txt1) `parses` (txt0 <> " " <> txt1)
+    -- Text appended between a space is parsed by appending textIs parsers with
+    -- a space in between.
     prop_textAppendParse :: TokenText -> TokenText -> Bool
     prop_textAppendParse txt0 txt1 =
-      (textIs (coerce txt0) <> textIs (coerce txt1)) `parses` (coerce txt0 <> " " <> coerce txt1)
+      (textIs (coerce txt0) <> textIs " " <> textIs (coerce txt1)) `parses` (coerce txt0 <> " " <> coerce txt1)
 
-    -- An alternative of two 'textIs's succeeds on both text
-    prop_textAltParse :: TokenText -> TokenText -> Bool
-    prop_textAltParse txt0 txt1 =
-      ((textIs (coerce txt0) <|> textIs (coerce txt1)) `parses` coerce txt0)
-      &&
-      ((textIs (coerce txt0) <|> textIs (coerce txt1)) `parses` coerce txt1)
+-- <|> alternatives
+altSpec :: Spec
+altSpec = describe "Alternatives (<|>)" $ do
+  prop "Adding an alternative after a successful parse still succeeds" prop_trailingAlternatives
+  prop "Adding a parser which fails without consuming input before a successful parser still succeeds" prop_backtrackWhenNothingConsumed
+  prop "A parser which fails and consumes input before a successful parser should fail" prop_dontBacktrackWhenSomethingConsumed
+  where
+    prop_trailingAlternatives :: TokenText -> TokenText -> Bool
+    prop_trailingAlternatives txt trailing =
+      (textIs (coerce txt) <|> textIs (coerce trailing)) `parses` coerce txt
 
+    prop_backtrackWhenNothingConsumed :: TokenText -> Bool
+    prop_backtrackWhenNothingConsumed txt =
+      (pFail expectNothing <|> textIs (coerce txt)) `parses` coerce txt
 
-    -- An alternative backtracks by default
-    prop_textAltBacktracksParse :: TokenText -> TokenText -> Bool
-    prop_textAltBacktracksParse txt trailing =
-      (textIs (coerce txt <> coerce trailing) <|> textIs (coerce txt)) `parses` coerce txt
+    prop_dontBacktrackWhenSomethingConsumed :: (Char,TokenText) -> (Char,TokenText) -> Bool
+    prop_dontBacktrackWhenSomethingConsumed (p,ps) (s,ss) =
+      let prefix = Text.cons p (coerce ps)
+          suffix = Text.cons s (coerce ss)
+          txt                  = prefix <> suffix
+          txtThatStartsTheSame = prefix <> (Text.singleton $ if s == maxBound then toEnum 0 else succ s) <> suffix
+       in not . parses (textIs txtThatStartsTheSame <|> textIs prefix) $ txt
+
+appSpec :: Spec
+appSpec = describe "Applicative" $ do
+  prop "pure always succeeds" prop_pureSucceeds
+  where
+    -- TODO: Pick better random values
+    prop_pureSucceeds :: TokenText -> () -> Bool
+    prop_pureSucceeds txt a = parses (pure a) (coerce txt)
+
 
 data ParserTest = ParserTest
   {_validInput :: Text

@@ -195,13 +195,13 @@ replPrint (inputExpr,redExpr,ty) = pure . render . mconcat $
   ,DocText "reduces to:"
   ,lineBreak
 
-  ,document redExpr
+  ,fromMaybe DocEmpty $ pprint (toPrinter exprI) redExpr
   ,lineBreak
 
   ,DocText "with type:"
   ,lineBreak
 
-  ,document ty
+  ,fromMaybe DocEmpty $ pprint (toPrinter typI) ty
   ,lineBreak
   ]
 

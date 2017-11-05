@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, ImplicitParams #-}
 {-|
 Module      : PL.Grammar.Lispy.Type
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -27,6 +27,10 @@ import PL.Type hiding (arrowise)
 
 import PL.Iso
 
+class LispyType t where lispyType :: Grammar t
+instance LispyType TyVar where lispyType = tyVar
+instance (Show tb, Ord tb, LispyType tb) => LispyType (Type tb) where lispyType = typ lispyType
+
 tyVar :: Grammar TyVar
 tyVar = charIs '?' */ (tyVarI \$/ natural)
   where
@@ -38,6 +42,12 @@ tyVar = charIs '?' */ (tyVarI \$/ natural)
 
 -- A name is an uppercase followed by zero or more lower case characters
 name :: Grammar Text.Text
+{-name = textWhen $ \txt -> case Text.uncons txt of-}
+  {-Nothing-}
+    {--> False-}
+
+  {-Just (c,cs)-}
+    {--> isUpper c && Text.all isLower cs-}
 name = nameI \$/ upper \*/ longestMatching isLower
   where
     nameI :: Iso (Char,Text.Text) Text.Text
@@ -53,11 +63,11 @@ name = nameI \$/ upper \*/ longestMatching isLower
       )
 
 -- A named type is just a name which appears in the type position
-namedTyp :: Ord tb => Grammar (Type tb)
+namedTyp :: (Ord tb,Show tb) => Grammar (Type tb)
 namedTyp = namedTypI \$/ name
   where
     namedTypI :: Iso Text.Text (Type tb)
-    namedTypI = Iso 
+    namedTypI = Iso
       (Just . Named . TypeName) -- Assumes called with name which performs validation
       (\ty -> case ty of
         Named (TypeName n)
@@ -79,7 +89,7 @@ sumTyp tb = sumTypI \$/ (plus */ grammarMany (typ tb))
 
 -- A '*' followed by zero or more types
 productTyp :: (Show tb,Ord tb) => Grammar tb -> Grammar (Type tb)
-productTyp tb = productTypI \$/ (star */ grammarMany (typ tb))
+productTyp tb = productTypI \$/ (star */ (grammarMany $ typ tb))
   where
     productTypI :: Iso [Type tb] (Type tb)
     productTypI = Iso
@@ -91,7 +101,7 @@ productTyp tb = productTypI \$/ (star */ grammarMany (typ tb))
 
 -- A 'U' followed by zero or more types
 unionTyp :: forall tb. (Show tb,Ord tb) => Grammar tb -> Grammar (Type tb)
-unionTyp tb = unionTypI \$/ (union */ grammarMany (typ tb))
+unionTyp tb = unionTypI \$/ (union */ (grammarMany $ typ tb))
   where
     unionTypI :: Iso [Type tb] (Type tb)
     unionTypI = Iso
@@ -103,7 +113,10 @@ unionTyp tb = unionTypI \$/ (union */ grammarMany (typ tb))
 
 -- A '^' followed by two or more types
 arrowTyp :: (Show tb,Ord tb) => Grammar tb -> Grammar (Type tb)
-arrowTyp tb = arrowiseI \$/ (arrow */ typ tb) \*/ typ tb \*/ grammarMany (typ tb)
+arrowTyp tb = arrowiseI
+           \$/ (arrow */ typ tb)
+           \*/ (typ tb)
+           \*/ (grammarMany $ typ tb)
   where
     -- Iso between a Type and its 'arrowised' form where we have a from, a to
     -- and zero or many trailing types
@@ -131,7 +144,10 @@ arrowTyp tb = arrowiseI \$/ (arrow */ typ tb) \*/ typ tb \*/ grammarMany (typ tb
 
 -- A "/\" followed by an abstracted kind, then a type
 typeLamTyp :: forall tb. (Ord tb,Show tb) => Grammar tb -> Grammar (Type tb)
-typeLamTyp tb = lamiseI \$/ (bigLambda */ kindAbs) \*/ grammarMany kindAbs \*/ typ tb
+typeLamTyp tb = lamiseI
+             \$/ (bigLambda */ kindAbs)
+             \*/ (grammarMany $ kindAbs)
+             \*/ (typ tb)
   where
     lamiseI :: Iso (Kind,([Kind],Type tb)) (Type tb)
     lamiseI = Iso
@@ -154,7 +170,10 @@ typeLamTyp tb = lamiseI \$/ (bigLambda */ kindAbs) \*/ grammarMany kindAbs \*/ t
 
 -- An "@@" followed by two or more types
 typeAppTyp :: (Show tb,Ord tb) => Grammar tb -> Grammar (Type tb)
-typeAppTyp tb = appiseI \$/ (bigAt */ typ tb) \*/ typ tb \*/ grammarMany (typ tb)
+typeAppTyp tb = appiseI
+             \$/ (bigAt */ typ tb)
+             \*/ (typ tb)
+             \*/ (grammarMany $ typ tb)
   where
     appiseI :: Iso (Type tb,(Type tb,[Type tb])) (Type tb)
     appiseI = Iso
@@ -188,17 +207,20 @@ typeBindingTyp gtb = typeBindingI \$/ gtb
         _ -> Nothing
       )
 
+typI :: (Show tb,Ord tb,?tb :: Grammar tb) => Grammar (Type tb)
+typI = let tb = ?tb in typ tb
+
 -- A type is one of several variants, and may be nested in parenthesis
 typ :: (Show tb,Ord tb) => Grammar tb -> Grammar (Type tb)
 typ tb = alternatives
-  [typeLamTyp tb
-  ,typeAppTyp tb
-  ,arrowTyp tb
-  ,sumTyp tb
-  ,productTyp tb
-  ,unionTyp tb
-  ,namedTyp
-  ,typeBindingTyp tb
-  ,betweenParens $ typ tb
+  [ betweenParens $ typ tb
+  , typeLamTyp tb
+  , typeAppTyp tb
+  , arrowTyp tb
+  , sumTyp tb
+  , productTyp tb
+  , unionTyp tb
+  , namedTyp
+  , typeBindingTyp tb
   ]
 

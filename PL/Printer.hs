@@ -101,10 +101,16 @@ purePrinter a = Printer $ \a' -> if a == a' then Just DocEmpty else Nothing
 anyCharPrinter :: Printer Char
 anyCharPrinter = Printer $ Just . char
 
+anyTextPrinter :: Printer Text
+anyTextPrinter = Printer $ Just . text
+
 toPrinter :: Grammar a -> Printer a
 toPrinter grammar = case grammar of
   GAnyChar
     -> anyCharPrinter
+
+  GAnyText
+    -> anyTextPrinter
 
   GPure a
     -> purePrinter a

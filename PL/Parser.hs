@@ -93,8 +93,8 @@ newtype Parser a = Parser {_unParser :: Cursor -> ParseResult a}
 -- Add leftovers to failure?
 -- - Allows recovery to work
 data ParseResult a
-  = ParseSuccess a        Cursor -- Parsed 'a' with leftovers
-  | ParseFailure Expected Cursor -- Expected something with leftovers
+  = ParseSuccess a                    Cursor -- Parsed 'a' with leftovers
+  | ParseFailure [(Expected, Cursor)] Cursor -- Expected something with leftovers
   deriving (Show, Functor)
 
 instance Document a
@@ -103,28 +103,38 @@ instance Document a
     ParseSuccess a leftovers
       -> DocText "Parsed: " <> document a <> DocText "with leftovers" <> document leftovers
 
-    ParseFailure e c
+    ParseFailure failures cur0
       -> mconcat
-           [DocText "Parse failure."
-           ,DocText "Expected one of: "
-
-           ,document $ mconcat [ document e
-                               , lineBreak
-                               , DocText "At this position in the input:"
-                               , lineBreak
-                               , document c
-                               ]
-           ]
+       . ([ DocText "Final parse failure in:"
+          , lineBreak
+          , document cur0
+          , lineBreak
+          , DocText "The failures that lead to this were:"
+          , lineBreak
+          ]<>
+         )
+       . map (\(e,c) -> document $ mconcat [ DocText "At:"
+                                           , lineBreak
+                                           , document c
+                                           , DocText "We expected one of:"
+                                           , lineBreak
+                                           , document e
+                                           ]
+             )
+       $ failures
 
 -- | Case analysis on a 'ParseResult'.
 parseResult
   :: (a -> Cursor -> b)
-  -> (Expected -> Cursor -> b)
+  -> ([(Expected,Cursor)] -> Cursor -> b)
   -> ParseResult a
   -> b
 parseResult sF fF r = case r of
-  ParseSuccess a c -> sF a c
-  ParseFailure e c -> fF e c
+  ParseSuccess a c
+    -> sF a c
+
+  ParseFailure failures c
+    -> fF failures c
 
 -- | A predicate on some 'a' also describes it's expected values.
 data Predicate a
@@ -143,8 +153,11 @@ instance Monoid a => Monoid (Parser a) where
 -- fmap over successfully parsed values
 instance Functor Parser where
   fmap f (Parser pa) = Parser $ \c0 -> case pa c0 of
-    ParseSuccess a  c1 -> ParseSuccess (f a) c1
-    ParseFailure es c1 -> ParseFailure es c1
+    ParseSuccess a c1
+      -> ParseSuccess (f a) c1
+
+    ParseFailure failures c
+      -> ParseFailure failures c
 
 -- Delegates to Monad instance
 instance Applicative Parser where
@@ -162,8 +175,8 @@ instance Monad Parser where
       -> let Parser pb = f a
             in pb c1
 
-    ParseFailure e c1
-      -> ParseFailure e c1
+    ParseFailure failures c1
+      -> ParseFailure failures c1
 
 instance MonadFail Parser where
   fail msg = pFail $ ExpectLabel (Text.pack msg) ExpectAnything
@@ -183,26 +196,20 @@ instance MonadPlus Parser where
     ParseSuccess a cur1
       -> ParseSuccess a cur1
 
-    ParseFailure expected0 cur1
+    ParseFailure failures0 cur1
       -- Consumed no input, try the next.
       | on (==) _cursorPos cur0 cur1
-       -- TODO: If this fails we might want to remember the first parse failed.
-       -- As it is we can report multiple Expects either-ed together but only
-       -- one cursor in the ParseFailure. This means one might point to the
-       -- wrong location. We need to either tag expects with cursors or return
-       -- a list of ParseFailures in the Parser.
-       {--> pa1 cur1-}
        -> case pa1 cur1 of
             ParseSuccess a cur2
               -> ParseSuccess a cur2
 
             -- Remember the first parser was also expected.
-            ParseFailure expected1 cur2
-              -> ParseFailure (ExpectEither expected0 expected1) cur2
+            ParseFailure failures1 cur2
+              -> ParseFailure (failures0<>failures1) cur2
 
       -- Consumed input. Fail.
       | otherwise
-       -> ParseFailure expected0 cur1
+       -> ParseFailure failures0 cur1
 
 -- | Execute a 'Parser' on some input Text, producing a possible result and leftover Text if successful.
 runParser
@@ -216,7 +223,7 @@ runParser (Parser p) txt = p (Cursor [] txt $ Pos 0 0 0)
 pFail
   :: Expected
   -> Parser a
-pFail = Parser . ParseFailure
+pFail e = Parser $ \cur -> ParseFailure [(e,cur)] cur
 
 -- | Succeed without consuming anything
 pSucceed
@@ -237,7 +244,7 @@ sat
 sat pred (Parser f) = Parser $ \cur0 -> case f cur0 of
   ParseSuccess a cur1
     | _predicate pred a -> ParseSuccess a cur1
-    | otherwise         -> ParseFailure (_predicateExpect pred) cur0 -- cur1?
+    | otherwise         -> ParseFailure [(_predicateExpect pred, cur0)] cur1 -- cur1?
 
   failure
     -> failure
@@ -246,22 +253,22 @@ sat pred (Parser f) = Parser $ \cur0 -> case f cur0 of
 try
   :: Parser a
   -> Parser a
-try (Parser p) = Parser $ \c -> case p c of
-  ParseFailure es _
-    -> ParseFailure es c
+try (Parser p) = Parser $ \cur0 -> case p cur0 of
+  ParseFailure failures _cur1
+    -> ParseFailure failures cur0
 
   r -> r
 
 -- | If a parser fails, recover with the given function, continuing just after
 -- the failure position.
 recoverWith
-  :: (Expected -> Pos -> Parser a)
+  :: ([(Expected, Pos)] -> Pos -> Parser a)
   -> Parser a
   -> Parser a
-recoverWith f (Parser p) = Parser $ \c -> case p c of
-  ParseFailure es c1
-    -> let Parser p1 = f es (_cursorPos c1)
-          in p1 c1
+recoverWith recover (Parser p) = Parser $ \cur0 -> case p cur0 of
+  ParseFailure failures cur1
+    -> let Parser p1 = recover (map (\(e,c)->(e,_cursorPos c)) failures) (_cursorPos cur1)
+          in p1 cur1
 
   r -> r
 
@@ -278,9 +285,9 @@ labeled
   :: Text
   -> Parser a
   -> Parser a
-labeled label (Parser f) = Parser $ \c -> case f c of
-  ParseFailure e c'
-    -> ParseFailure (ExpectLabel label e) c'
+labeled label (Parser f) = Parser $ \cur0 -> case f cur0 of
+  ParseFailure failures cur1
+    -> ParseFailure (map (\(e,c) -> (ExpectLabel label e,c)) failures) cur1
 
   success
     -> success
@@ -295,7 +302,7 @@ takeChar
   :: Parser Char
 takeChar = Parser $ \cur0 -> case advance cur0 of
   Nothing
-    -> ParseFailure ExpectAnything cur0
+    -> ParseFailure [(ExpectAnything, cur0)] cur0
 
   Just (cur1, c)
     -> ParseSuccess c cur1
@@ -350,11 +357,11 @@ textIs fullTxt = Parser $ \cur0 -> textIs' fullTxt cur0
         -> case advance cur0 of
              -- End of input but we still need a character
              Nothing
-               -> ParseFailure (ExpectLabel ("In text" <> fullTxt) $ ExpectOneOf [Text.cons t ts]) cur0
+               -> ParseFailure [(ExpectLabel ("In text" <> fullTxt) $ ExpectOneOf [Text.cons t ts], cur0)] cur0
 
              Just (cur1, c)
                | c == t    -> textIs' ts cur1
-               | otherwise -> ParseFailure (ExpectLabel ("In text"<>fullTxt) $ ExpectOneOf [Text.cons t ts]) cur1
+               | otherwise -> ParseFailure [(ExpectLabel ("In text"<>fullTxt) $ ExpectOneOf [Text.cons t ts],cur1)] cur1
 
 -- | Take the longest text that matches a predicate on the characters.
 -- Possibly empty.
@@ -370,7 +377,7 @@ takeWhile1
   -> Parser Text
 takeWhile1 pred = Parser $ \cur0 -> case advanceWhile1 (_predicate pred) cur0 of
   Nothing
-    -> ParseFailure (_predicateExpect pred) cur0
+    -> ParseFailure [(_predicateExpect pred, cur0)] cur0
 
   Just (cur1, txt)
     -> ParseSuccess txt cur1
@@ -412,13 +419,13 @@ isoMapParser iso gr =
         ParseSuccess a cur1
           -> case parseIso iso a of
                Nothing
-                 -> ParseFailure (ExpectLabel "isoMap" $ grammarExpects gr) cur0 -- cur1?
+                 -> ParseFailure [(ExpectLabel "isoMap" $ grammarExpects gr, cur0)] cur1 -- cur1
 
                Just b
                  -> ParseSuccess b cur1
 
-        ParseFailure e cur1
-          -> ParseFailure e cur1
+        ParseFailure failures cur1
+          -> ParseFailure failures cur1
 
 
 
@@ -461,8 +468,8 @@ toParser grammar = case grammar of
   G.GLabel l g
     -> let Parser f = toParser g
         in Parser $ \cur0 -> case f cur0 of
-             ParseFailure e cur1
-               -> ParseFailure (ExpectLabel l e) cur1
+             ParseFailure failures cur1
+               -> ParseFailure (map (\(e,c) -> (ExpectLabel l e,c)) failures) cur1
              s -> s
 
   G.GTry g0

@@ -363,8 +363,8 @@ tokenThenMany1ThenSomething
   -> Grammar r
 tokenThenMany1ThenSomething token many something iso
   = (spaceAllowed */ token)
-  */ (iso \$/ grammarMany1 (many \* spaceRequired)
-          \*/ (something)
+  */ (iso \$/ grammarMany1 ((betweenParens many \|/ many) \* spaceRequired)
+          \*/ (betweenParens something \|/ something)
      )
 
 combiner :: (a -> x -> x) -> [a] -> x -> x

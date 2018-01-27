@@ -15,13 +15,14 @@ import PL.ExprLike
 import PL.Kind
 import PL.Parser
 import PL.Printer
-import PL.Grammar
 import PL.Grammar.Lispy
 import PL.Name
 import PL.Reduce
 import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx
+
+import PL.PLGrammar.Grammar
 
 import Control.Applicative
 import Control.Monad (ap)

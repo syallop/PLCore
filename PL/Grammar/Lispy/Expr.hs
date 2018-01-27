@@ -20,7 +20,9 @@ import Data.List.NonEmpty (NonEmpty (..),uncons)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 
-import PL.Grammar
+import PL.PLGrammar.Grammar
+import PL.PLGrammar.Iso
+
 import PL.Grammar.Lispy.Kind
 import PL.Grammar.Lispy.Type
 
@@ -30,7 +32,6 @@ import PL.Kind
 import PL.Type
 import PL.Var
 
-import PL.Iso
 
 typeAbs
   :: (Show tb

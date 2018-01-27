@@ -12,9 +12,9 @@ module PL.Grammar.Lispy.Kind where
 import Control.Applicative
 
 import PL.Kind
-import PL.Grammar
 
-import PL.Iso
+import PL.PLGrammar.Grammar
+import PL.PLGrammar.Iso
 
 kindAbs :: Grammar Kind
 kindAbs = kind

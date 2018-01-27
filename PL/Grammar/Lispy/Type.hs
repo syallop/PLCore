@@ -17,7 +17,9 @@ import Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
-import PL.Grammar
+import PL.PLGrammar.Grammar
+import PL.PLGrammar.Iso
+
 import PL.Grammar.Lispy.Kind
 
 import PL.Kind
@@ -25,7 +27,6 @@ import PL.Name
 import PL.TyVar
 import PL.Type hiding (arrowise)
 
-import PL.Iso
 
 class LispyType t where lispyType :: Grammar t
 instance LispyType TyVar where lispyType = tyVar

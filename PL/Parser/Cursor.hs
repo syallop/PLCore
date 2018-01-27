@@ -26,10 +26,11 @@ import Data.Text (Text)
 import qualified Data.List as List
 import qualified Data.Text as Text
 
-import PL.Iso
+import PL.PLGrammar.Iso
+import qualified PL.PLGrammar.Grammar as G
+
 import PL.Parser.Expected
 import PL.Printer.Doc
-import qualified PL.Grammar as G
 
 data Pos
   = Pos

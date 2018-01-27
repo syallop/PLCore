@@ -21,14 +21,14 @@ library
                      , PL.Error
                      , PL.Expr
                      , PL.ExprLike
-                     , PL.Grammar
+                     , PL.PLGrammar.Grammar
+                     , PL.PLGrammar.Iso
                      , PL.Grammar.Lispy
                      , PL.Grammar.Lispy.Expr
                      , PL.Grammar.Lispy.Kind
                      , PL.Grammar.Lispy.Type
                      , PL.Kind
                      , PL.Name
-                     , PL.Iso
                      , PL.Parser
                      , PL.Parser.Cursor
                      , PL.Parser.Expected
@@ -72,14 +72,13 @@ executable pl
                    , PL.Error
                    , PL.Expr
                    , PL.ExprLike
-                   , PL.Grammar
                    , PL.Kind
                    , PL.Name
-                   , PL.Iso
+                   , PL.PLGrammar.Iso
                    , PL.Parser
                    , PL.Parser.Cursor
                    , PL.Parser.Expected
-                   , PL.Grammar
+                   , PL.PLGrammar.Grammar
                    , PL.Grammar.Lispy
                    , PL.Grammar.Lispy.Expr
                    , PL.Grammar.Lispy.Type

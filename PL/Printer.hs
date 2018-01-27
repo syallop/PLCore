@@ -72,9 +72,10 @@ import qualified Data.Text as Text
 import Control.Monad
 import Control.Applicative
 
-import PL.Iso
+import PL.PLGrammar.Iso
+import PL.PLGrammar.Grammar hiding (between)
+
 import PL.Printer.Doc
-import PL.Grammar hiding (between)
 
 newtype Printer a = Printer {_unPPrint :: a -> Maybe Doc}
 

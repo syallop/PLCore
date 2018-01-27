@@ -27,7 +27,7 @@ Correspondance to invertable-syntax:
   - pure: GPure
   - token: GAnyChar:  anyChar
 -}
-module PL.Grammar
+module PL.PLGrammar.Grammar
   ( Grammar(..)
 
   , charIs
@@ -97,7 +97,7 @@ import Data.Monoid
 import Control.Applicative
 import Control.Monad
 
-import PL.Iso
+import PL.PLGrammar.Iso
 import PL.Printer.Doc (Doc(..))
 import Prelude hiding ((.),id)
 import Control.Category

@@ -77,12 +77,13 @@ import Data.Text (Text)
 import qualified Data.List as List
 import qualified Data.Text as Text
 
-import PL.Iso
+import PL.PLGrammar.Iso
+import PL.PLGrammar.Grammar ((*/),(\*))
+import qualified PL.PLGrammar.Grammar as G
+
 import PL.Parser.Cursor
 import PL.Parser.Expected
 import PL.Printer.Doc
-import PL.Grammar ((*/),(\*))
-import qualified PL.Grammar as G
 
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.

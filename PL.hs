@@ -43,7 +43,7 @@ import PL.Parser             as X
 
 -- A description of a languages grammar. Can be translated to a Parser and
 -- eventually to a corresponing printer.
-import PL.Grammar            as X
+import PL.PLGrammar.Grammar  as X
 
 -- A Grammar for PL with a lisp-like syntax.
 import PL.Grammar.Lispy       as X

@@ -8,7 +8,7 @@ Partial Isomorphisms. Objects which translate back and forth between two types
 with the possibility for failure. Round trips should not fail.
 The two functions are named parse and print after their most frequent use.
 -}
-module PL.Iso
+module PL.PLGrammar.Iso
   ( Iso(..)
   , parseIso
   , printIso

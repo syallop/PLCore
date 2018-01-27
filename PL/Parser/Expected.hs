@@ -28,7 +28,8 @@ import qualified Data.List as List
 import qualified Data.Text as Text
 
 import PL.Printer.Doc
-import PL.Grammar
+
+import PL.PLGrammar.Grammar
 
 data Expected
   = ExpectEither Expected Expected        -- Expected either of

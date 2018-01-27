@@ -12,7 +12,7 @@ Stability   : experimental
 
 A NIH Pretty-Printer
 -}
-module PL.Printer.Doc
+module PL.PLPrinter.Printer.Doc
   (-- * Types
     Doc(..)
   , DocFmt ()

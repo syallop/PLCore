@@ -14,7 +14,7 @@ Stability   : experimental
 
 A NIH parser with backtracking, leftovers and automatic whitespace consumption.
 -}
-module PL.Parser
+module PL.PLParser.Parser
   ( -- Core parser functions
     ParseResult(..)
   , Parser ()
@@ -81,9 +81,9 @@ import PL.PLGrammar.Iso
 import PL.PLGrammar.Grammar ((*/),(\*))
 import qualified PL.PLGrammar.Grammar as G
 
-import PL.Parser.Cursor
-import PL.Parser.Expected
-import PL.Printer.Doc
+import PL.PLParser.Parser.Cursor
+import PL.PLParser.Parser.Expected
+import PL.PLPrinter.Printer.Doc
 
 
 -- | A Parser is a function which takes 'Text' and either fails or produces some 'a' and some leftover 'Text'.

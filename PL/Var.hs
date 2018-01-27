@@ -16,7 +16,7 @@ module PL.Var where
 
 import PL.Binds
 import PL.Binds.Ix
-import PL.Printer
+import PL.PLPrinter.Printer
 import PL.Type
 
 import Data.Monoid

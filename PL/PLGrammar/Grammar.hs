@@ -98,7 +98,7 @@ import Control.Applicative
 import Control.Monad
 
 import PL.PLGrammar.Iso
-import PL.Printer.Doc (Doc(..))
+import PL.PLPrinter.Printer.Doc (Doc(..))
 import Prelude hiding ((.),id)
 import Control.Category
 

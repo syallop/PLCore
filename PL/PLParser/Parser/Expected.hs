@@ -15,7 +15,7 @@ Stability   : experimental
 Describe what a Parser expected to see at a position.
 -}
 -- TODO: Switch text functions to Doc's
-module PL.Parser.Expected where
+module PL.PLParser.Parser.Expected where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
 
@@ -27,7 +27,7 @@ import Data.Text (Text)
 import qualified Data.List as List
 import qualified Data.Text as Text
 
-import PL.Printer.Doc
+import PL.PLPrinter.Printer.Doc
 
 import PL.PLGrammar.Grammar
 

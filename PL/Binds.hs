@@ -13,8 +13,8 @@ Stability   : experimental
 module PL.Binds where
 
 import PL.Binds.Ix
-import PL.Printer hiding (parens,between)
-import PL.Printer.Doc
+import PL.PLPrinter.Printer hiding (parens,between)
+import PL.PLPrinter.Printer.Doc
 import PL.Type
 
 import Data.Monoid

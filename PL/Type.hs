@@ -21,8 +21,8 @@ import PL.ExprLike
 
 import PL.PLGrammar.Grammar
 
-import PL.Printer hiding (parens,between)
-import PL.Printer.Doc
+import PL.PLPrinter.Printer hiding (parens,between)
+import PL.PLPrinter.Printer.Doc
 
 import Data.List
 import qualified Data.Set as Set

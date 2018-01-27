@@ -29,9 +29,9 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.Parser
+import PL.PLParser.Parser
 import PL.Grammar.Lispy hiding (appise,lamise)
-import PL.Printer
+import PL.PLPrinter.Printer
 import PL.Reduce
 import PL.TyVar
 import PL.Type

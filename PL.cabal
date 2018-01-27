@@ -29,12 +29,12 @@ library
                      , PL.Grammar.Lispy.Type
                      , PL.Kind
                      , PL.Name
-                     , PL.Parser
-                     , PL.Parser.Cursor
-                     , PL.Parser.Expected
-                     , PL.Printer
-                     , PL.Printer.Doc
-                     , PL.Printer.Debug
+                     , PL.PLParser.Parser
+                     , PL.PLParser.Parser.Cursor
+                     , PL.PLParser.Parser.Expected
+                     , PL.PLPrinter.Printer
+                     , PL.PLPrinter.Printer.Doc
+                     , PL.PLPrinter.Printer.Debug
                      , PL.Reduce
                      , PL.Repl
                      , PL.ReduceType
@@ -75,17 +75,17 @@ executable pl
                    , PL.Kind
                    , PL.Name
                    , PL.PLGrammar.Iso
-                   , PL.Parser
-                   , PL.Parser.Cursor
-                   , PL.Parser.Expected
+                   , PL.PLParser.Parser
+                   , PL.PLParser.Parser.Cursor
+                   , PL.PLParser.Parser.Expected
                    , PL.PLGrammar.Grammar
                    , PL.Grammar.Lispy
                    , PL.Grammar.Lispy.Expr
                    , PL.Grammar.Lispy.Type
                    , PL.Grammar.Lispy.Kind
-                   , PL.Printer
-                   , PL.Printer.Doc
-                   , PL.Printer.Debug
+                   , PL.PLPrinter.Printer
+                   , PL.PLPrinter.Printer.Doc
+                   , PL.PLPrinter.Printer.Debug
                    , PL.Reduce
                    , PL.ReduceType
                    , PL.Repl

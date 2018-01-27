@@ -14,7 +14,7 @@ Stability   : experimental
 A Cursor is a position within some text.
 -}
 
-module PL.Parser.Cursor where
+module PL.PLParser.Parser.Cursor where
 
 import Prelude hiding (takeWhile,dropWhile,exp)
 
@@ -29,8 +29,8 @@ import qualified Data.Text as Text
 import PL.PLGrammar.Iso
 import qualified PL.PLGrammar.Grammar as G
 
-import PL.Parser.Expected
-import PL.Printer.Doc
+import PL.PLParser.Parser.Expected
+import PL.PLPrinter.Printer.Doc
 
 data Pos
   = Pos

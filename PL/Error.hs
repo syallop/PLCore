@@ -12,7 +12,7 @@ module PL.Error where
 
 import PL.Kind
 import PL.Name
-import PL.Printer
+import PL.PLPrinter.Printer
 import PL.Type
 
 import Data.Monoid

@@ -16,8 +16,8 @@ import PL.Binds.Ix
 import PL.Error
 import PL.ExprLike
 import PL.Kind
-import PL.Printer
-import PL.Printer.Debug
+import PL.PLPrinter.Printer
+import PL.PLPrinter.Printer.Debug
 import PL.ReduceType
 import PL.Type
 import PL.TypeCtx

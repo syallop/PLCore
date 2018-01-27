@@ -24,8 +24,8 @@ import PL.Error
 import PL.Name
 import PL.Type
 import PL.TypeCtx
-import PL.Printer
-import PL.Printer.Debug
+import PL.PLPrinter.Printer
+import PL.PLPrinter.Printer.Debug
 
 import Control.Applicative
 import Control.Arrow (second)

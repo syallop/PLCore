@@ -11,9 +11,9 @@ HSpec tests for PL.Grammar.
 -}
 module GrammarSpec where
 
-import PL.Parser
-import PL.Printer
-import PL.Grammar
+import PL.PLParser.Parser
+import PL.PLPrinter.Printer
+import PL.PLGrammar.Grammar
 import Data.Text (Text)
 import Data.Monoid
 import qualified Data.Text as Text

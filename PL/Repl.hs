@@ -13,8 +13,8 @@ import PL.Error
 import PL.Expr
 import PL.ExprLike
 import PL.Kind
-import PL.Parser
-import PL.Printer
+import PL.PLParser.Parser
+import PL.PLPrinter.Printer
 import PL.Grammar.Lispy
 import PL.Name
 import PL.Reduce

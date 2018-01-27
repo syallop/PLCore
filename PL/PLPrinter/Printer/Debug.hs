@@ -6,7 +6,7 @@ Stability   : experimental
 
 Wraps Debug.Trace into a pretty printer.
 -}
-module PL.Printer.Debug
+module PL.PLPrinter.Printer.Debug
   (trace
   ,traceId
 
@@ -15,7 +15,7 @@ module PL.Printer.Debug
   )
   where
 
-import PL.Printer.Doc
+import PL.PLPrinter.Printer.Doc
 
 import qualified Debug.Trace as D
 import qualified Data.Text as Text

@@ -18,7 +18,7 @@ import PL.Error
 import PL.Expr
 import PL.Grammar.Lispy hiding (appise,lamise,bind)
 import PL.Kind
-import PL.Parser
+import PL.PLParser.Parser
 import PL.Reduce
 import PL.TyVar
 import PL.Type

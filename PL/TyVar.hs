@@ -17,7 +17,7 @@ module PL.TyVar where
 import PL.Binds
 import PL.Binds.Ix
 import PL.Kind
-import PL.Printer
+import PL.PLPrinter.Printer
 import PL.Var
 
 import Data.Coerce

@@ -11,8 +11,8 @@ The Type of Types.
 -}
 module PL.Kind where
 
-import PL.Printer
-import PL.Printer.Doc
+import PL.PLPrinter.Printer
+import PL.PLPrinter.Printer.Doc
 
 import Data.Monoid
 

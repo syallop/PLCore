@@ -13,7 +13,7 @@ Stability   : experimental
 
 A NIH Pretty-Printer
 -}
-module PL.Printer
+module PL.PLPrinter.Printer
   (-- * Types
     Doc(..)
   , DocFmt()
@@ -75,7 +75,7 @@ import Control.Applicative
 import PL.PLGrammar.Iso
 import PL.PLGrammar.Grammar hiding (between)
 
-import PL.Printer.Doc
+import PL.PLPrinter.Printer.Doc
 
 newtype Printer a = Printer {_unPPrint :: a -> Maybe Doc}
 

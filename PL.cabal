@@ -110,6 +110,5 @@ test-suite hspec
                      , GeneralizedNewtypeDeriving
                      , LambdaCase
     other-modules:     ExprSpec
-                     , GrammarSpec
                      , MatchArgSpec
 

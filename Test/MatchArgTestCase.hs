@@ -17,8 +17,7 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.PLParser.Parser (runParser,Parser,ParseResult(..),pointTo)
-import PL.PLGrammar.Grammar
+import PL.Grammar
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
@@ -28,8 +27,10 @@ import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
-import PL.PLParser.Parser
-import PL.PLPrinter.Printer
+import PLParser (runParser,Parser,ParseResult(..),pointTo)
+import PLGrammar
+import PLParser
+import PLPrinter
 
 import Control.Applicative
 import Control.Monad

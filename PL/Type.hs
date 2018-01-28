@@ -19,10 +19,10 @@ import PL.Name
 import PL.Kind
 import PL.ExprLike
 
-import PL.PLGrammar.Grammar
+import PLGrammar
 
-import PL.PLPrinter.Printer hiding (parens,between)
-import PL.PLPrinter.Printer.Doc
+import PLPrinter hiding (parens,between)
+import PLPrinter.Doc
 
 import Data.List
 import qualified Data.Set as Set

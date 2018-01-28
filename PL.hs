@@ -39,11 +39,11 @@ import PL.Kind               as X
 import PL.Name               as X
 
 -- A NIH parser with backtracking, leftovers and automatic whitespace consumption.
-import PL.PLParser.Parser             as X
+import PLParser              as X
 
 -- A description of a languages grammar. Can be translated to a Parser and
 -- eventually to a corresponing printer.
-import PL.PLGrammar.Grammar  as X
+import PLGrammar             as X
 
 -- A Grammar for PL with a lisp-like syntax.
 import PL.Grammar.Lispy       as X
@@ -51,10 +51,10 @@ import PL.Grammar.Lispy.Expr  as X
 import PL.Grammar.Lispy.Type  as X
 
 -- A NIH Pretty-Printer
-import PL.PLPrinter.Printer            as X
+import PLPrinter              as X
 
 -- Wraps Debug.Trace into a pretty printer.
-import PL.PLPrinter.Printer.Debug      as X
+import PLPrinter.Debug        as X
 
 -- Reduce expressions by maintaining a binding ctx and performing substitution
 -- and recursive reduction when necessary.

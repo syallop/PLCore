@@ -17,8 +17,8 @@ import Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
-import PL.PLGrammar.Grammar
-import PL.PLGrammar.Iso
+import PLGrammar
+import PLGrammar.Iso
 
 import PL.Grammar.Lispy.Kind
 
@@ -43,12 +43,6 @@ tyVar = charIs '?' */ (tyVarI \$/ natural)
 
 -- A name is an uppercase followed by zero or more lower case characters
 name :: Grammar Text.Text
-{-name = textWhen $ \txt -> case Text.uncons txt of-}
-  {-Nothing-}
-    {--> False-}
-
-  {-Just (c,cs)-}
-    {--> isUpper c && Text.all isLower cs-}
 name = nameI \$/ upper \*/ longestMatching isLower
   where
     nameI :: Iso (Char,Text.Text) Text.Text

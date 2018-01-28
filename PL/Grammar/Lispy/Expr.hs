@@ -20,8 +20,8 @@ import Data.List.NonEmpty (NonEmpty (..),uncons)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 
-import PL.PLGrammar.Grammar
-import PL.PLGrammar.Iso
+import PLGrammar
+import PLGrammar.Iso
 
 import PL.Grammar.Lispy.Kind
 import PL.Grammar.Lispy.Type

@@ -28,8 +28,7 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.PLParser.Parser (runParser,Parser,ParseResult(..),pointTo)
-import PL.PLGrammar.Grammar
+import PL.Grammar
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
@@ -39,8 +38,10 @@ import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
-import PL.PLParser.Parser
-import PL.PLPrinter.Printer
+import PLGrammar
+import PLParser
+import PLParser (runParser,Parser,ParseResult(..),pointTo)
+import PLPrinter
 
 import Control.Applicative
 import Control.Monad
@@ -147,7 +148,7 @@ testPipeline typeCtx txt = case runParser testExprP txt of
   ParseFailure expected c
     -> unlines ["Parse failure"
                ,"Parse expected: " ++ show expected
-               ,Text.unpack $ pointTo c
+               ,Text.unpack $ pointTo renderDocument c
                ]
 
   ParseSuccess expr c

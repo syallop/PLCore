@@ -16,9 +16,9 @@ import PL.ExprLike
 import PL.Grammar.Lispy
 import PL.Kind
 import PL.Name
-import PL.PLParser.Parser
-import PL.PLPrinter.Printer
-import PL.PLPrinter.Printer.Debug
+import PLParser
+import PLPrinter
+import PLPrinter.Debug
 import PL.Reduce
 import PL.Repl
 import PL.TyVar

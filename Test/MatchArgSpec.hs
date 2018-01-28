@@ -29,15 +29,16 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.PLParser.Parser
 import PL.Grammar.Lispy hiding (appise,lamise)
-import PL.PLPrinter.Printer
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+
+import PLParser
+import PLPrinter
 
 import Control.Applicative
 import Control.Monad

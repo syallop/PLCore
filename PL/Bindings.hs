@@ -38,8 +38,8 @@ import Data.Monoid
 import PL.Binds
 import PL.Binds.Ix
 import PL.ExprLike
-import PL.PLPrinter.Printer hiding (parens,between)
-import PL.PLPrinter.Printer.Doc
+import PLPrinter hiding (parens,between)
+import PLPrinter.Doc
 
 
 data Binding e

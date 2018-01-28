@@ -13,16 +13,17 @@ import PL.Error
 import PL.Expr
 import PL.ExprLike
 import PL.Kind
-import PL.PLParser.Parser
-import PL.PLPrinter.Printer
 import PL.Grammar.Lispy
+import PL.Grammar
 import PL.Name
 import PL.Reduce
 import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx
 
-import PL.PLGrammar.Grammar
+import PLParser
+import PLPrinter
+import PLGrammar
 
 import Control.Applicative
 import Control.Monad (ap)

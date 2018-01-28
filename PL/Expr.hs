@@ -29,9 +29,9 @@ import PL.Error
 import PL.ExprLike
 import PL.Kind
 import PL.Name
-import PL.PLPrinter.Printer
-import PL.PLPrinter.Printer.Doc
-import PL.PLPrinter.Printer.Debug
+import PLPrinter
+import PLPrinter.Doc
+import PLPrinter.Debug
 import PL.Type hiding (parens)
 import PL.Type.Eq
 import PL.TypeCtx

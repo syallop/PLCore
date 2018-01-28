@@ -11,8 +11,8 @@ module PL.Case where
 import Prelude hiding (sequence,mapM,foldr)
 
 import PL.ExprLike
-import PL.PLPrinter.Printer hiding (parens,between)
-import PL.PLPrinter.Printer.Doc
+import PLPrinter hiding (parens,between)
+import PLPrinter.Doc
 
 import Control.Applicative
 import Data.Foldable

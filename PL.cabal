@@ -21,20 +21,13 @@ library
                      , PL.Error
                      , PL.Expr
                      , PL.ExprLike
-                     , PL.PLGrammar.Grammar
-                     , PL.PLGrammar.Iso
+                     , PL.Grammar
                      , PL.Grammar.Lispy
                      , PL.Grammar.Lispy.Expr
                      , PL.Grammar.Lispy.Kind
                      , PL.Grammar.Lispy.Type
                      , PL.Kind
                      , PL.Name
-                     , PL.PLParser.Parser
-                     , PL.PLParser.Parser.Cursor
-                     , PL.PLParser.Parser.Expected
-                     , PL.PLPrinter.Printer
-                     , PL.PLPrinter.Printer.Doc
-                     , PL.PLPrinter.Printer.Debug
                      , PL.Reduce
                      , PL.Repl
                      , PL.ReduceType
@@ -52,6 +45,9 @@ library
                      , containers >=0.5
                      , semigroups
                      , text
+                     , PLGrammar
+                     , PLPrinter
+                     , PLParser
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
@@ -63,6 +59,9 @@ executable pl
                      , semigroups
                      , text
                      , PL
+                     , PLGrammar
+                     , PLPrinter
+                     , PLParser
 
   other-modules:     PL.Abstracts
                    , PL.Bindings
@@ -74,18 +73,11 @@ executable pl
                    , PL.ExprLike
                    , PL.Kind
                    , PL.Name
-                   , PL.PLGrammar.Iso
-                   , PL.PLParser.Parser
-                   , PL.PLParser.Parser.Cursor
-                   , PL.PLParser.Parser.Expected
-                   , PL.PLGrammar.Grammar
+                   , PL.Grammar
                    , PL.Grammar.Lispy
                    , PL.Grammar.Lispy.Expr
                    , PL.Grammar.Lispy.Type
                    , PL.Grammar.Lispy.Kind
-                   , PL.PLPrinter.Printer
-                   , PL.PLPrinter.Printer.Doc
-                   , PL.PLPrinter.Printer.Debug
                    , PL.Reduce
                    , PL.ReduceType
                    , PL.Repl
@@ -108,6 +100,9 @@ test-suite hspec
                      , QuickCheck
                      , quickcheck-instances
                      , PL
+                     , PLGrammar
+                     , PLParser
+                     , PLPrinter
 
     default-language:  Haskell2010
 

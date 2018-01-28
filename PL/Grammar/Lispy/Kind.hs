@@ -13,8 +13,8 @@ import Control.Applicative
 
 import PL.Kind
 
-import PL.PLGrammar.Grammar
-import PL.PLGrammar.Iso
+import PLGrammar
+import PLGrammar.Iso
 
 kindAbs :: Grammar Kind
 kindAbs = kind

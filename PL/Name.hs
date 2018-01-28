@@ -17,7 +17,7 @@ import Data.Monoid
 import Data.Text
 import GHC.Exts (IsString(..))
 
-import PL.PLPrinter.Printer
+import PLPrinter
 
 -- | Name a thing
 type Name = Text

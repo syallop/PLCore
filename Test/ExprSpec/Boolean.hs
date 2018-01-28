@@ -32,13 +32,14 @@ import PL.Error
 import PL.Expr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
-import PL.PLParser.Parser
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+
+import PLParser
 
 import Data.Maybe
 import Data.Text (Text)

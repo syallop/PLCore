@@ -12,8 +12,9 @@ module PL.Error where
 
 import PL.Kind
 import PL.Name
-import PL.PLPrinter.Printer
 import PL.Type
+
+import PLPrinter
 
 import Data.Monoid
 import Data.Text

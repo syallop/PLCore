@@ -11,9 +11,9 @@ HSpec tests for PL.Parser.
 -}
 module ParserSpec where
 
-import PL.PLParser.Parser
-import PL.PLParser.Parser.Expected
-import PL.PLPrinter.Printer
+import PLParser
+import PLParser.Expected
+import PLPrinter
 import Data.Char (ord,chr)
 import Data.Text (Text)
 import Data.Monoid

@@ -111,6 +111,5 @@ test-suite hspec
                      , LambdaCase
     other-modules:     ExprSpec
                      , GrammarSpec
-                     , ParserSpec
                      , MatchArgSpec
 

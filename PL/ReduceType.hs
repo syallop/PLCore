@@ -61,7 +61,7 @@ reduceTypeStep' :: forall tb
                 -> TypeCtx tb
                 -> Type tb
                 -> Either (Error tb) (Type tb)
-reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [DocText "~>",document bindings,document ty]) $ case ty of
+reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [text "~>",document bindings,document ty]) $ case ty of
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
@@ -78,7 +78,7 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [DocText "~>"
 
             Named n
               -> case lookupTypeNameInfo n typeNameCtx of
-                   Nothing -> error "Cant reduce type application to a name which does not exist in the context"
+                   Nothing -> Left $ EMsg $ text "Cant reduce type application to a name which does not exist in the context"
 
                    -- f is a named type we know of
                    -- we've assumed everything has been kind-checked so we're
@@ -86,7 +86,7 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [DocText "~>"
                    -- like to terminate...
                    Just ti -> Right $ TypeApp f' x'
 
-            _ -> error $ Text.unpack $ render $ DocText "Cant reduce type application of non-lambda term: f: " <> document f'
+            _ -> Left $ EMsg $ text "Cant reduce type application of non-lambda term: f: " <> document f'
 
   -- Reduce under a lambda by noting the abstraction is buried and Unbound
   -- TODO: Maybe dont reduce under
@@ -102,7 +102,7 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [DocText "~>"
   Named n
     -> case lookupTypeNameInitialInfo n typeNameCtx of
          Nothing
-           -> error "Name does not exist in type reduction"
+           -> Left $ EMsg $ text "Name does not exist in type reduction"
 
          Just (TypeInfo NonRec k ty)
            -> Right ty

@@ -130,7 +130,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   (TypeApp f0 x0,ty1)
     -> traceStep ("Reduce application function,under arg"::Text.Text) $ case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
-           -> error $ Text.unpack $ render $ DocText "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
+           -> error $ Text.unpack $ render $ text "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
 
          Right redF0
            -> case redF0 of
@@ -204,7 +204,7 @@ typeKind typeBindCtx typeCtx ty = case ty of
   Named n
     -> case lookupTypeNameInitialInfo n typeCtx of
          Nothing
-           -> Left $ EMsg "No such type name in kind check"
+           -> Left $ EMsg $ text "No such type name in kind check"
 
          Just (TypeInfo _ ky _)
            -> Right ky
@@ -252,7 +252,7 @@ typeKind typeBindCtx typeCtx ty = case ty of
   --
   TypeBinding b
     -> case lookupBindingTy b typeBindCtx of
-         Nothing -> Left $ EMsg "Type binding does not exist."
+         Nothing -> Left $ EMsg $ text "Type binding does not exist."
          Just ky -> Right ky
 
   --

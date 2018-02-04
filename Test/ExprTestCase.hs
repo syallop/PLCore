@@ -74,8 +74,8 @@ typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprTy
 
   Right exprTy
     -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
-         Nothing    -> expectationFailure $ Text.unpack $ render $ DocText "A given type name does not exist in the context"
-         Just False -> expectationFailure $ Text.unpack $ render $ DocText "Expected: " <> document expectTy <> DocText " got: " <> document exprTy
+         Nothing    -> expectationFailure $ Text.unpack $ render $ text "A given type name does not exist in the context"
+         Just False -> expectationFailure $ Text.unpack $ render $ text "Expected: " <> document expectTy <> text " got: " <> document exprTy
          Just True  -> return ()
 
 -- | Test whether an expression reduces to another.
@@ -93,7 +93,7 @@ appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 reduceToSpec :: String -> TestExpr -> TestExpr -> Spec
 reduceToSpec name expr eqExpr = it name $ case reduce expr of
   Left exprErr
-    -> expectationFailure $ Text.unpack $ render $ DocText "target expression does not reduce: " <> document exprErr
+    -> expectationFailure $ Text.unpack $ render $ text "target expression does not reduce: " <> document exprErr
 
   Right redExpr
     -> if redExpr == eqExpr
@@ -103,9 +103,10 @@ reduceToSpec name expr eqExpr = it name $ case reduce expr of
          -- reduce that expression and check once more
          else case reduce eqExpr of
                 Left eqExprErr
-                  -> expectationFailure $ Text.unpack $ render $ mconcat [DocText "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
-                                                                         ,document eqExprErr
-                                                                         ]
+                  -> expectationFailure $ Text.unpack $ render $ mconcat
+                       [text "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
+                       ,document eqExprErr
+                       ]
 
                 Right redEqExpr
                   -> if redExpr == redEqExpr
@@ -134,11 +135,11 @@ parseToSpec name txt expectExpr = it (Text.unpack name) $ case runParser testExp
          else expectationFailure . Text.unpack
                                  . render
                                  . mconcat
-                                 $ [DocText "Parses successfully, BUT not as expected. Got:"
+                                 $ [text "Parses successfully, BUT not as expected. Got:"
                                    ,lineBreak
                                    ,document expr
                                    ,lineBreak
-                                   ,DocText "expected"
+                                   ,text "expected"
                                    ,lineBreak
                                    ,document expectExpr
                                    ]
@@ -155,10 +156,10 @@ testPipeline typeCtx txt = case runParser testExprP txt of
     -> case topExprType typeCtx expr of
           Left err
             -> Text.unpack . render . mconcat . intersperse lineBreak $
-                 [ DocText "Type check failure: "
-                 , DocText "Parses: "
+                 [ text "Type check failure: "
+                 , text "Parses: "
                  , document expr
-                 , DocText "Type error: "
+                 , text "Type error: "
                  , document err
                  ]
 
@@ -169,16 +170,16 @@ testPipeline typeCtx txt = case runParser testExprP txt of
 
                  Right redExpr
                    -> Text.unpack . render . mconcat . intersperse lineBreak $
-                        [DocText "Success"
-                        ,DocText "Parses:"
+                        [text "Success"
+                        ,text "Parses:"
                         ,document expr
                         ,lineBreak
 
-                        ,DocText "Type checks:"
+                        ,text "Type checks:"
                         ,document exprTy
                         ,lineBreak
 
-                        ,DocText "Reduces:"
+                        ,text "Reduces:"
                         ,document redExpr
                         ]
 

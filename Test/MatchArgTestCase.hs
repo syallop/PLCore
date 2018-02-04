@@ -75,9 +75,9 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()
         | otherwise  -> expectationFailure $ Text.unpack $ render $ mconcat
-            [ DocText "MatchArg expected error:"
+            [ text "MatchArg expected error:"
             , document expectedErr
-            , DocText "but got:"
+            , text "but got:"
             , document resultErr
             ]
 
@@ -88,25 +88,25 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
 
         | otherwise
           -> expectationFailure $ Text.unpack $ render $ mconcat
-               [ DocText "MatchArg expected to bind:"
-               , foldr (DocAppend . document) DocEmpty expectedTys
-               , DocText "but bound:"
-               , foldr (DocAppend . document) DocEmpty resultTys
+               [ text "MatchArg expected to bind:"
+               , foldr ((<>) . document) mempty expectedTys
+               , text "but bound:"
+               , foldr ((<>) . document) mempty resultTys
                ]
 
       (Right resultTys, Left expectedErr)
         -> expectationFailure $ Text.unpack $ render $ mconcat
-             [ DocText "MatchArg expected error:"
+             [ text "MatchArg expected error:"
              , document expectedErr
-             , DocText "but got successful result, binding types:"
-             , foldr (DocAppend . document) DocEmpty resultTys
+             , text "but got successful result, binding types:"
+             , foldr ((<>) . document) mempty resultTys
              ]
 
       (Left resultErr, Right expectedTys)
         -> expectationFailure $ Text.unpack $ render $ mconcat
-             [ DocText "MatchArg expected to bind:"
-             , foldr (DocAppend . document) DocEmpty expectedTys
-             , DocText "but got error:"
+             [ text "MatchArg expected to bind:"
+             , foldr ((<>) . document) mempty expectedTys
+             , text "but got error:"
              , document resultErr
              ]
 
@@ -125,11 +125,11 @@ parseToSpec name txt expectMatchArg =
            $ expectationFailure . Text.unpack
                                 . render
                                 . mconcat
-                                $ [DocText "Parses successfully, BUT not as expected. Got:"
+                                $ [text "Parses successfully, BUT not as expected. Got:"
                                   ,lineBreak
                                   ,document matchArg
                                   ,lineBreak
-                                  ,DocText "expected"
+                                  ,text "expected"
                                   ,lineBreak
                                   ,document expectMatchArg
                                   ]

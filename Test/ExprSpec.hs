@@ -76,17 +76,21 @@ testCases = mconcat
   ]
 
 spec :: Spec
-spec = describe "Expr Var Type" $ sequence_ [typeChecksSpec,reducesToSpec,parsesToSpec]
+spec = describe "Expressions using Var for binding and Type for abstraction" $ sequence_
+  [typeChecksSpec
+  ,reducesToSpec
+  ,parsesToSpec
+  ]
 
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec :: Spec
-typeChecksSpec = describe "An expression fully typechecks AND typechecks to the correct type"
+typeChecksSpec = describe "fully typecheck AND typechecks to the correct type"
                . mapM_ (\(name,testCase) -> typeChecksTo (_underTypeCtx testCase) name (_isExpr testCase) (_typed testCase))
                $ testCases
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec :: Spec
-reducesToSpec = describe "An expression when applied to a list of arguments must reduce to an expected expression"
+reducesToSpec = describe "when applied to a list of arguments must reduce to an expected expression"
               . mapM_ (\(name,testCase,reductionTests) -> manyAppliedReducesToSpec name (_isExpr testCase) reductionTests)
               $
   [("boolean and"
@@ -145,7 +149,7 @@ reducesToSpec = describe "An expression when applied to a list of arguments must
 
 -- Test that Text strings parse to an expected expression
 parsesToSpec :: Spec
-parsesToSpec = describe "Strings should parse to expected expressions"
+parsesToSpec = describe "are parsed by given strings"
              . mapM_ (\(name,testCase) -> parseToSpec name (_parsesFrom testCase) (_isExpr testCase))
              $ testCases
 

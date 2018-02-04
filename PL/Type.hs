@@ -106,22 +106,22 @@ instance Document tb => Document (Type tb) where
       -> document belongs
 
     SumT tys
-      -> DocText "+" <> (mconcat . map (parens . document) $ tys)
+      -> text "+" <> (mconcat . map (parens . document) $ tys)
 
     ProductT tys
-      -> DocText "*" <> (mconcat . map (parens . document) $ tys)
+      -> text "*" <> (mconcat . map (parens . document) $ tys)
 
     UnionT tys
-      -> DocText "U" <> (mconcat . map (parens . document) . Set.toList $ tys)
+      -> text "U" <> (mconcat . map (parens . document) . Set.toList $ tys)
 
     BigArrow from to
-      -> DocText "^^" <> parens (document from) <> parens (document to)
+      -> text "^^" <> parens (document from) <> parens (document to)
 
     TypeLam takeKy ty
-      -> DocText "\\" <> parens (document takeKy) <> parens (document ty)
+      -> text "\\" <> parens (document takeKy) <> parens (document ty)
 
     TypeApp f x
-      -> DocText "@" <> parens (document f) <> parens (document x)
+      -> text "@" <> parens (document f) <> parens (document x)
 
     TypeBinding b
       -> document b

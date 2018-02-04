@@ -112,14 +112,14 @@ replRead
   -> Repl b abs tb (Expr b abs tb)
 replRead input b abs tb = case runParser (toParser $ expr b abs tb) input of
   f@(ParseFailure expected cursor)
-    -> replError . EMsg . render . document $ f
+    -> replError . EMsg . document $ f
 
   s@(ParseSuccess expr cursor)
     | Text.null $ remainder cursor
      -> pure expr
 
     | otherwise
-     -> replError $ EMsg $ render $ DocText "Parse succeeded but there were trailing characters: " <> document cursor
+     -> replError $ EMsg $ text "Parse succeeded but there were trailing characters: " <> document cursor
 
 -- Type check an expression in the repl context.
 replTypeCheck
@@ -190,20 +190,20 @@ replPrint
   => (Expr b abs tb,Expr b abs tb,Type tb)
   -> Repl b abs tb Text
 replPrint (inputExpr,redExpr,ty) = pure . render . mconcat $
-  [DocText "input expression:"
+  [text "input expression:"
   ,lineBreak
-  ,fromMaybe DocEmpty $ pprint (toPrinter exprI) inputExpr
+  ,fromMaybe mempty $ pprint (toPrinter exprI) inputExpr
 
-  ,DocText "reduces to:"
-  ,lineBreak
-
-  ,fromMaybe DocEmpty $ pprint (toPrinter exprI) redExpr
+  ,text "reduces to:"
   ,lineBreak
 
-  ,DocText "with type:"
+  ,fromMaybe mempty $ pprint (toPrinter exprI) redExpr
   ,lineBreak
 
-  ,fromMaybe DocEmpty $ pprint (toPrinter typI) ty
+  ,text "with type:"
+  ,lineBreak
+
+  ,fromMaybe mempty $ pprint (toPrinter typI) ty
   ,lineBreak
   ]
 

@@ -33,6 +33,8 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Proxy
 
+import PLPrinter
+
 -- | Reduce an 'Expr'.
 reduce :: forall b abs tb. (BindAbs b abs tb,Eq b) => Expr b abs tb -> Either (Error tb) (Expr b abs tb)
 reduce = reduceRec emptyBindings
@@ -98,7 +100,7 @@ reduce = reduceRec emptyBindings
            -- No branch matches. We therefore expect a default to exist.
            Nothing
              -> case mDefaultExpr of
-                  Nothing          -> Left $ EMsg "No branch matches the expression and a default branch is not given"
+                  Nothing          -> Left $ EMsg $ text "No branch matches the expression and a default branch is not given"
                   Just defaultExpr -> reduceStep bindings defaultExpr
 
            -- Branch matches, reduce its rhs under any bindings

@@ -22,7 +22,7 @@ import Data.Text
 data Error tb
 
   -- ^ Generic error
-  = EMsg Text
+  = EMsg Doc
 
   -- No such name
   | ETypeNotDefined TypeName -- ^ No such type
@@ -39,43 +39,43 @@ data Error tb
   deriving (Ord,Eq,Show)
 
 instance Document tb => Document (Error tb) where
-  document e = DocText "ERROR: " <> case e of
-    EMsg msg
-      -> DocText msg
+  document e = text "ERROR: " <> case e of
+    EMsg doc
+      -> doc
 
     ETypeNotDefined name
-      -> mconcat [DocText "Type named '"
+      -> mconcat [text "Type named '"
                  ,document name
-                 ,DocText "' is not defined."
+                 ,text "' is not defined."
                  ]
 
     ETermNotDefined name
-      -> mconcat [DocText "Term named '"
+      -> mconcat [text "Term named '"
                  ,document name
-                 ,DocText "' is not defined."
+                 ,text "' is not defined."
                  ]
 
     EAppMismatch fTy xTy
-      -> mconcat [DocText "Cannot apply expression typed: '"
+      -> mconcat [text "Cannot apply expression typed: '"
                  ,document fTy
-                 ,DocText "' to expression typed: '"
+                 ,text "' to expression typed: '"
                  ,document xTy
-                 ,DocText "'."
+                 ,text "'."
                  ]
 
     EBigAppMismatch fTy xKy
-      -> mconcat [DocText "Cannot big-apply expression typed: '"
+      -> mconcat [text "Cannot big-apply expression typed: '"
                  ,document fTy
-                 ,DocText "' to type kinded: '"
+                 ,text "' to type kinded: '"
                  ,document xKy
-                 ,DocText "'."
+                 ,text "'."
                  ]
 
     ETypeAppMismatch fKy xKy
-      -> mconcat [DocText "Cannot type-apply type kinded: '"
+      -> mconcat [text "Cannot type-apply type kinded: '"
                  ,document fKy
-                 ,DocText "' to type kinded: '"
+                 ,text "' to type kinded: '"
                  ,document xKy
-                 ,DocText "'."
+                 ,text "'."
                  ]
 

@@ -8,6 +8,7 @@ import PLParser
 import PLParser.Cursor
 
 import qualified PLGrammar as G
+import qualified PLParser  as P
 
 import qualified Data.List as List
 import qualified Data.Text as Text
@@ -85,7 +86,7 @@ toParser grammar = case grammar of
              s -> s
 
   G.GTry g0
-    -> try . toParser $ g0
+    -> P.try . toParser $ g0
 
 
 -- | A Grammar's parser expected to see:
@@ -151,47 +152,62 @@ toPrinter grammar = case grammar of
 describeGrammar :: Show a => Grammar a -> Doc
 describeGrammar gr = case gr of
   GAnyChar
-    -> DocText "c"
+    -> text "."
 
   GAnyText
-    -> DocText "text"
+    -> text "*"
 
   GPure a
-    -> DocText $ "=" <> (Text.pack . show $ a)
-
+    -> mconcat
+         [text "( "
+         ,text (Text.pack . show $ a)
+         ,text " )"
+         ]
   GEmpty
-    -> DocText "FAIL"
+    -> text "()"
 
   GAlt g0 g1
-    -> mconcat [DocText "either"
-               ,describeGrammar g0
-               ,DocText "or"
-               ,describeGrammar g1
+    -> mconcat [text "(| "
+               ,indent1 $ mconcat $
+                 [lineBreak
+                 ,describeGrammar g0
+                 ,lineBreak
+                 ,describeGrammar g1
+                 ,lineBreak
+                 ]
+               ,text " |)"
                ]
 
   GIsoMap iso g
     -> mconcat [describeGrammar g
-               ,DocText "but then some iso must succeed"
                ]
 
   GProductMap g0 g1
-    -> mconcat [describeGrammar g0
-               ,DocText "and then"
+    -> mconcat [text "(& "
+               ,describeGrammar g0
+               ,text " "
                ,describeGrammar g1
+               ,text " &)"
                ]
 
-  GLabel l _g
-    -> mconcat [DocText "labeled"
-               ,DocText l
+  GLabel l g
+    -> mconcat [text "("
+               ,text l
+               ,text " "
+               ,describeGrammar g
+               ,text " "
+               ,text l
+               ,text " )"
                ]
 
   GTry g0
-    -> mconcat [ DocText "Try"
-               , describeGrammar g0
+    -> mconcat [text " (T "
+               ,describeGrammar g0
+               ,text " T) "
                ]
 
 showExpectedDoc :: Expected -> Doc
-showExpectedDoc = foldr (\d0 dAcc -> dAcc <> lineBreak <> DocText " - " <> d0) DocEmpty
+showExpectedDoc = foldr (\d0 dAcc -> dAcc <> lineBreak <> text " - " <> d0) mempty
                 . flattenExpectedDoc
 
 flattenExpectedDoc :: Expected -> [Doc]
@@ -200,23 +216,23 @@ flattenExpectedDoc e = case e of
     -> flattenExpectedDoc es0 <> flattenExpectedDoc es1
 
   ExpectOneOf ts
-    -> let oneOf = map DocText ts
+    -> let oneOf = map text ts
         in if null oneOf
-             then [DocText "__EXPECTNOTHING__"]
+             then [text "__EXPECTNOTHING__"]
              else oneOf
 
   ExpectPredicate label mE
-    -> map ((DocText "__PREDICATE__" <> DocText label) <>) $ maybe [] flattenExpectedDoc mE
+    -> map ((text "__PREDICATE__" <> text label) <>) $ maybe [] flattenExpectedDoc mE
 
   ExpectAnything
-    -> [DocText "__ANYTHING__"]
+    -> [text "__ANYTHING__"]
 
   ExpectN i e
-    -> [DocText "__EXACTLY__" <> (DocText . Text.pack . show $ i) <> DocText "__{" <> showExpectedDoc e <> DocText "}__"]
+    -> [text "__EXACTLY__" <> (text . Text.pack . show $ i) <> text "__{" <> showExpectedDoc e <> text "}__"]
 
   -- Show the label only
   ExpectLabel l e
-    -> [DocText l]
+    -> [text l]
 
 -- Turn an 'Expected' into a list of each expected alternative
 flattenExpected :: Expected -> [Text]
@@ -233,46 +249,51 @@ showExpected = Text.intercalate "\n - "
 
 instance Document Pos where
   document (Pos t l c) = mconcat
-    [DocText "Line:     ", int l,lineBreak
-    ,DocText "Character:", int c,lineBreak
-    ,DocText "Total:    ", int t,lineBreak
+    [text "Line:     ", int l,lineBreak
+    ,text "Character:", int c,lineBreak
+    ,text "Total:    ", int t,lineBreak
     ]
 
 instance Document Cursor where
   document (Cursor prev next pos) =
     let (before,pointer,after) = point (Cursor prev next pos)
-     in mconcat [DocText before
-                ,DocBreak
-                ,DocText pointer
-                ,DocBreak
+     in mconcat [rawText before
+                ,lineBreak
+                ,text pointer
+                ,lineBreak
                 ,document pos
-                ,DocBreak
-                ,DocText after
+                ,lineBreak
+
+                -- Should be raw text!
+                ,rawText after
                 ]
 
 instance Document a
       => Document (ParseResult a) where
   document p = case p of
     ParseSuccess a leftovers
-      -> DocText "Parsed: " <> document a <> DocText "with leftovers" <> document leftovers
+      -> text "Parsed: " <> document a <> text "with leftovers" <> document leftovers
 
     ParseFailure failures cur0
-      -> mconcat
-       . ([ DocText "Final parse failure in:"
-          , lineBreak
-          , document cur0
-          , lineBreak
-          , DocText "The failures that lead to this were:"
-          , lineBreak
-          ]<>
-         )
-       . map (\(e,c) -> document $ mconcat [ DocText "At:"
-                                           , lineBreak
-                                           , document c
-                                           , DocText "We expected one of:"
-                                           , lineBreak
-                                           , document e
-                                           ]
-             )
-       $ failures
+      -> mconcat $
+           [text "Parse failure at:"
+           ,lineBreak
+
+           ,indent1 $ document cur0
+           ,lineBreak
+           ]
+           ++
+           if null failures
+             then mempty
+             else [text "The failures backtracked from were:"
+                  ,lineBreak
+                  ,indent1 $ mconcat $ map (\(expected,cursor) -> mconcat [document cursor
+
+                                                                          ,text "Expected:"
+                                                                          ,document expected
+                                                                          ,lineBreak
+                                                                          ]
+                                           )
+                                           failures
+                  ]
 

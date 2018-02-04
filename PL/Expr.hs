@@ -127,22 +127,22 @@ instance (Document abs
       -> document b
 
     CaseAnalysis c
-      -> DocText "CASE" <> document c
+      -> text "CASE" <> document c
 
     Sum sumExpr sumIx sumTys
-      -> DocText "+" <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
+      -> text "+" <> int sumIx <> (mconcat . map (parens . document) $ sumTys)
 
     Product prodExprs
-      -> DocText "*" <> (mconcat . map (parens . document) $ prodExprs)
+      -> text "*" <> (mconcat . map (parens . document) $ prodExprs)
 
     Union unionExpr tyIx unionTys
-      -> DocText "U" <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
+      -> text "U" <> document unionExpr <> document tyIx <> (mconcat . map (parens . document) . Set.toList $ unionTys)
 
     BigLam takeKy expr
-      -> DocText "Λ" <> parens (document takeKy) <> parens (document expr)
+      -> text "Λ" <> parens (document takeKy) <> parens (document expr)
 
     BigApp f xTy
-      -> DocText "@@" <> parens (document f) <> parens (document xTy)
+      -> text "@@" <> parens (document f) <> parens (document xTy)
 
 
 -- An Expr abstracts over itself
@@ -299,7 +299,7 @@ exprType':: forall b abs tb
          -> TypeCtx tb       -- Associate Named types to their TypeInfo
          -> Expr b abs tb    -- Expression to type-check
          -> Either (Error tb) (Type tb)
-exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat [DocText "EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case e of
+exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat [text "EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case e of
 
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
@@ -321,36 +321,34 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
     -> do fTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx f -- Both f and x must type check
           xTy <- exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx x
 
-          resFTy <- maybe (Left $ EMsg "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- maybe (Left $ EMsg $ text "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
-          {-let errAppMismatch = Left $ EAppMismatch fTy xTy-}
-          let errAppMismatch = Left . error . Text.unpack . render $ document resFTy <> document xTy
+          let errAppMismatch = Left $ EAppMismatch resFTy xTy
           case resFTy of
             -- Regular function application attempt
             Arrow aTy bTy -> case typeEq typeBindCtx typeBindings typeCtx aTy xTy of
                                  Nothing -> error "Non existant type name in application of arrow type"
                                  Just isSameType
                                    | isSameType -> Right bTy
-                                   | otherwise  -> let msg = Text.unpack . render . mconcat $
-                                                             [DocText "In expr: "
-                                                             ,lineBreak
+                                   | otherwise  -> Left . EMsg . mconcat $
+                                       [text "In expr: "
+                                       ,lineBreak
 
-                                                             ,document $ App f x
-                                                             ,lineBreak
+                                       ,document $ App f x
+                                       ,lineBreak
 
-                                                             ,DocText "f : "
-                                                             ,document fTy
-                                                             ,lineBreak
+                                       ,text "f : "
+                                       ,document fTy
+                                       ,lineBreak
 
-                                                             ,DocText "x : "
-                                                             ,document xTy
-                                                             ,lineBreak
+                                       ,text "x : "
+                                       ,document xTy
+                                       ,lineBreak
 
-                                                             ,DocText "f :~> "
-                                                             ,lineBreak
-                                                             ,document resFTy
-                                                             ]
-                                                      in error msg
+                                       ,text "f :~> "
+                                       ,lineBreak
+                                       ,document resFTy
+                                       ]
             _ -> error "Attempting to apply non-arrow type"
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
@@ -361,10 +359,15 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
 
           -- Expression must have the type of the index in the sum it claims to have...
           _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy (inTypr !! ix) of
-                   Nothing -> Left $ EMsg "An expressions indexed type in a sum is an unknown type name"
+                   Nothing -> Left $ EMsg $ text "An expressions indexed type in a sum is an unknown type name"
                    Just isSameType
                      | isSameType -> Right ()
-                     | otherwise  -> Left $ EMsg $ render $ DocText "Expression doesnt have the type of the position in a sum type it claims it has. Has: " <> document exprTy <> DocText " Expected: " <> document (inTypr !! ix)
+                     | otherwise  -> Left $ EMsg $ mconcat
+                           [text "Expression doesnt have the type of the position in a sum type it claims it has. Has: "
+                           ,document exprTy
+                           ,text " Expected: "
+                           ,document (inTypr !! ix)
+                           ]
 
           -- Allow the other types in the sum to not exist...
           _ <- Right ()
@@ -390,13 +393,13 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
           -- Type must be what we claim it is...
           _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy unionTypeIndex of
                    Just True  -> Right ()
-                   Just False -> Left $ EMsg "Expression doesnt have the type within the union it claims to have"
-                   Nothing    -> Left $ EMsg "A named type in a union doesnt exist"
+                   Just False -> Left $ EMsg $ text "Expression doesnt have the type within the union it claims to have"
+                   Nothing    -> Left $ EMsg $ text "A named type in a union doesnt exist"
 
           -- Type must be in the set somewhere...
           _ <- if Set.member (Just True) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
                  then Right ()
-                 else Left $ EMsg "Expressions type is not within the union"
+                 else Left $ EMsg $ text "Expressions type is not within the union"
 
           -- the type is the claimed union
           Right $ UnionT unionTypes
@@ -409,7 +412,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
   --      b : t
   Binding b
     -> case lookupBindingTy b exprBindCtx of
-          Nothing -> Left $ EMsg "Expression refers to a non-existant binding"
+          Nothing -> Left $ EMsg $ text "Expression refers to a non-existant binding"
           Just ty -> Right ty
 
 
@@ -447,11 +450,11 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                     -- If the default branch exists, its type must be the same as the first branch
                     _ <- maybe (Right ())
                                (\defExprTy -> case typeEq typeBindCtx typeBindings typeCtx defExprTy branch0Ty of
-                                                  Nothing -> Left $ EMsg "First branch has a unresolvable type name"
+                                                  Nothing -> Left $ EMsg $ text "First branch has a unresolvable type name"
                                                   Just isSameType
                                                     | isSameType -> Right ()
-                                                    | otherwise  -> Left . EMsg . render . mconcat $
-                                                                      [DocText "Default branch and first case branch have different result types"
+                                                    | otherwise  -> Left . EMsg . mconcat $
+                                                                      [text "Default branch and first case branch have different result types"
                                                                       ,document defExprTy
                                                                       ,document branch0Ty
                                                                       ]
@@ -460,10 +463,10 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
 
                     -- Any other branches must have the same type as the first
                     _ <- mapM (\branchTy -> case typeEq typeBindCtx typeBindings typeCtx branchTy branch0Ty of
-                                                Nothing -> Left $ EMsg "Branch has an unresolvable type name"
+                                                Nothing -> Left $ EMsg $ text "Branch has an unresolvable type name"
                                                 Just isSameType
                                                   | isSameType -> Right ()
-                                                  | otherwise  -> Left $ EMsg "Branch and first branch have different result types"
+                                                  | otherwise  -> Left $ EMsg $ text "Branch and first branch have different result types"
                               )
                               branchTys
 
@@ -493,7 +496,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
 
           -- TODO maybe verify the xTy we've been given to apply?
 
-          resFTy <- maybe (Left $ EMsg "Unknown named type in Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- maybe (Left $ EMsg $ text "Unknown named type in Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           case resFTy of
             -- Regular big application attempt
@@ -501,7 +504,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
               | aKy == xKy -> Right $ instantiate x bTy -- TODO: all bindings need to be instantiated
               | otherwise  -> Left $ EBigAppMismatch fTy xKy
 
-            _ -> Left $ EMsg "In big application, function must have a big arrow type"
+            _ -> Left $ EMsg $ text "In big application, function must have a big arrow type"
 
 -- Type check a case branch, requiring it match the expected type
 -- , if so, type checking the result expression which is returned.
@@ -537,7 +540,7 @@ checkMatchWith :: (Binds b (Type tb),Binds tb Kind,Ord tb,Document tb)
                -> TypeCtx tb
                -> Either (Error tb) [Type tb]
 checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
-  rExpectTy <- maybe (Left $ EMsg "The expected type in a pattern is a type name with no definition.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
+  rExpectTy <- maybe (Left $ EMsg $ text "The expected type in a pattern is a type name with no definition.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
   case match of
 
     -- Bind the value
@@ -546,18 +549,18 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
 
     MatchBinding b
       -> do -- the type of the binding
-            bTy <- maybe (Left $ EMsg "pattern match on a non-existant binding") Right $ lookupBindingTy b exprBindCtx
+            bTy <- maybe (Left $ EMsg $ text "pattern match on a non-existant binding") Right $ lookupBindingTy b exprBindCtx
             case typeEq typeBindCtx typeBindings typeCtx bTy expectTy of
-                Nothing         -> Left $ EMsg "pattern match on a Named type which does not exist"
-                Just isSameType -> if isSameType then pure [] else Left $ EMsg "pattern match on a binding from a different type"
+                Nothing         -> Left $ EMsg $ text "pattern match on a Named type which does not exist"
+                Just isSameType -> if isSameType then pure [] else Left $ EMsg $ text "pattern match on a binding from a different type"
 
     MatchSum sumIndex nestedMatchArg
       -> do sumTypes <- case rExpectTy of
                       SumT sumTypes -> Right sumTypes
-                      _             -> Left . EMsg $ "Expected sum type in pattern match"
+                      _             -> Left . EMsg . text $ "Expected sum type in pattern match"
 
             -- index must be within the number of alternative in the sum type
-            matchedTy <- if length sumTypes < sumIndex then Left $ EMsg "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
+            matchedTy <- if length sumTypes < sumIndex then Left $ EMsg $ text "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
 
             -- must have the expected index type
             checkMatchWith nestedMatchArg matchedTy exprBindCtx typeBindCtx typeBindings typeCtx
@@ -565,17 +568,17 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
     MatchProduct nestedMatchArgs
       -> do prodTypes <- case rExpectTy of
                              ProductT prodTypes -> Right prodTypes
-                             _               -> Left $ EMsg "Expected product type in pattern match"
+                             _               -> Left $ EMsg $ text "Expected product type in pattern match"
 
             checkMatchesWith nestedMatchArgs prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
 
     MatchUnion unionIndexTy nestedMatchArg
       -> do unionTypes <- case rExpectTy of
                         UnionT unionTypes -> Right unionTypes
-                        _                 -> Left $ EMsg "Expected union type in pattern match"
+                        _                 -> Left $ EMsg $ text "Expected union type in pattern match"
 
             -- type index must be a member of the union alternatives
-            _ <- if Set.member unionIndexTy unionTypes then Right () else Left $ EMsg "Matching on a type which isnt a member of the union"
+            _ <- if Set.member unionIndexTy unionTypes then Right () else Left $ EMsg $ text "Matching on a type which isnt a member of the union"
 
             -- must actually match on the expected type
             checkMatchWith nestedMatchArg unionIndexTy exprBindCtx typeBindCtx typeBindings typeCtx
@@ -591,8 +594,8 @@ checkMatchesWith :: (Binds b (Type tb),Binds tb Kind,Ord tb,Document tb)
                  -> Either (Error tb) [Type tb]
 checkMatchesWith matches types exprBindCtx typeBindCtx typeBindings typeCtx = case (matches,types) of
   ([],[]) -> Right []
-  ([],_)  -> Left $ EMsg "Expected more patterns in match"
-  (_,[])  -> Left $ EMsg "Too many patterns in match"
+  ([],_)  -> Left $ EMsg $ text "Expected more patterns in match"
+  (_,[])  -> Left $ EMsg $ text "Too many patterns in match"
   (m:ms,t:ts)
     -> checkMatchWith m t exprBindCtx typeBindCtx typeBindings typeCtx >>= \boundTs -> checkMatchesWith ms ts exprBindCtx typeBindCtx typeBindings typeCtx >>= Right . (boundTs ++)
 

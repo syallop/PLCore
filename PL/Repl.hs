@@ -101,6 +101,7 @@ replRead
      ,Document b
      ,Document abs
      ,Document tb
+     ,Constraints b abs tb
      ,Show b
      ,Show abs
      ,Show tb

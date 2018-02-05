@@ -24,8 +24,11 @@ library
                      , PL.Grammar
                      , PL.Grammar.Lispy
                      , PL.Grammar.Lispy.Expr
+                     , PL.Grammar.Lispy.ExprIso
                      , PL.Grammar.Lispy.Kind
+                     , PL.Grammar.Lispy.KindIso
                      , PL.Grammar.Lispy.Type
+                     , PL.Grammar.Lispy.TypeIso
                      , PL.Kind
                      , PL.Name
                      , PL.Reduce

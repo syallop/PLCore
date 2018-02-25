@@ -20,6 +20,7 @@ library
                      , PL.Case
                      , PL.Error
                      , PL.Expr
+                     , PL.FixExpr
                      , PL.ExprLike
                      , PL.Grammar
                      , PL.Grammar.Lispy

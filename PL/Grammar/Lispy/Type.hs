@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, ImplicitParams #-}
+{-# LANGUAGE ScopedTypeVariables, ImplicitParams, OverloadedStrings #-}
 {-|
 Module      : PL.Grammar.Lispy.Type
 Copyright   : (c) Samuel A. Yallop, 2016

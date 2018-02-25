@@ -26,13 +26,13 @@ isoMapParser
   => Iso a b
   -> G.Grammar a
   -> Parser b
-isoMapParser iso gr =
+isoMapParser iso@(Iso labels _ _) gr =
   let Parser p = toParser gr
    in Parser $ \cur0 -> case p cur0 of
         ParseSuccess a cur1
           -> case parseIso iso a of
                Nothing
-                 -> ParseFailure [(ExpectLabel "isoMap" $ grammarExpects gr, cur0)] cur1 -- cur1
+                 -> ParseFailure [(ExpectLabel (Text.intercalate "." labels) $ grammarExpects gr, cur0)] cur1 -- cur1
 
                Just b
                  -> ParseSuccess b cur1
@@ -110,15 +110,19 @@ grammarExpects g0 = case g0 of
 
   -- Expects something AND a predicate to succeed.
   -- TODO: Capture this desired predicate?
-  GIsoMap iso g1
-    {--> grammarExpects g1-}
-    -> ExpectPredicate "ISOMAP" . Just . grammarExpects $ g1
+  GIsoMap (Iso labels _ _) g1
+    -> ExpectPredicate (Text.intercalate "." labels) . Just . grammarExpects $ g1
 
   -- Expected one thing and then another.
   -- TODO: Express what we wanted after the immediate thing?
   GProductMap g1 g2
-    {--> grammarExpects g1-}
     -> ExpectPredicate "THEN" . Just $ (ExpectPredicate "THEN" . Just . grammarExpects $ g1)
+
+  GLabel l g
+    -> ExpectPredicate l Nothing
+
+  GTry g
+    -> ExpectPredicate "TRY" . Just $ grammarExpects g
 
 isoMapPrinter :: Iso a b -> Printer a -> Printer b
 isoMapPrinter iso (Printer p) = Printer $ printIso iso >=> p
@@ -178,8 +182,10 @@ describeGrammar gr = case gr of
                ,text " |)"
                ]
 
-  GIsoMap iso g
-    -> mconcat [describeGrammar g
+  GIsoMap (Iso labels _ _) g
+    -> mconcat [text "($ "
+               ,text $ mconcat labels
+               ,text " $)"
                ]
 
   GProductMap g0 g1
@@ -194,7 +200,6 @@ describeGrammar gr = case gr of
     -> mconcat [text "("
                ,text l
                ,text " "
-               ,describeGrammar g
                ,text " "
                ,text l
                ,text " )"
@@ -207,9 +212,10 @@ describeGrammar gr = case gr of
                ]
 
 showExpectedDoc :: Expected -> Doc
-showExpectedDoc = foldr (\d0 dAcc -> dAcc <> lineBreak <> text " - " <> d0) mempty
+showExpectedDoc = bulleted
                 . flattenExpectedDoc
 
+-- Returns alternatives
 flattenExpectedDoc :: Expected -> [Doc]
 flattenExpectedDoc e = case e of
   ExpectEither es0 es1
@@ -218,21 +224,24 @@ flattenExpectedDoc e = case e of
   ExpectOneOf ts
     -> let oneOf = map text ts
         in if null oneOf
-             then [text "__EXPECTNOTHING__"]
+             then [text "_EXPECTNOTHING_"]
              else oneOf
 
   ExpectPredicate label mE
-    -> map ((text "__PREDICATE__" <> text label) <>) $ maybe [] flattenExpectedDoc mE
+    -> map ((text "_PREDICATE_" <> text label) <>) $ maybe [] flattenExpectedDoc mE
 
   ExpectAnything
-    -> [text "__ANYTHING__"]
+    -> [text "ANYTHING"]
 
   ExpectN i e
-    -> [text "__EXACTLY__" <> (text . Text.pack . show $ i) <> text "__{" <> showExpectedDoc e <> text "}__"]
+    -> [text $ "_EXACTLY_" <> (Text.pack . show $ i) <> "_"
+       ,mconcat . flattenExpectedDoc $ e
+       ]
 
   -- Show the label only
   ExpectLabel l e
-    -> [text l]
+    -> [text $ l <> " AKA " <> (render . mconcat . flattenExpectedDoc $ e)
+       ]
 
 -- Turn an 'Expected' into a list of each expected alternative
 flattenExpected :: Expected -> [Text]

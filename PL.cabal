@@ -29,6 +29,10 @@ library
                      , PL.Grammar.Lispy.KindIso
                      , PL.Grammar.Lispy.Type
                      , PL.Grammar.Lispy.TypeIso
+                     , PL.Grammar.Lispy.Case
+                     , PL.Grammar.Lispy.CaseIso
+                     , PL.Grammar.Lispy.MatchArg
+                     , PL.Grammar.Lispy.MatchArgIso
                      , PL.Kind
                      , PL.Name
                      , PL.Reduce

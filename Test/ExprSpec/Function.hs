@@ -19,6 +19,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -46,7 +47,7 @@ idExprTestCase = ExprTestCase
     ctx = emptyTypeCtx
 
     -- forall a::k. a -> a
-    e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
+    e   = fixExpr $ BigLam Kind $ fixExpr $ Lam (TypeBinding $ TyVar VZ) (fixExpr $ Binding VZ) -- \(x:a) -> x
     ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
     txt = "Λ KIND λ?0 (0)"
 
@@ -59,7 +60,7 @@ constExprTestCase = ExprTestCase
   }
   where
     ctx = emptyTypeCtx
-    e   = BigLam Kind $ BigLam Kind $ Lam (TypeBinding . TyVar . VS $ VZ) $ Lam (TypeBinding . TyVar $ VZ) $ Binding $ VS VZ -- \(x:a) (y:b) -> x
+    e   = fixExpr $ BigLam Kind $ fixExpr $ BigLam Kind $ fixExpr $ Lam (TypeBinding . TyVar . VS $ VZ) $ fixExpr $ Lam (TypeBinding . TyVar $ VZ) $ fixExpr $ Binding $ VS VZ -- \(x:a) (y:b) -> x
     ty  = BigArrow Kind $ BigArrow Kind $ Arrow (TypeBinding . TyVar . VS $ VZ) $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding . TyVar . VS $ VZ)
     txt = "Λ KIND KIND λ?1 ?0 (1)"
 
@@ -73,10 +74,14 @@ applyExprTestCase = ExprTestCase
   where
     ctx = emptyTypeCtx
 
-    e   = BigLam Kind $ BigLam Kind
+    e   = fixExpr
+        $ BigLam Kind $ fixExpr $BigLam Kind
+        $ fixExpr
         $ Lam (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+        $ fixExpr
         $ Lam (TypeBinding . TyVar . VS $ VZ)
-        $ App (Binding . VS $ VZ) (Binding VZ)
+        $ fixExpr
+        $ App (fixExpr . Binding . VS $ VZ) (fixExpr $ Binding VZ)
 
     -- forall k0 k1. \(f::k0 -> k1) (a::k0) -> f a:: k1
     ty  = BigArrow Kind $ BigArrow Kind

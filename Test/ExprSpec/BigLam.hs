@@ -18,6 +18,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -56,9 +57,9 @@ singleBigLamTestCase = ExprTestCase
   }
   where
     ctx = bigLamTypeCtx
-    e   = BigLam Kind
-            (Lam (TypeBinding . TyVar $ VZ)
-                 (Binding VZ)
+    e   = fixExpr $ BigLam Kind
+            (fixExpr $ Lam (TypeBinding . TyVar $ VZ)
+                           (fixExpr $ Binding VZ)
             )
 
     -- forall k. (a :: k) -> (a :: k)

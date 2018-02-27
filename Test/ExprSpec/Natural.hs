@@ -35,6 +35,7 @@ import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
+import PL.FixExpr
 import PL.Expr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
@@ -62,10 +63,16 @@ natType    = SumT natSumType
 natSumType = [ProductT []
              ,Named "Nat"
              ]
-zTerm      =                     Sum (Product [])        0 natSumType
-sTerm      = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
-zPat       = MatchSum 0 (MatchProduct [])
-sPat       = MatchSum 1
+
+zTerm, sTerm :: Expr Var (Type tb) tb
+zTerm      = fixExpr $                   Sum (fixExpr $ Product [])        0 natSumType
+sTerm      = fixExpr $ Lam (Named "Nat") $ fixExpr $ Sum (fixExpr $ Binding (mkVar 0)) 1 natSumType
+
+zPat :: MatchArg Var tb
+zPat = MatchSum 0 (MatchProduct [])
+
+sPat :: MatchArg Var tb -> MatchArg Var tb
+sPat = MatchSum 1
 
 zTermText, sTermText, zPatText :: Text
 zTermText  = "+0(*) (*) Nat"
@@ -73,8 +80,11 @@ sTermText  = "λNat (+1 0 (*) Nat)"
 zPatText   = "+0(*)"
 sPatText p = "+1"<>p
 
+suc :: Expr Var (Type tb) tb -> Expr Var (Type tb) tb
+suc n = fixExpr $ App sTerm (n)
+
+zero, one, two, three, four :: Expr Var (Type tb) tb
 zero  = zTerm
-suc n = sTerm `App` n
 one   = suc zero
 two   = suc one
 three = suc two
@@ -92,14 +102,17 @@ subTwoExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust natTypeCtx
-    e   = Lam natTypeName $                                         -- \n : Nat ->
-            CaseAnalysis $ Case (Binding VZ)                        -- case n of
-              $ CaseBranches                                        --
-                (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| []   --   S S n -> n
-                )                                                   --
-                (Just                                               --
-                    zTerm                                           --   _     -> Z
-                )
+
+    e :: Expr Var (Type tb) tb
+    e = fixExpr $
+      Lam natTypeName $ fixExpr $                                       -- \n : Nat ->
+        CaseAnalysis $ Case (fixExpr . Binding $ VZ)                    -- case n of
+          $ CaseBranches                                                --
+            (CaseBranch (sPat $ sPat Bind) (fixExpr $ Binding VZ) :| [] --   S S n -> n
+            )                                                           --
+            (Just                                                       --
+                  zTerm                                                 --   _     -> Z
+            )
     ty = Arrow natType natType
 
     txt = Text.unlines

@@ -17,6 +17,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -48,14 +49,14 @@ productThreeExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
-      CaseAnalysis $ Case (Binding VZ)                                       -- case x of
-        $ CaseBranches                                                       --
-          (CaseBranch (MatchProduct [zPat,Bind,zPat]) (Binding VZ)           -- Z,y,Z -> y
-           :| [CaseBranch (MatchProduct [Bind,Bind,zPat]) (Binding VZ)]      -- x,y,Z -> y
-          )                                                                  --
-          (Just                                                              --
-              falseTerm                                                      -- _ -> False
+    e   = fixExpr $ Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $ -- \x : Nat*Bool*Nat ->
+      CaseAnalysis $ Case (fixExpr $ Binding VZ)                                      -- case x of
+        $ CaseBranches                                                                --
+          (CaseBranch (MatchProduct [zPat,Bind,zPat]) (fixExpr $ Binding VZ)          -- Z,y,Z -> y
+           :| [CaseBranch (MatchProduct [Bind,Bind,zPat]) (fixExpr $ Binding VZ)]     -- x,y,Z -> y
+          )                                                                           --
+          (Just                                                                       --
+              falseTerm                                                               -- _ -> False
           )
     ty = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
     txt = Text.unlines

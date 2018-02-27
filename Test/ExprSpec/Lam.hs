@@ -18,6 +18,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -69,7 +70,7 @@ singleLamTestCase = ExprTestCase
   }
   where
     ctx = fromJust lamTypeCtx
-    e   = Lam fooTypeName $ Binding VZ
+    e   = fixExpr $ Lam fooTypeName $ fixExpr $ Binding VZ
     ty  = Arrow fooType fooType
     txt = "λFoo (0)"
 
@@ -85,7 +86,7 @@ nestedLamTestCase = ExprTestCase
   }
   where
     ctx = fromJust lamTypeCtx
-    e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
+    e   = fixExpr $ Lam fooTypeName . fixExpr . Lam barTypeName . fixExpr . Binding . VS $ VZ
     ty  = Arrow fooType (Arrow barType fooType)
     txt = "λFoo (λBar 1)"
 
@@ -102,9 +103,13 @@ chainedLamTestCase = nestedLamTestCase
   }
   where
     ctx = fromJust lamTypeCtx
-    e   = Lam fooTypeName
+    e   = fixExpr
+        . Lam fooTypeName
+        . fixExpr
         . Lam barTypeName
+        . fixExpr
         . Lam bazTypeName
+        . fixExpr
         . Binding
         . VS
         . VS

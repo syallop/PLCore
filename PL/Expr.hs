@@ -27,6 +27,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.ExprLike
+import PL.FixExpr
 import PL.Kind
 import PL.Name
 import PLPrinter
@@ -45,23 +46,31 @@ import qualified Data.Set as Set
 import qualified Data.Text as Text
 
 type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)
-type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb
+{-type ExprOf b abs tb =  BindAbs b abs tb => Expr b abs tb-}
 
 -- | Small simply typed lambda calculus with term literals and case analysis.
--- 'abs' is the type of abstractions
--- 'b' is the type of bindings
-data Expr b abs tb
+-- 'b' is the type of bindings.
+-- 'abs' is the type of abstractions.
+-- 'tb' is the type of type-bindings.
+type Expr b abs tb = FixExpr b abs tb ExprF
+
+-- | Small simply typed lambda calculus with term literals and case analysis.
+-- 'b' is the type of bindings.
+-- 'abs' is the type of abstractions.
+-- 'tb' is the type of type-bindings.
+-- 'expr' is the recursive type of sub-expressions.
+data ExprF b abs tb expr
 
     -- | Lambda abstraction
     = Lam
       {_take :: abs
-      ,_expr :: Expr b abs tb
+      ,_expr :: expr
       }
 
     -- | Application
     | App
-      {_f :: Expr b abs tb
-      ,_x :: Expr b abs tb
+      {_f :: expr
+      ,_x :: expr
       }
 
     -- | Binding
@@ -71,7 +80,7 @@ data Expr b abs tb
 
     -- | Case analysis of an expression
     | CaseAnalysis
-      {_caseAnalysis :: Case (Expr b abs tb) (MatchArg b tb)
+      {_caseAnalysis :: Case expr (MatchArg b tb)
       }
 
     -- | An expression is indexed within a Sum type
@@ -79,19 +88,19 @@ data Expr b abs tb
     -- Currently assuming type guarantees index is within bounds of sumType
     -- (Not unless type-checked that that the expr has that type)
     | Sum
-      {_sumExpr  :: Expr b abs tb
+      {_sumExpr  :: expr
       ,_sumIndex :: Int
       ,_sumType  :: [Type tb]
       }
 
     -- | An expression is a product of many expressions
     | Product
-      {_prodExprs :: [Expr b abs tb]
+      {_prodExprs :: [expr]
       }
 
     -- | An expression has one of many unique types
     | Union
-      {_unionExpr      :: Expr b abs tb
+      {_unionExpr      :: expr
       ,_unionTypeIndex :: Type tb
       ,_unionType      :: Set.Set (Type tb)
       }
@@ -99,23 +108,24 @@ data Expr b abs tb
     -- Big lambda abstract type under an expression
     | BigLam
       {_takeTy :: Kind -- replace with tabs
-      ,_expr   :: Expr b abs tb
+      ,_expr   :: expr
       }
 
     -- Big application type under an expression
     | BigApp
-      {_f   :: Expr b abs tb
+      {_f   :: expr
       ,_xTy :: Type tb
       }
       deriving Show
 
-deriving instance (Eq b,Eq abs,Eq tb) => Eq (Expr b abs tb)
+deriving instance (Eq b,Eq abs,Eq tb,Eq expr) => Eq (ExprF b abs tb expr)
 
-instance (Document abs
-         ,Document b
-         ,Document tb
+instance ( Document abs
+         , Document b
+         , Document tb
+         , Document expr
          )
-      => Document (Expr b abs tb) where
+      => Document (ExprF b abs tb expr) where
   document e = case e of
     Lam takeTy expr
       -> char 'λ' <> parens (document takeTy) <> parens (document expr)
@@ -147,19 +157,19 @@ instance (Document abs
 
 -- An Expr abstracts over itself
 instance HasAbs (Expr b abs tb) where
-  applyToAbs f e = case e of
+  applyToAbs f e = FixExpr $ case unfixExpr e of
     Lam abs e -> Lam abs (f e)
     e         -> e
 
 -- An Expr has bindings of type 'b'
 instance HasBinding (Expr b abs tb) b where
-  applyToBinding f e = case e of
+  applyToBinding f e = FixExpr $ case unfixExpr e of
     Binding b -> Binding $ f b
     e         -> e
 
 -- An Expr contains NON-abstracted sub-expressions
 instance HasNonAbs (Expr b abs tb) where
-  applyToNonAbs f e = case e of
+  applyToNonAbs f e = FixExpr $ case unfixExpr e of
     App x y
       -> App (f x) (f y)
 
@@ -186,7 +196,7 @@ instance HasNonAbs (Expr b abs tb) where
 -- Map a function over all contained subexpressions.
 -- The function should preserve the type of the expression.
 mapSubExpressions :: (Expr b abs tb -> Expr b abs tb) -> Expr b abs tb -> Expr b abs tb
-mapSubExpressions f = \case
+mapSubExpressions f e = fixExpr $ case unfixExpr e of
   Lam ty expr
     -> Lam ty $ f expr
 
@@ -299,7 +309,7 @@ exprType':: forall b abs tb
          -> TypeCtx tb       -- Associate Named types to their TypeInfo
          -> Expr b abs tb    -- Expression to type-check
          -> Either (Error tb) (Type tb)
-exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat [text "EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case e of
+exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mconcat [text "EXPRTYPE",document e,document typeBindCtx,document typeBindings]) $ case unfixExpr e of
 
 
   -- | ODDITY/ TODO: Can abstract over types which dont exist..
@@ -334,7 +344,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                                        [text "In expr: "
                                        ,lineBreak
 
-                                       ,document $ App f x
+                                       ,document $ fixExpr $ App f x
                                        ,lineBreak
 
                                        ,text "f : "
@@ -611,10 +621,10 @@ checkMatchesWith matches types exprBindCtx typeBindCtx typeBindings typeCtx = ca
 appise :: [Expr b abs tb] -> Expr b abs tb
 appise []        = error "Cant appise empty list of expressions"
 appise [e]       = e
-appise (e:e':es) = appise (App e e' : es)
+appise (e:e':es) = appise (fixExpr (App e e') : es)
 
 lamise :: [abs] -> Expr b abs tb -> Expr b abs tb
 lamise []        _ = error "Cant lamise empty list of abstractions"
-lamise [t]       e = Lam t e
-lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
+lamise [t]       e = fixExpr $ Lam t e
+lamise (t:t':ts) e = fixExpr $ Lam t (lamise (t':ts) e)
 

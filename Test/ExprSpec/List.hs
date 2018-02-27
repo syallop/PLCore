@@ -25,6 +25,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -47,10 +48,14 @@ listTypeCtx  = insertRecType "List" listType emptyTypeCtx
 listTypeName = Named "List"
 listType     = TypeLam Kind $ SumT listSumType
 listSumType  = [ProductT [] -- : List a
-               ,      ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
+               ,ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
                ]
-emptyTerm    = BigLam Kind $ Sum (Product []) 0 listSumType
-consTerm     = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ,Binding VZ]) 1 listSumType
+
+emptyTerm :: Expr Var (Type TyVar) TyVar
+emptyTerm = fixExpr $ BigLam Kind $ fixExpr $ Sum (fixExpr $ Product []) 0 listSumType
+
+consTerm :: Expr Var (Type TyVar) TyVar
+consTerm = fixExpr $ BigLam Kind $ fixExpr $ Lam (TypeBinding $ TyVar VZ) $ fixExpr $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ fixExpr $ Sum (fixExpr $ Product [fixExpr $ Binding $ VS VZ, fixExpr $ Binding VZ]) 1 listSumType
 
 -- [0]
 listNatExprTestCase :: ExprTestCase
@@ -62,7 +67,7 @@ listNatExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust $ listTypeCtx <> natTypeCtx
-    e   = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
+    e   = fixExpr $ App (fixExpr $ App (fixExpr $ BigApp consTerm natTypeName) zero) (fixExpr $ BigApp emptyTerm natTypeName)
     ty  = TypeApp listTypeName natType
     txt = undefined
 

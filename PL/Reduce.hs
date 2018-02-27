@@ -23,6 +23,7 @@ import PL.Binds.Ix
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Name
 import PL.Type
 
@@ -46,36 +47,36 @@ reduce = reduceRec emptyBindings
     if redExpr == expr then pure expr else reduceRec bindings redExpr
 
   reduceStep :: Bindings (Expr b abs tb) -> Expr b abs tb -> Either (Error tb) (Expr b abs tb)
-  reduceStep bindings expr = case expr of
+  reduceStep bindings expr = case unfixExpr expr of
 
       -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
       Binding b
         -> pure $ case index (Proxy :: Proxy b) bindings (bindDepth b) of
-              Unbound -> Binding b
+              Unbound -> fixExpr $ Binding b
               Bound e -> e -- maybe should reduce again?
 
       -- Reduce the sums expression
       Sum sumExpr sumIx sumTy
-        -> Sum <$> reduceStep bindings sumExpr <*> pure sumIx <*> pure sumTy
+        -> fmap fixExpr $ Sum <$> reduceStep bindings sumExpr <*> pure sumIx <*> pure sumTy
 
       -- Reduce all product expressions
       Product productExprs
-        -> Product <$> mapM (reduceStep bindings) productExprs
+        -> fmap fixExpr $ Product <$> mapM (reduceStep bindings) productExprs
 
       -- Reduce the unionExpr
       Union unionExpr unionTyIx unionTy
-        -> Union <$> reduceStep bindings unionExpr <*> pure unionTyIx <*> pure unionTy
+        -> fmap fixExpr $ Union <$> reduceStep bindings unionExpr <*> pure unionTyIx <*> pure unionTy
 
       -- Reduce under the lambda
       Lam takeTy lamExpr
-        -> Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) lamExpr
+        -> fmap fixExpr $ Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) lamExpr
 
       -- 'strict'
       -- = reduce the argument, then the function, then the result of applying.
       App f x
         -> do x' <- reduceStep bindings x
               f' <- reduceStep bindings f
-              case f' of
+              case unfixExpr f' of
                 Lam _ fExpr -> reduceStep (bind x' bindings) fExpr
                 _           -> error "Cant reduce application of non-lambda term"
 
@@ -83,8 +84,8 @@ reduce = reduceRec emptyBindings
       -- , otherwise, find the first matching branch and bind all matching variables into the RHS before reducing it.
       CaseAnalysis (Case caseScrutinee caseBranches)
         -> do reducedCaseScrutinee <- reduceStep bindings caseScrutinee
-              case reducedCaseScrutinee of
-                Binding _ -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSs bindings caseBranches
+              case unfixExpr reducedCaseScrutinee of
+                Binding _ -> fmap fixExpr $ (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSs bindings caseBranches
                 _         -> reducePossibleCaseBranches bindings reducedCaseScrutinee caseBranches
 
 
@@ -127,7 +128,7 @@ reduce = reduceRec emptyBindings
 
   -- Nothing on non match or a list of exprs to bind under the rhs.
   patternBinding :: Bindings (Expr b abs tb) -> Expr b abs tb -> MatchArg b tb -> Maybe [Expr b abs tb]
-  patternBinding bindings caseScrutinee matchArg = case (caseScrutinee,matchArg) of
+  patternBinding bindings caseScrutinee matchArg = case (unfixExpr caseScrutinee,matchArg) of
 
     (expr,MatchBinding b)
       -> case index (Proxy :: Proxy b) bindings (bindDepth b) of
@@ -136,7 +137,7 @@ reduce = reduceRec emptyBindings
              Unbound     -> Nothing
 
              -- Do the two expressions reduce to exactly the same value?
-             Bound bExpr -> case exprEq bindings expr bExpr of
+             Bound bExpr -> case exprEq bindings (fixExpr expr) bExpr of
 
                                 -- One of the expressions is invalid.
                                 -- We're assuming this cant happen because:
@@ -168,7 +169,7 @@ reduce = reduceRec emptyBindings
 
     -- The entire expression is to be bound
     (expr,Bind)
-      -> Just [expr]
+      -> Just [fixExpr expr]
 
     _ -> error "Expression under case analysis has a different type to the match branch."
 

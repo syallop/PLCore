@@ -31,18 +31,23 @@ import PLPrinter.Doc
 newtype FixExpr b abs tb expr
   = FixExpr {_unFixExpr :: expr b abs tb (FixExpr b abs tb expr)}
 
-{-data TestExprF b abs tb expr-}
-  {-= Lam String expr-}
-  {-| App expr expr-}
+deriving instance Show (expr b abs tb (FixExpr b abs tb expr)) => Show (FixExpr b abs tb expr)
+deriving instance Eq (expr b abs tb (FixExpr b abs tb expr)) => Eq (FixExpr b abs tb expr)
+deriving instance Document (expr b abs tb (FixExpr b abs tb expr)) => Document (FixExpr b abs tb expr)
 
-{-instance Functor (TestExprF b abs tb) where-}
-  {-fmap f x = case x of-}
-    {-Lam str expr-}
-      {--> Lam str (f expr)-}
-    {-App e0 e1-}
-      {--> App (f e0) (f e1)-}
+unfixExpr
+  :: FixExpr b abs tb expr
+  -> expr b abs tb (FixExpr b abs tb expr)
+unfixExpr = _unFixExpr
 
-{-type TestExpr b abs tb = FixExpr b abs tb TestExprF-}
+fixExpr
+  :: expr b abs tb (FixExpr b abs tb expr)
+  -> FixExpr b abs tb expr
+fixExpr = FixExpr
+
+(<&>) :: Functor f => f a -> (a -> b) -> f b
+as <&> f = f <$> as
+{-# INLINE (<&>) #-}
 
 -- | Catamorphism. Generic function fold.
 cataExpr

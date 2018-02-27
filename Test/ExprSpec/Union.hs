@@ -17,6 +17,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -50,8 +51,8 @@ unionTwoExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust $ boolTypeCtx <> natTypeCtx
-    e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ -- \x : <Nat|Bool>
-            CaseAnalysis $ Case (Binding VZ)                                    -- case x of
+    e   = fixExpr $ Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ fixExpr $ -- \x : <Nat|Bool>
+            CaseAnalysis $ Case (fixExpr $ Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --
                 (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm    -- Nat | Z    -> False
                  :| [CaseBranch (MatchUnion natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True

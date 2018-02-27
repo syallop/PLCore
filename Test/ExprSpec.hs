@@ -28,6 +28,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Kind
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Reduce
@@ -109,24 +110,24 @@ reducesToSpec = describe "when applied to a list of arguments must reduce to an 
 
   ,("sum expressions"
    ,sumThreeExprTestCase
-   ,[("+1 False ~> 0", [Sum falseTerm 1 [natTypeName,boolTypeName,natTypeName]], zero)
-    ,("+0 0     ~> 0", [Sum zero      0 [natTypeName,boolTypeName,natTypeName]], zero)
-    ,("+2 0     ~> 1", [Sum zero      2 [natTypeName,boolTypeName,natTypeName]], one)
+   ,[("+1 False ~> 0", [fixExpr $ Sum falseTerm 1 [natTypeName,boolTypeName,natTypeName]], zero)
+    ,("+0 0     ~> 0", [fixExpr $ Sum zero      0 [natTypeName,boolTypeName,natTypeName]], zero)
+    ,("+2 0     ~> 1", [fixExpr $ Sum zero      2 [natTypeName,boolTypeName,natTypeName]], one)
     ])
 
   ,("product expressions"
    ,productThreeExprTestCase
-   ,[("* 1 True  0 ~> True" , [Product [one,trueTerm,zero]] , trueTerm)
-    ,("* 1 False 0 ~> False", [Product [one,falseTerm,zero]], falseTerm)
-    ,("* 1 True  1 ~> False", [Product [one,trueTerm,one]]  , falseTerm)
-    ,("* 4 False 1 ~> False", [Product [four,falseTerm,one]], falseTerm)
+   ,[("* 1 True  0 ~> True" , [fixExpr $ Product [one,trueTerm,zero]] , trueTerm)
+    ,("* 1 False 0 ~> False", [fixExpr $ Product [one,falseTerm,zero]], falseTerm)
+    ,("* 1 True  1 ~> False", [fixExpr $ Product [one,trueTerm,one]]  , falseTerm)
+    ,("* 4 False 1 ~> False", [fixExpr $ Product [four,falseTerm,one]], falseTerm)
     ])
 
   ,("union expressions"
    ,unionTwoExprTestCase
-   ,[("∪ 1     Nat   Nat Bool ~> True"                                   , [Union one       natTypeName  $ Set.fromList [natTypeName,boolTypeName]], trueTerm)
-    ,("∪ False Bool  Nat Bool ~> False"                                  , [Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]], falseTerm)
-    ,("∪ True  Bool  Bool Nat ~> False -- order of union does not matter", [Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]], falseTerm)
+   ,[("∪ 1     Nat   Nat Bool ~> True"                                   , [fixExpr $ Union one       natTypeName  $ Set.fromList [natTypeName,boolTypeName]], trueTerm)
+    ,("∪ False Bool  Nat Bool ~> False"                                  , [fixExpr $ Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]], falseTerm)
+    ,("∪ True  Bool  Bool Nat ~> False -- order of union does not matter", [fixExpr $ Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]], falseTerm)
     ])
   ]
   where
@@ -135,7 +136,7 @@ reducesToSpec = describe "when applied to a list of arguments must reduce to an 
     andOneTrue,andFalseTrue,andTrueTrue :: (String,[TestExpr],TestExpr)
 
     andOneTrue   = ("True       ~> Boolean identity function" , [trueTerm] , andOneTrueExpr)
-      where andOneTrueExpr = Lam boolTypeName $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+      where andOneTrueExpr = fixExpr $ Lam boolTypeName $ fixExpr $ CaseAnalysis $ Case (fixExpr $ Binding VZ) $ CaseBranches
                                (CaseBranch falsePat falseTerm :| []
                                )
                                (Just trueTerm)

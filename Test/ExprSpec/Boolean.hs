@@ -30,6 +30,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
@@ -55,8 +56,8 @@ boolType    = SumT boolSumType
 boolSumType = [ProductT []
               ,ProductT []
               ]
-falseTerm     = Sum (Product []) 0 boolSumType
-trueTerm      = Sum (Product []) 1 boolSumType
+falseTerm     = fixExpr $ Sum (fixExpr $ Product []) 0 boolSumType
+trueTerm      = fixExpr $ Sum (fixExpr $ Product []) 1 boolSumType
 falsePat      = MatchSum 0 (MatchProduct [])
 truePat       = MatchSum 1 (MatchProduct [])
 
@@ -77,18 +78,18 @@ andExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust boolTypeCtx
-    e   = Lam boolTypeName $ Lam boolTypeName $          -- \x:Bool y:Bool ->
-        CaseAnalysis $ Case (Binding VZ)                 -- case y of
-          $ CaseBranches                                 --
-            (CaseBranch falsePat falseTerm :| []         --     False -> False
-            )                                            --
-            (Just                                        --     _      ->
-                (CaseAnalysis $ Case (Binding $ VS VZ)   --               case x of
-                  $ CaseBranches                         --
-                    (CaseBranch falsePat falseTerm :|[]  --                 False -> False
-                    )                                    --
-                    (Just                                --                        _     ->
-                        trueTerm                         --                                 True
+    e   = fixExpr $ Lam boolTypeName $ fixExpr $ Lam boolTypeName $ fixExpr $ -- \x:Bool y:Bool ->
+        CaseAnalysis $ Case (fixExpr $ Binding VZ)                            -- case y of
+          $ CaseBranches                                                      --
+            (CaseBranch falsePat falseTerm :| []                              --     False -> False
+            )                                                                 --
+            (Just                                                             --     _      ->
+                (fixExpr $ CaseAnalysis $ Case (fixExpr $ Binding $ VS VZ)    --               case x of
+                  $ CaseBranches                                              --
+                    (CaseBranch falsePat falseTerm :|[]                       --                 False -> False
+                    )                                                         --
+                    (Just                                                     --                        _     ->
+                        trueTerm                                              --                                 True
                     )
                 )
             )

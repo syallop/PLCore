@@ -28,7 +28,8 @@ import Data.Char
 -- TODO: Doesnt belong here.
 nameIso :: Iso (Char, Text.Text) Text.Text
 nameIso = Iso
-  {_parseIso = \(c,cs) -> if
+  {_isoLabel = ["name"]
+  ,_parseIso = \(c,cs) -> if
                | isUpper c && Text.all isLower cs -> Just $ Text.cons c cs
                | otherwise -> Nothing
   ,_printIso = \txt -> case Text.uncons txt of
@@ -43,13 +44,15 @@ nameIso = Iso
 -- TODO: Doesnt belong here
 typeNameIso :: Iso Text.Text TypeName
 typeNameIso = Iso
-  {_parseIso = \txt -> Just $ TypeName txt
+  {_isoLabel = ["typeName"]
+  ,_parseIso = \txt -> Just $ TypeName txt
   ,_printIso = \(TypeName txt) -> Just txt
   }
 
 namedIso :: Iso TypeName (Type tb)
 namedIso = Iso
-  {_parseIso = \typeName
+  {_isoLabel = ["named"]
+  ,_parseIso = \typeName
                 -> Just $ Named typeName
   ,_printIso = \ty
                 -> case ty of
@@ -60,7 +63,8 @@ namedIso = Iso
 
 arrowIso :: Iso (Type tb, Type tb) (Type tb)
 arrowIso = Iso
-  {_parseIso = \(fromTy, toTy)
+  {_isoLabel = ["arrow"]
+  ,_parseIso = \(fromTy, toTy)
                 -> Just $ Arrow fromTy toTy
   ,_printIso = \ty
                 -> case ty of
@@ -71,7 +75,8 @@ arrowIso = Iso
 
 sumTIso :: Iso [Type tb] (Type tb)
 sumTIso = Iso
-  {_parseIso = \tys
+  {_isoLabel = ["sumT"]
+  ,_parseIso = \tys
                 -> Just $ SumT tys
   ,_printIso = \ty
                 -> case ty of
@@ -82,7 +87,8 @@ sumTIso = Iso
 
 productTIso :: Iso [Type tb] (Type tb)
 productTIso = Iso
-  {_parseIso = \tys
+  {_isoLabel = ["productT"]
+  ,_parseIso = \tys
                 -> Just $ ProductT tys
   ,_printIso = \ty
                 -> case ty of
@@ -93,7 +99,8 @@ productTIso = Iso
 
 unionTIso :: Iso (Set.Set (Type tb)) (Type tb)
 unionTIso = Iso
-  {_parseIso = \tys
+  {_isoLabel = ["unionT"]
+  ,_parseIso = \tys
                 -> Just $ UnionT tys
   ,_printIso = \ty
                 -> case ty of
@@ -104,7 +111,8 @@ unionTIso = Iso
 
 bigArrowIso :: Iso (Kind, Type tb) (Type tb)
 bigArrowIso = Iso
-  {_parseIso = \(fromKind, toTy)
+  {_isoLabel = ["bigArrow"]
+  ,_parseIso = \(fromKind, toTy)
                 -> Just $ BigArrow fromKind toTy
   ,_printIso = \ty
                 -> case ty of
@@ -115,7 +123,8 @@ bigArrowIso = Iso
 
 typeLamIso :: Iso (Kind, Type tb) (Type tb)
 typeLamIso = Iso
-  {_parseIso = \(fromKind, toTy)
+  {_isoLabel = ["typeLam"]
+  ,_parseIso = \(fromKind, toTy)
                 -> Just $ TypeLam fromKind toTy
   ,_printIso = \ty
                 -> case ty of
@@ -127,7 +136,8 @@ typeLamIso = Iso
 
 typeAppIso :: Iso (Type tb, Type tb) (Type tb)
 typeAppIso = Iso
-  {_parseIso = \(fTy, xTy)
+  {_isoLabel = ["typeApp"]
+  ,_parseIso = \(fTy, xTy)
                 -> Just $ TypeApp fTy xTy
   ,_printIso = \ty
                 -> case ty of
@@ -138,7 +148,8 @@ typeAppIso = Iso
 
 typeBindingIso :: Iso tb (Type tb)
 typeBindingIso = Iso
-  {_parseIso = \tb
+  {_isoLabel = ["typeBinding"]
+  ,_parseIso = \tb
                 -> Just $ TypeBinding tb
   ,_printIso = \ty
                 -> case ty of
@@ -151,14 +162,16 @@ typeBindingIso = Iso
 -- TODO: Partial.
 tyVarIso :: Iso Int TyVar
 tyVarIso = Iso
-  {_parseIso = Just . mkTyVar
+  {_isoLabel = ["tyVar"]
+  ,_parseIso = Just . mkTyVar
   ,_printIso = \(TyVar v) -> Just . fromEnum $ v
   }
 
 -- TODO: Doesnt belong here.
 setIso :: Ord a => Iso [a] (Set.Set a)
 setIso = Iso
-  {_parseIso = Just . Set.fromList
+  {_isoLabel = ["set"]
+  ,_parseIso = Just . Set.fromList
   ,_printIso = Just . Set.toList
   }
 

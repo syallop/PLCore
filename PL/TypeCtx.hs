@@ -8,23 +8,23 @@ Stability   : experimental
 Maps names to types allowing type resolution.
 -}
 module PL.TypeCtx
-  (TypeCtx()
-  ,emptyTypeCtx
+  ( TypeCtx()
+  , emptyTypeCtx
 
-  ,Rec(..)
-  ,TypeInfo(..)
-  ,mkTypeInfo
+  , Rec(..)
+  , TypeInfo(..)
+  , mkTypeInfo
 
-  ,lookupTypeNameInfo
-  ,lookupTypeNameInitialInfo
-  ,traceLookupTypeNameInitialInfo
-  ,insertType
-  ,unionTypeCtx
-  ,insertRecType
+  , lookupTypeNameInfo
+  , lookupTypeNameInitialInfo
+  , traceLookupTypeNameInitialInfo
+  , insertType
+  , unionTypeCtx
+  , insertRecType
 
-  ,resolveTypeInfo
-  ,resolveTypeInitialInfo
-  ,traceResolveTypeInitialInfo
+  , resolveTypeInfo
+  , resolveTypeInitialInfo
+  , traceResolveTypeInitialInfo
   )
   where
 
@@ -32,6 +32,7 @@ import PL.Binds
 import PL.Kind
 import PL.Name
 import PL.Type
+import PL.FixType
 
 import Control.Applicative
 import Data.Maybe
@@ -97,7 +98,7 @@ lookupTypeNameInfo n (TypeCtx ctx) = Map.lookup n ctx
 -- "lookupTypeNameInitialInfo Number" would recurse twice and return TypeInfo for the "SumT ..." type definition
 lookupTypeNameInitialInfo :: TypeName -> TypeCtx tb -> Maybe (TypeInfo tb)
 lookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
-  Just (TypeInfo rec kind (Named n1))
+  Just (TypeInfo rec kind (FixType (Named n1)))
     -> lookupTypeNameInitialInfo n1 ctx
   t -> t
 
@@ -108,9 +109,9 @@ traceLookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
   Nothing
     -> Nothing
 
-  Just (TypeInfo rec kind (Named n1))
+  Just (TypeInfo rec kind (FixType (Named n1)))
     -> do (t,ns) <- traceLookupTypeNameInitialInfo n1 ctx
-          Just (t,TypeInfo rec kind (Named n1) : ns)
+          Just (t,TypeInfo rec kind (fixType $ Named n1) : ns)
 
   Just ti
     -> Just (ti,[])
@@ -119,26 +120,26 @@ traceLookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
 -- If a Named type, then lookup associated TypeInfo.
 -- otherwise generate it.
 resolveTypeInfo :: Type tb -> TypeCtx tb -> Maybe (TypeInfo tb)
-resolveTypeInfo t ctx = case t of
+resolveTypeInfo t ctx = case unfixType t of
   Named n -> lookupTypeNameInfo n ctx
-  t       -> Just . mkTypeInfo t $ ctx
+  t       -> Just . mkTypeInfo (fixType t) $ ctx
 
 
 -- If a Named type, then recursively lookup the associated TypeInfo.
 -- otherwise generate it.
 resolveTypeInitialInfo :: Type tb -> TypeCtx tb -> Maybe (TypeInfo tb)
-resolveTypeInitialInfo t ctx = case t of
+resolveTypeInitialInfo t ctx = case unfixType t of
   Named n -> lookupTypeNameInitialInfo n ctx
-  t       -> Just . mkTypeInfo t $ ctx
+  t       -> Just . mkTypeInfo (fixType t) $ ctx
 
 
 
 -- If a Named type, then recursively lookup the associated TypeInfo, also returning a trace of each intermediate TypeInfo.
 -- otherwise, generate it first.
 traceResolveTypeInitialInfo :: Type tb -> TypeCtx tb -> Maybe (TypeInfo tb,[TypeInfo tb])
-traceResolveTypeInitialInfo t ctx = case t of
+traceResolveTypeInitialInfo t ctx = case unfixType t of
   Named n -> traceLookupTypeNameInitialInfo n ctx
-  t       -> Just (mkTypeInfo t ctx,[])
+  t       -> Just (mkTypeInfo (fixType t) ctx,[])
 
 
 -- Insert a Non-recursive type into the context with a given name, only if
@@ -179,7 +180,7 @@ insertRecType n t tCtx0 = case lookupTypeNameInfo n tCtx0 of
 
 -- Validate that a type definition only refers to names that are in the TypeCtx
 validDefinition :: Type tb -> TypeCtx tb -> Bool
-validDefinition t ctx = case t of
+validDefinition t ctx = case unfixType t of
   Named n
     -> isJust $ lookupTypeNameInfo n ctx
 

@@ -23,6 +23,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -51,7 +52,7 @@ unionTwoExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust $ boolTypeCtx <> natTypeCtx
-    e   = fixExpr $ Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $ fixExpr $ -- \x : <Nat|Bool>
+    e   = fixExpr $ Lam (fixType $ UnionT $ Set.fromList [natTypeName,boolTypeName]) $ fixExpr $ -- \x : <Nat|Bool>
             CaseAnalysis $ Case (fixExpr $ Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --
                 (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm    -- Nat | Z    -> False
@@ -62,7 +63,7 @@ unionTwoExprTestCase = ExprTestCase
                 (Just                                                           --
                     falseTerm                                                   -- _          -> False
                 )
-    ty  = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
+    ty  = fixType $ Arrow (fixType $ UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
     txt = Text.unlines
       ["λ(∪ Bool Nat) (CASE 0"
       ,"                (| (∪ Nat  (+0 (*))) (+0 (*) (*) (*)))"

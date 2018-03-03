@@ -23,6 +23,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -50,7 +51,7 @@ sumThreeExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = fixExpr $ Lam (SumT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $    -- \x : Nat|Bool|Nat ->
+    e   = fixExpr $ Lam (fixType $ SumT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $    -- \x : Nat|Bool|Nat ->
             CaseAnalysis $ Case (fixExpr $ Binding VZ)                               -- case x of
               $ CaseBranches                                                         --
                 (CaseBranch (MatchSum 0 $ sPat Bind) (fixExpr $ Binding VZ)          --  0| S n   -> n
@@ -62,7 +63,7 @@ sumThreeExprTestCase = ExprTestCase
                     ]
                 )
                 Nothing
-    ty  = Arrow (SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
+    ty  = fixType $ Arrow (fixType $ SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
     txt = Text.unlines
       ["λ(+ Nat Bool Nat) (CASE 0"
       ,"                   (| (+ 0 +1 ?)  (0))"

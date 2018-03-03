@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances
            , MultiParamTypeClasses
            , ScopedTypeVariables
+           , StandaloneDeriving
            , OverloadedStrings
            #-}
 {-|
@@ -18,6 +19,7 @@ import PL.Binds.Ix
 import PL.Name
 import PL.Kind
 import PL.ExprLike
+import PL.FixType
 
 import PLGrammar
 
@@ -29,8 +31,10 @@ import qualified Data.Set as Set
 import Data.Proxy
 import Data.Monoid
 
+type Type tb = FixType tb TypeF
+
 -- Describe properties of expressions
-data Type tb
+data TypeF tb typ
 
   -- | Some name
   = Named
@@ -39,43 +43,43 @@ data Type tb
 
   -- | A Function type between types
   | Arrow
-    {_from :: Type tb
-    ,_to   :: Type tb
+    {_from :: typ
+    ,_to   :: typ
     }
 
   -- | Ordered alternative types
   | SumT
-    {_sumTypes :: [Type tb]
+    {_sumTypes :: [typ]
     }
 
   -- | Ordered product types
   | ProductT
-    {_productTypes :: [Type tb]
+    {_productTypes :: [typ]
     }
 
   -- | Set of union types
   | UnionT
-    {_unionTypes :: Set.Set (Type tb)
+    {_unionTypes :: Set.Set typ
     }
 
   -- Type of BigLambda
   -- Is this distinct from TypeLam??
   | BigArrow
     {_takeType :: Kind
-    ,_type     :: Type tb
+    ,_type     :: typ
     }
 
 
   -- Type-level lambda abstraction
   | TypeLam
     {_takeType :: Kind
-    ,_type     :: Type tb
+    ,_type     :: typ
     }
 
   -- Type-level application.
   | TypeApp
-    {_f :: Type tb
-    ,_x :: Type tb
+    {_f :: typ
+    ,_x :: typ
     }
 
   | TypeBinding
@@ -85,20 +89,20 @@ data Type tb
 
 -- | Is a Type a simple named type
 isType :: Type tb -> Bool
-isType t = case t of
+isType t = case unfixType t of
   Named _ -> True
   _       -> False
 
 -- | Infix Arrow
 (-->) :: Type tb -> Type tb -> Type tb
-a --> b = Arrow a b
+a --> b = fixType $ Arrow a b
 
 -- | Construct a simple named type
 ty :: TypeName -> Type tb
-ty = Named
+ty = fixType . Named
 
 instance Document tb => Document (Type tb) where
-  document t = case t of
+  document t = case unfixType t of
     Arrow from to
       -> char '^' <> parens (document from) <> parens (document to)
 
@@ -140,23 +144,25 @@ arrowise (t:t':ts) = t --> arrowise (t':ts)
 -- a -> b -> c ~> [a,b,c]
 -- etc
 unarrowise :: Type tb -> [Type tb]
-unarrowise (Arrow a b) = a : unarrowise b
-unarrowise t           = [t]
+unarrowise t = case unfixType t of
+  Arrow a b
+    -> a : unarrowise b
+  t -> [fixType t]
 
 instance HasAbs (Type tb) where
-  applyToAbs f ty = case ty of
+  applyToAbs f ty = fixType $ case unfixType ty of
     TypeLam ky ty -> TypeLam ky (f ty)
 --  Nope(?)
 --  BigArrow ky ty -> BigArrow ky (f ty)
     ty            -> ty
 
 instance HasBinding (Type tb) tb where
-  applyToBinding f ty = case ty of
+  applyToBinding f ty = fixType $ case unfixType ty of
     TypeBinding tb -> TypeBinding (f tb)
     ty             -> ty
 
 instance Ord tb => HasNonAbs (Type tb) where
-  applyToNonAbs f ty = case ty of
+  applyToNonAbs f ty = fixType $ case unfixType ty of
     Arrow from to
       -> Arrow (f from) (f to)
 
@@ -181,32 +187,32 @@ instantiate :: forall tb. (Ord tb,BindingIx tb) => Type tb -> Type tb -> Type tb
 instantiate = instantiate' 0
   where
     instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb
-    instantiate' i instType inType = case inType of
+    instantiate' i instType inType = case unfixType inType of
       Arrow from to
-        -> Arrow (instantiate' i instType from) (instantiate' i instType to)
+        -> fixType $ Arrow (instantiate' i instType from) (instantiate' i instType to)
 
       SumT ts
-        -> SumT $ map (instantiate' i instType) ts
+        -> fixType $ SumT $ map (instantiate' i instType) ts
 
       ProductT ts
-        -> ProductT $ map (instantiate' i instType) ts
+        -> fixType $ ProductT $ map (instantiate' i instType) ts
 
       UnionT ts
-        -> UnionT $ Set.map (instantiate' i instType) ts
+        -> fixType $ UnionT $ Set.map (instantiate' i instType) ts
 
       BigArrow from to
-        -> BigArrow from (instantiate' i instType to)
+        -> fixType $ BigArrow from (instantiate' i instType to)
 
       TypeLam from to
-        -> TypeLam from (instantiate' (i+1) instType to)
+        -> fixType $ TypeLam from (instantiate' (i+1) instType to)
 
       TypeApp f x
-        -> TypeApp (instantiate' i instType f) (instantiate' i instType x)
+        -> fixType $ TypeApp (instantiate' i instType f) (instantiate' i instType x)
 
       TypeBinding tb
         | bindDepth tb == i -> buryBy (Proxy :: Proxy tb) instType (BuryDepth i)
-        | otherwise         -> TypeBinding tb
+        | otherwise         -> fixType $ TypeBinding tb
 
       Named n
-        -> Named n
+        -> fixType $ Named n
 

@@ -22,6 +22,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -59,8 +60,8 @@ defaultBindMatchArgTestCase = MatchArgTestCase
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
     isMatchArg           = Bind
-    typed                = SumT []
-    checkMatchWithResult = Right [SumT []]
+    typed                = fixType $ SumT []
+    checkMatchWithResult = Right [fixType $ SumT []]
     parsesFrom           = "?"
 
 -- Test binding an empty sum.
@@ -70,8 +71,8 @@ bindSumMatchArgTestCase = defaultBindMatchArgTestCase
 -- Test binding an empty product.
 bindProdMatchArgTestCase :: MatchArgTestCase
 bindProdMatchArgTestCase = defaultBindMatchArgTestCase
-  { _typed = ProductT []
-  , _checkMatchWithResult = Right [ProductT []]
+  { _typed = fixType $ ProductT []
+  , _checkMatchWithResult = Right [fixType $ ProductT []]
   }
 
 bindBoolMatchArgTestCase :: MatchArgTestCase

@@ -4,9 +4,9 @@
   , ScopedTypeVariables
   #-}
 module PL.Type.Eq
-  (typeEq
-  ,typeEqs
-  ,typeKind
+  ( typeEq
+  , typeEqs
+  , typeKind
   )
   where
 
@@ -20,6 +20,7 @@ import PLPrinter
 import PLPrinter.Debug
 import PL.ReduceType
 import PL.Type
+import PL.FixType
 import PL.TypeCtx
 
 import Control.Applicative
@@ -63,7 +64,7 @@ typeEq' :: forall tb
         -> Type tb
         -> Type tb
         -> Maybe Bool
-typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [document t0,document t1,document typeBindings]) $ case (t0,t1) of
+typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [document t0,document t1,document typeBindings]) $ case (unfixType t0, unfixType t1) of
 
   -- Named Types are ONLY equal if they have the same name.
   (Named n0,Named n1)
@@ -107,7 +108,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
 
   -- To compare a binding to a non-binding
   (ty0,TypeBinding _)
-    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
+    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
   (TypeBinding b0,ty1)
     -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0)
           in traceStep ("Lookup binding"::Text.Text) $ case binding0 of
@@ -115,7 +116,7 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
                  -> traceIndent i ("Unbound => T"::Text.Text) $ Just True
 
                Bound ty0
-                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1
+                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 (fixType ty1)
 
 
   -- Two type applications are equal if both of their corresponding parts are
@@ -126,19 +127,19 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
   -- A TypeApp is equal to something else when, after reducing it, it is equal
   -- to that other thing.
   (ty0,TypeApp _ _)
-    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 ty0
+    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
   (TypeApp f0 x0,ty1)
     -> traceStep ("Reduce application function,under arg"::Text.Text) $ case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
            -> error $ Text.unpack $ render $ text "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
 
          Right redF0
-           -> case redF0 of
+           -> case unfixType redF0 of
                 -- TODO: we're assuming kindchecking has already been performed. Otherwise, aKy must equal xKy
                 -- The resulting type is then the rhs of the typelam under the
                 -- context of what it was applied to
                 TypeLam aKy bTy
-                  -> typeEq' (i+1) (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy ty1
+                  -> typeEq' (i+1) (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy (fixType ty1)
 
                 _ -> error "In typeEq: Cant type apply a non-lambda type to a type"
 
@@ -195,7 +196,7 @@ typeEqs' i typeBindCtx typeBindings typeNameCtx ts0 ts1
 -- | Under a given bindings context, kind-check a type.
 -- TODO: Break move to more approritate location.
 typeKind :: (Show tb, Binds tb Kind) => BindCtx tb Kind -> TypeCtx tb -> Type tb -> Either (Error tb) Kind
-typeKind typeBindCtx typeCtx ty = case ty of
+typeKind typeBindCtx typeCtx ty = case unfixType ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.
   -- Either:

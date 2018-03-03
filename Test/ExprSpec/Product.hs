@@ -23,6 +23,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -49,7 +50,7 @@ productThreeExprTestCase = ExprTestCase
   }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = fixExpr $ Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $ -- \x : Nat*Bool*Nat ->
+    e   = fixExpr $ Lam (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $ -- \x : Nat*Bool*Nat ->
       CaseAnalysis $ Case (fixExpr $ Binding VZ)                                      -- case x of
         $ CaseBranches                                                                --
           (CaseBranch (MatchProduct [zPat,Bind,zPat]) (fixExpr $ Binding VZ)          -- Z,y,Z -> y
@@ -58,7 +59,7 @@ productThreeExprTestCase = ExprTestCase
           (Just                                                                       --
               falseTerm                                                               -- _ -> False
           )
-    ty = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
+    ty = fixType $ Arrow (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
     txt = Text.unlines
       ["λ(* Nat Bool Nat) (CASE 0"
       ,"                    (| (* (+0 (*)) (?) (+0 (*))) (0))"

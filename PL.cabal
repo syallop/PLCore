@@ -41,6 +41,7 @@ library
                      , PL.ReduceType
                      , PL.TyVar
                      , PL.Type
+                     , PL.FixType
                      , PL.Type.Eq
                      , PL.TypeCtx
                      , PL.Var
@@ -78,6 +79,8 @@ executable pl
                    , PL.Case
                    , PL.Error
                    , PL.Expr
+                   , PL.FixExpr
+                   , PL.FixType
                    , PL.ExprLike
                    , PL.Kind
                    , PL.Name

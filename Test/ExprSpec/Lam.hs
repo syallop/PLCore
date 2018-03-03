@@ -24,6 +24,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -44,12 +45,12 @@ lamTypeCtx   = insertType "Foo" fooType
              . fromJust
              . insertType "Baz" bazType
              $ emptyTypeCtx
-fooTypeName = Named "Foo"
-fooType     = SumT []
-barTypeName = Named "Bar"
-barType     = SumT []
-bazTypeName = Named "Baz"
-bazType     = SumT []
+fooTypeName = fixType $ Named "Foo"
+fooType     = fixType $ SumT []
+barTypeName = fixType $ Named "Bar"
+barType     = fixType $ SumT []
+bazTypeName = fixType $ Named "Baz"
+bazType     = fixType $ SumT []
 
 lamTestCases :: [(Text,ExprTestCase)]
 lamTestCases =
@@ -71,7 +72,7 @@ singleLamTestCase = ExprTestCase
   where
     ctx = fromJust lamTypeCtx
     e   = fixExpr $ Lam fooTypeName $ fixExpr $ Binding VZ
-    ty  = Arrow fooType fooType
+    ty  = fixType $ Arrow fooType fooType
     txt = "λFoo (0)"
 
 -- \Foo -> \Bar -> Foo
@@ -87,7 +88,7 @@ nestedLamTestCase = ExprTestCase
   where
     ctx = fromJust lamTypeCtx
     e   = fixExpr $ Lam fooTypeName . fixExpr . Lam barTypeName . fixExpr . Binding . VS $ VZ
-    ty  = Arrow fooType (Arrow barType fooType)
+    ty  = fixType $ Arrow fooType (fixType $ Arrow barType fooType)
     txt = "λFoo (λBar 1)"
 
 -- \Foo Bar -> Foo
@@ -114,8 +115,11 @@ chainedLamTestCase = nestedLamTestCase
         . VS
         . VS
         $ VZ
-    ty  = Arrow fooType
+    ty  = fixType
+        . Arrow fooType
+        . fixType
         . Arrow barType
+        . fixType
         . Arrow bazType
         $ fooType
     txt = "λFoo Bar Baz 2"

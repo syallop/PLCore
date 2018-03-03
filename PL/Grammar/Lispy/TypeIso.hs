@@ -13,6 +13,7 @@ import PL.Type
 import PL.TyVar
 import PL.Name
 import PL.Var
+import PL.FixType
 
 import qualified Data.Set as Set
 import qualified Data.Text as Text
@@ -53,9 +54,9 @@ namedIso :: Iso TypeName (Type tb)
 namedIso = Iso
   {_isoLabel = ["named"]
   ,_parseIso = \typeName
-                -> Just $ Named typeName
+                -> Just . fixType . Named $ typeName
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      Named typeName
                        -> Just typeName
                      _ -> Nothing
@@ -65,9 +66,9 @@ arrowIso :: Iso (Type tb, Type tb) (Type tb)
 arrowIso = Iso
   {_isoLabel = ["arrow"]
   ,_parseIso = \(fromTy, toTy)
-                -> Just $ Arrow fromTy toTy
+                -> Just .fixType . Arrow fromTy $ toTy
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      Arrow fromTy toTy
                        -> Just (fromTy, toTy)
                      _ -> Nothing
@@ -77,9 +78,9 @@ sumTIso :: Iso [Type tb] (Type tb)
 sumTIso = Iso
   {_isoLabel = ["sumT"]
   ,_parseIso = \tys
-                -> Just $ SumT tys
+                -> Just . fixType . SumT $ tys
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      SumT tys
                        -> Just tys
                      _ -> Nothing
@@ -89,9 +90,9 @@ productTIso :: Iso [Type tb] (Type tb)
 productTIso = Iso
   {_isoLabel = ["productT"]
   ,_parseIso = \tys
-                -> Just $ ProductT tys
+                -> Just . fixType . ProductT $ tys
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      ProductT tys
                        -> Just tys
                      _ -> Nothing
@@ -101,9 +102,9 @@ unionTIso :: Iso (Set.Set (Type tb)) (Type tb)
 unionTIso = Iso
   {_isoLabel = ["unionT"]
   ,_parseIso = \tys
-                -> Just $ UnionT tys
+                -> Just . fixType . UnionT $ tys
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      UnionT tys
                        -> Just tys
                      _ -> Nothing
@@ -113,9 +114,9 @@ bigArrowIso :: Iso (Kind, Type tb) (Type tb)
 bigArrowIso = Iso
   {_isoLabel = ["bigArrow"]
   ,_parseIso = \(fromKind, toTy)
-                -> Just $ BigArrow fromKind toTy
+                -> Just . fixType . BigArrow fromKind $ toTy
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                     BigArrow fromKind toTy
                       -> Just (fromKind, toTy)
                     _ -> Nothing
@@ -125,9 +126,9 @@ typeLamIso :: Iso (Kind, Type tb) (Type tb)
 typeLamIso = Iso
   {_isoLabel = ["typeLam"]
   ,_parseIso = \(fromKind, toTy)
-                -> Just $ TypeLam fromKind toTy
+                -> Just . fixType . TypeLam fromKind $ toTy
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                     TypeLam fromKind toTy
                       -> Just (fromKind, toTy)
                     _ -> Nothing
@@ -138,9 +139,9 @@ typeAppIso :: Iso (Type tb, Type tb) (Type tb)
 typeAppIso = Iso
   {_isoLabel = ["typeApp"]
   ,_parseIso = \(fTy, xTy)
-                -> Just $ TypeApp fTy xTy
+                -> Just . fixType . TypeApp fTy $ xTy
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      TypeApp fTy xTy
                        -> Just (fTy, xTy)
                      _ -> Nothing
@@ -150,9 +151,9 @@ typeBindingIso :: Iso tb (Type tb)
 typeBindingIso = Iso
   {_isoLabel = ["typeBinding"]
   ,_parseIso = \tb
-                -> Just $ TypeBinding tb
+                -> Just . fixType . TypeBinding $ tb
   ,_printIso = \ty
-                -> case ty of
+                -> case unfixType ty of
                      TypeBinding tb
                        -> Just tb
                      _ -> Nothing

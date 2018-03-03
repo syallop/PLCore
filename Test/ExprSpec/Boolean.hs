@@ -38,6 +38,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.FixType
 import PL.Var
 
 import PLParser
@@ -51,11 +52,12 @@ import Data.List.NonEmpty (NonEmpty(..))
 import ExprTestCase
 
 boolTypeCtx = insertType "Bool" boolType emptyTypeCtx
-boolTypeName = Named "Bool"
-boolType    = SumT boolSumType
-boolSumType = [ProductT []
-              ,ProductT []
-              ]
+boolTypeName = fixType $ Named "Bool"
+boolType = fixType $ SumT boolSumType
+boolSumType = map fixType
+                [ProductT []
+                ,ProductT []
+                ]
 falseTerm     = fixExpr $ Sum (fixExpr $ Product []) 0 boolSumType
 trueTerm      = fixExpr $ Sum (fixExpr $ Product []) 1 boolSumType
 falsePat      = MatchSum 0 (MatchProduct [])
@@ -93,7 +95,7 @@ andExprTestCase = ExprTestCase
                     )
                 )
             )
-    ty  = Arrow boolType (Arrow boolType boolType)
+    ty  = fixType $ Arrow boolType (fixType $ Arrow boolType boolType)
     txt = Text.unlines
       ["λ Bool Bool ( CASE 0"
       ,"               ( | "<>falsePatText<>" "<>falseTermText<>" )"

@@ -42,6 +42,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -58,15 +59,16 @@ import Data.Monoid ((<>))
 import ExprTestCase
 
 natTypeCtx = insertRecType "Nat" natType emptyTypeCtx
-natTypeName = Named "Nat"
-natType    = SumT natSumType
-natSumType = [ProductT []
-             ,Named "Nat"
-             ]
+natTypeName = fixType $ Named "Nat"
+natType    = fixType $ SumT natSumType
+natSumType = map fixType $
+               [ProductT []
+               ,Named "Nat"
+               ]
 
 zTerm, sTerm :: Expr Var (Type tb) tb
-zTerm      = fixExpr $                   Sum (fixExpr $ Product [])        0 natSumType
-sTerm      = fixExpr $ Lam (Named "Nat") $ fixExpr $ Sum (fixExpr $ Binding (mkVar 0)) 1 natSumType
+zTerm      = fixExpr $                                         Sum (fixExpr $ Product [])        0 natSumType
+sTerm      = fixExpr $ Lam (fixType $ Named "Nat") $ fixExpr $ Sum (fixExpr $ Binding (mkVar 0)) 1 natSumType
 
 zPat :: MatchArg Var tb
 zPat = MatchSum 0 (MatchProduct [])
@@ -113,7 +115,7 @@ subTwoExprTestCase = ExprTestCase
             (Just                                                       --
                   zTerm                                                 --   _     -> Z
             )
-    ty = Arrow natType natType
+    ty = fixType $ Arrow natType natType
 
     txt = Text.unlines
       ["λNat (CASE 0"

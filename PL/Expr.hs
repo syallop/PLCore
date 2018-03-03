@@ -35,6 +35,7 @@ import PLPrinter.Doc
 import PLPrinter.Debug
 import PL.Type hiding (parens)
 import PL.Type.Eq
+import PL.FixType
 import PL.TypeCtx
 
 import Control.Applicative
@@ -321,7 +322,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
   Lam abs expr
     -> do let newExprBindCtx = addBinding (absTy abs) exprBindCtx
           exprTy <- exprType' (i+1) newExprBindCtx typeBindCtx typeBindings typeCtx expr
-          Right $ Arrow (absTy abs) exprTy
+          Right $ fixType $ Arrow (absTy abs) exprTy
 
   -- |
   --   f : a -> b    x : a
@@ -334,7 +335,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
           resFTy <- maybe (Left $ EMsg $ text "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           let errAppMismatch = Left $ EAppMismatch resFTy xTy
-          case resFTy of
+          case unfixType resFTy of
             -- Regular function application attempt
             Arrow aTy bTy -> case typeEq typeBindCtx typeBindings typeCtx aTy xTy of
                                  Nothing -> error "Non existant type name in application of arrow type"
@@ -383,7 +384,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
           _ <- Right ()
 
           -- Type is the claimed sum
-          Right $ SumT inTypr
+          Right $ fixType $ SumT inTypr
 
   -- A product is typed by the order of each expression it contains
   Product prodExprs
@@ -391,7 +392,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
           prodExprTys <- mapM (exprType' (i+1) exprBindCtx typeBindCtx typeBindings typeCtx) prodExprs
 
           -- the type is the product of those types
-          Right $ ProductT prodExprTys
+          Right $ fixType $ ProductT prodExprTys
 
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
   -- TODO: Unused types in the union are not themselves checked for consistency
@@ -412,7 +413,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
                  else Left $ EMsg $ text "Expressions type is not within the union"
 
           -- the type is the claimed union
-          Right $ UnionT unionTypes
+          Right $ fixType $ UnionT unionTypes
 
   -- | A binding is typed by the context
   -- It is assumed the exprBindCtx has been type checked
@@ -491,7 +492,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
     -> do let newTypeBindCtx  = addBinding abs typeBindCtx
               newTypeBindings = unbound $ bury typeBindings
           exprTy <- exprType' (i+1) exprBindCtx newTypeBindCtx newTypeBindings typeCtx expr
-          Right $ BigArrow abs exprTy
+          Right $ fixType $ BigArrow abs exprTy
 
   --    f : aKind BigLamArrow bTy      xTy :: aKind
   -- ---------------------------------------------------
@@ -508,7 +509,7 @@ exprType' i exprBindCtx typeBindCtx typeBindings typeCtx e = traceIndent i (mcon
 
           resFTy <- maybe (Left $ EMsg $ text "Unknown named type in Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
-          case resFTy of
+          case unfixType resFTy of
             -- Regular big application attempt
             BigArrow aKy bTy
               | aKy == xKy -> Right $ instantiate x bTy -- TODO: all bindings need to be instantiated
@@ -565,7 +566,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                 Just isSameType -> if isSameType then pure [] else Left $ EMsg $ text "pattern match on a binding from a different type"
 
     MatchSum sumIndex nestedMatchArg
-      -> do sumTypes <- case rExpectTy of
+      -> do sumTypes <- case unfixType rExpectTy of
                       SumT sumTypes -> Right sumTypes
                       _             -> Left . EMsg . text $ "Expected sum type in pattern match"
 
@@ -576,14 +577,15 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
             checkMatchWith nestedMatchArg matchedTy exprBindCtx typeBindCtx typeBindings typeCtx
 
     MatchProduct nestedMatchArgs
-      -> do prodTypes <- case rExpectTy of
-                             ProductT prodTypes -> Right prodTypes
-                             _               -> Left $ EMsg $ text "Expected product type in pattern match"
+      -> do prodTypes <- case unfixType rExpectTy of
+                             ProductT prodTypes
+                               -> Right prodTypes
+                             _ -> Left $ EMsg $ text "Expected product type in pattern match"
 
             checkMatchesWith nestedMatchArgs prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
 
     MatchUnion unionIndexTy nestedMatchArg
-      -> do unionTypes <- case rExpectTy of
+      -> do unionTypes <- case unfixType rExpectTy of
                         UnionT unionTypes -> Right unionTypes
                         _                 -> Left $ EMsg $ text "Expected union type in pattern match"
 

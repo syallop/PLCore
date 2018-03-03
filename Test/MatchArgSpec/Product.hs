@@ -22,6 +22,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -62,7 +63,7 @@ defaultProductMatchArgTestCase = MatchArgTestCase
     typeBindings         = emptyBindings
 
     isMatchArg           = MatchProduct []
-    typed                = ProductT []
+    typed                = fixType $ ProductT []
     checkMatchWithResult = Right []
     parsesFrom           = "(*)"
 

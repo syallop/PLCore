@@ -71,6 +71,13 @@ executable pl
                      , PLGrammar
                      , PLPrinter
                      , PLParser
+                     , brick
+                     , vty
+                     , microlens
+                     , microlens-th
+                     , haskeline
+                     , mtl
+                     , directory
 
   other-modules:     PL.Abstracts
                    , PL.Bindings
@@ -97,6 +104,8 @@ executable pl
                    , PL.Type.Eq
                    , PL.TypeCtx
                    , PL.Var
+                   , UI
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
 
 test-suite hspec
     type:              exitcode-stdio-1.0

@@ -40,8 +40,13 @@ import System.IO
 import Data.Text (Text)
 import qualified Data.Text.IO as Text
 
+import UI
+
 main :: IO ()
-main = do
+main = runRepl
+
+simpleMain :: IO ()
+simpleMain = do
   hSetBuffering stdin LineBuffering
   repl emptyReplCtx
   where

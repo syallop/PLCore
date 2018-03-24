@@ -1,4 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , OverloadedStrings
+  #-}
 {-|
 Module      : PL.TypeCtx
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -8,11 +11,11 @@ Stability   : experimental
 Maps names to types allowing type resolution.
 -}
 module PL.TypeCtx
-  ( TypeCtx()
+  ( TypeCtx ()
   , emptyTypeCtx
 
-  , Rec(..)
-  , TypeInfo(..)
+  , Rec (..)
+  , TypeInfo (..)
   , mkTypeInfo
 
   , lookupTypeNameInfo
@@ -34,6 +37,8 @@ import PL.Name
 import PL.Type
 import PL.FixType
 
+import PLPrinter
+
 import Control.Applicative
 import Data.Maybe
 import Data.Monoid
@@ -45,6 +50,11 @@ data Rec
   | NonRec
   deriving Show
 
+instance Document Rec where
+  document r = case r of
+    Rec -> text "Rec"
+    NonRec -> text "NonRec"
+
 -- Associate typenames to a description of their type
 -- Types may be aliased to refer to other types but should only
 -- do so a finite amount of times.
@@ -55,6 +65,11 @@ instance Monoid (TypeCtx tb) where
   mempty = TypeCtx mempty
   mappend (TypeCtx t0) (TypeCtx t1) = TypeCtx (t0 <> t1)
 
+instance Document tb => Document (TypeCtx tb) where
+  document (TypeCtx m) = mconcat . Map.foldrWithKey
+                                   (\typeName typeInfo acc -> document typeName : lineBreak : indent 2 (document typeInfo) : lineBreak : lineBreak : acc)
+                                   []
+                                 $ m
 
 -- Information associated with a type
 data TypeInfo tb
@@ -64,6 +79,15 @@ data TypeInfo tb
     ,_typeInfoType        :: Type tb -- The type definition
     }
   deriving Show
+
+instance Document tb => Document (TypeInfo tb) where
+  document (TypeInfo isRecursive kind def) = mconcat
+    [ document isRecursive
+    , lineBreak
+    , text ":: ", document kind
+    , lineBreak
+    , text "= ", document def
+    ]
 
 -- Create TypeInfo which MUST be non-recursive
 -- TODO: Move 'typeKind' from Expr module, breaking the recursion between Type,Expr,TypeCtx,etc

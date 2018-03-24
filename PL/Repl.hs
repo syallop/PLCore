@@ -2,6 +2,7 @@
     RankNTypes
   , FlexibleContexts
   , OverloadedStrings
+  , UndecidableInstances
   #-}
 module PL.Repl where
 
@@ -45,6 +46,23 @@ data ReplCtx b tb = ReplCtx
 
   ,_typeCtx      :: TypeCtx tb      -- Names can be given to types
   }
+
+instance
+  ( Document b
+  , Document tb
+  , Document (TypeCtx tb)
+  , Binds b (Type tb)
+  , Binds tb Kind
+  ) => Document (ReplCtx b tb) where
+    document (ReplCtx exprBindCtx typeBindCtx typeBindings typeCtx) = mconcat
+      [ document exprBindCtx
+      , lineBreak
+      , document typeBindCtx
+      , lineBreak
+      , document typeBindings
+      , lineBreak
+      , document typeCtx
+      ]
 
 -- | An initial, empty replctx
 emptyReplCtx

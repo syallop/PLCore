@@ -37,7 +37,6 @@ library
                      , PL.Kind
                      , PL.Name
                      , PL.Reduce
-                     , PL.Repl
                      , PL.ReduceType
                      , PL.TyVar
                      , PL.Type

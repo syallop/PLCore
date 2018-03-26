@@ -153,6 +153,9 @@ toPrinter grammar = case grammar of
   GLabel _label g
     -> toPrinter g
 
+  GTry g
+    -> toPrinter g
+
 describeGrammar :: Show a => Grammar a -> Doc
 describeGrammar gr = case gr of
   GAnyChar

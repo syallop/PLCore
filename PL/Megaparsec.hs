@@ -52,6 +52,9 @@ toParser grammar = case grammar of
   G.GLabel l g
     -> toParser g Mega.<?> (Text.unpack $ renderDocument l)
 
+  G.GTry g
+    -> Mega.try $ toParser g
+
 isoMapParser
   :: Show a
   => Iso a b

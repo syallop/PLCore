@@ -120,8 +120,21 @@ unionExpr = union */ (unionIso \$/ (typ ?tb \* spaceRequired)
 
 
 -- "CASE", then an expr then casebranches
+--
+-- CASE(\Scrut 0)
+--  (((|? (\MatchedFoo 0))
+--    (|? (\MatchedBar 0)))
+--        (\Default 0))
+--
+-- or
+--
+-- CASE
+--  (\Scrut 0)
+--  (((|? (\MatchedFoo 0))
+--    (|? (\MatchedBar 0)))
+--        (\Default 0))
 caseAnalysis :: (Show b,Show abs,Show tb,Ord tb,Implicits b abs tb,Eq b,Eq abs) => Grammar (Expr b abs tb)
-caseAnalysis = textIs "CASE" */ (caseAnalysisIso \$/ caseStatement exprI)
+caseAnalysis = textIs "CASE" */ spaceAllowed */ (caseAnalysisIso \$/ caseStatement exprI)
 
 -- Parse an expression when /implicitly/ passed porsers for:
 -- - ?eb  Expression bindings    (E.G. Var)
@@ -129,9 +142,9 @@ caseAnalysis = textIs "CASE" */ (caseAnalysisIso \$/ caseStatement exprI)
 -- - ?tb  Type bindings          (E.G. Var)
 exprI :: Constraints b abs tb => Grammar (Expr b abs tb)
 exprI = alternatives
-  [ try lamExpr
-  , try bigLamExpr
-  , try appExpr
+  [ lamExpr
+  , bigLamExpr
+  , appExpr
   , bigAppExpr
   , sumExpr
   , productExpr

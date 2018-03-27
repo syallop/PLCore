@@ -65,10 +65,10 @@ truePat       = MatchSum 1 (MatchProduct [])
 
 falseTermText, trueTermText, falsePatText, truePatText :: Text
 
-falseTermText = "+ 0 (*) (*) (*)"
-trueTermText  = "+ 1 (*) (*) (*)"
-falsePatText  = "+ 0 (*)"
-truePatText   = "+ 1 (*)"
+falseTermText = "+0 (*) (*) (*)"
+trueTermText  = "+1 (*) (*) (*)"
+falsePatText  = "(+0 (*))"
+truePatText   = "(+1 (*))"
 
 -- Boolean and
 andExprTestCase :: ExprTestCase
@@ -97,11 +97,11 @@ andExprTestCase = ExprTestCase
             )
     ty  = fixType $ Arrow boolType (fixType $ Arrow boolType boolType)
     txt = Text.unlines
-      ["λ Bool Bool ( CASE 0"
-      ,"               ( | "<>falsePatText<>" "<>falseTermText<>" )"
+      ["λBool λBool (CASE 0"
+      ,"               (|"<>falsePatText<>" "<>falseTermText<>")"
       ,""
-      ,"               ( CASE 1"
-      ,"                   ( | "<>falsePatText<>" "<>falseTermText<>" )"
+      ,"               (CASE 1"
+      ,"                   (|"<>falsePatText<>" "<>falseTermText<>")"
       ,""
       ,"                   "<>trueTermText<>""
       ,""

@@ -37,6 +37,15 @@ import PL.Var
 
 -- An entire case statement starts with "CASE" followed by a scrutinee then the
 -- case branches.
+-- (\Scrut 0)
+-- ((|? (\Matchedfoo 0))
+-- (|? (\Matchedbar 0)))
+--     (\Default 0)
+-- or
+-- (\Scrut 0)
+--   (((|? (\Matchedfoo 0))
+--     (|? (\Matchedbar 0)))
+--         (\Default 0))
 caseStatement
   :: (Show b
      ,Show abs
@@ -50,10 +59,19 @@ caseStatement
   => Grammar (Expr b abs tb)
   -> Grammar (Case (Expr b abs tb) (MatchArg b tb))
 caseStatement exprGr
-  = caseIso \$/ (spaceRequired */ exprGr)
-            \*/ (spaceRequired */ caseBody exprGr)
+  = caseIso \$/ exprGr
+            \*/ (spaceRequired */ caseBody' exprGr)
+  where
+    caseBody' exprGr
+      = (try . betweenParens . caseBody $ exprGr)
+     \|/ caseBody exprGr
 
 -- Either someCaseBranches or
+-- ((|? (\Far 0))
+--  (|? (\Bar 0)))
+--      (\Baz 0)
+-- or
+-- \Foo 0
 caseBody
   :: (Show b
      ,Show abs
@@ -70,6 +88,9 @@ caseBody scrutineeGr =  (try $ caseBranches scrutineeGr)
                     \|/ (defaultOnly scrutineeGr)
 
 -- One or many casebranch then a possible default expr
+-- ((|? (\Far 0))
+--  (|? (\Bar 0)))
+--      (\Baz 0)
 caseBranches
   :: (Show b
      ,Show abs
@@ -82,10 +103,15 @@ caseBranches
      )
   => Grammar (Expr b abs tb)
   -> Grammar (CaseBranches (Expr b abs tb) (MatchArg b tb))
-caseBranches scrutineeGr = caseBranchesIso
-            \$/ (someCaseBranches scrutineeGr)
-            \*/ ((justI \$/ scrutineeGr) \|/ GPure Nothing)
+caseBranches scrutineeGr =
+  caseBranchesIso
+    \$/ (someCaseBranches' scrutineeGr)
+    \*/ (try (justI \$/ spaceAllowed */ scrutineeGr) \|/ GPure Nothing)
   where
+    someCaseBranches' scrutineeGr =
+      (try . betweenParens . someCaseBranches $ scrutineeGr)
+        \|/ (someCaseBranches scrutineeGr)
+
     justI :: Iso a (Maybe a)
     justI = Iso
       ["just"]
@@ -93,6 +119,7 @@ caseBranches scrutineeGr = caseBranchesIso
       id
 
 -- A non-empty list of caseBranch
+-- (|? (\Foo 0)) (|? (\Bar 0))
 someCaseBranches
   :: (Show b
      ,Show abs
@@ -105,9 +132,10 @@ someCaseBranches
   )
   => Grammar (Expr b abs tb)
   -> Grammar (NonEmpty (CaseBranch (Expr b abs tb) (MatchArg b tb)))
-someCaseBranches exprI = nonEmptyI
-                \$/ (caseBranch exprI)
-                \*/ (grammarMany $ caseBranch exprI)
+someCaseBranches exprI =
+  nonEmptyI
+    \$/ (caseBranch exprI)
+    \*/ (grammarMany $ spaceRequired */ caseBranch exprI)
   where
     nonEmptyI :: Iso (a,[a]) (NonEmpty a)
     nonEmptyI = Iso
@@ -118,6 +146,7 @@ someCaseBranches exprI = nonEmptyI
       )
 
 -- A single case branch is a matchArg pattern, then a result expression
+-- E.G.: |? (\Foo 0)
 caseBranch
   :: (Show b
      ,Show abs
@@ -130,7 +159,7 @@ caseBranch
      )
   => Grammar (Expr b abs tb)
   -> Grammar (CaseBranch (Expr b abs tb) (MatchArg b tb))
-caseBranch exprI = caseBranch'
+caseBranch exprI = (try caseBranch')
           \|/ (try $ betweenParens caseBranch')
   where
     caseBranch' = charIs '|' */ (caseBranchIso \$/ matchArg

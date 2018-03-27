@@ -52,6 +52,7 @@ matchArg
  \|/ (try $ betweenParens matchArg)
 
 -- A plus followed by an index and a matchArg
+-- E.G.: +0 ?
 matchSum
   :: (Show b
      ,Show tb

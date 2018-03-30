@@ -65,13 +65,13 @@ testCases = mconcat
   [lamTestCases
   ,bigLamTestCases
   ,[("booleans"      , andExprTestCase)
-   ,("naturals"      , subTwoExprTestCase)
-   ,("sum types"     , sumThreeExprTestCase)
-   ,("product types" , productThreeExprTestCase)
-   ,("union types"   , unionTwoExprTestCase)
-   ,("id"            , idExprTestCase)
-   ,("const"         , constExprTestCase)
-   ,("apply"         , applyExprTestCase)
+   {-,("naturals"      , subTwoExprTestCase)-}
+   {-,("sum types"     , sumThreeExprTestCase)-}
+   {-,("product types" , productThreeExprTestCase)-}
+   {-,("union types"   , unionTwoExprTestCase)-}
+   {-,("id"            , idExprTestCase)-}
+   {-,("const"         , constExprTestCase)-}
+   {-,("apply"         , applyExprTestCase)-}
    {-,("list of nats"  , listNatExprTestCase)-}
    ]
   ]

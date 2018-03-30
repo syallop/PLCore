@@ -96,16 +96,26 @@ andExprTestCase = ExprTestCase
                 )
             )
     ty  = fixType $ Arrow boolType (fixType $ Arrow boolType boolType)
+
     txt = Text.unlines
       ["λBool λBool (CASE 0"
-      ,"               (|"<>falsePatText<>" "<>falseTermText<>")"
-      ,""
-      ,"               (CASE 1"
-      ,"                   (|"<>falsePatText<>" "<>falseTermText<>")"
-      ,""
-      ,"                   "<>trueTermText<>""
-      ,""
-      ,"               )"
+      ,"                  ("   -- case matches
+      ,"                    (" -- Non-default matches
+      ,"                      (|"<>falsePatText<>" "<>falseTermText<>")" -- first (and only) match
+      ,"                    )"
+      ,"                    (" -- default match
+      ,"                      (CASE 1"
+      ,"                            (" -- case matches
+      ,"                              (" --Non-default matches
+      ,"                                (|"<>falsePatText<>" "<>falseTermText<>")" -- first (and only) match
+      ,"                              )"
+      ,"                              (" -- default match
+      ,"                                "<>trueTermText<>"" -- default is the true expr
+      ,"                              )"
+      ,"                            )"
+      ,"                      )"
+      ,"                    )"
+      ,"                  )"
       ,"            )"
       ]
 

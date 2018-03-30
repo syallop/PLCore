@@ -20,74 +20,130 @@ import Control.Applicative
 import Control.Monad
 import Data.Monoid
 
--- A Parser that accepts that grammar if the Iso also succeeds.
-isoMapParser
-  :: Show a
-  => Iso a b
-  -> G.Grammar a
-  -> Parser b
-isoMapParser iso@(Iso labels _ _) gr =
-  let Parser p = toParser gr
-   in Parser $ \cur0 -> case p cur0 of
-        ParseSuccess a cur1
-          -> case parseIso iso a of
-               Nothing
-                 -> ParseFailure [(ExpectLabel (Text.intercalate "." labels) $ grammarExpects gr, cur0)] cur1 -- cur1
-
-               Just b
-                 -> ParseSuccess b cur1
-
-        ParseFailure failures cur1
-          -> ParseFailure failures cur1
-
-
-
--- | Tuple the result of two successive parsers.
-productMapParser :: Parser a -> Parser b -> Parser (a,b)
-productMapParser fa fb = (,) <$> fa <*> fb
 
 -- | Convert a Grammar to a Parser that accepts it.
 toParser :: G.Grammar a -> Parser a
-toParser grammar = case grammar of
-  -- A single character if one is available.
-  G.GAnyChar
-    -> takeChar
+toParser = toParser' . makePermissive
+  where
+    toParser' :: G.Grammar a -> Parser a
+    toParser' grammar = case grammar of
+      -- A single character if one is available.
+      G.GAnyChar
+        -> takeChar
 
-  -- A token of text stopping at the first whitespace.
-  G.GAnyText
-    -> takeWhile1 (Predicate (not . isSpace) $ ExpectAnything)
+      -- A token of text stopping at the first whitespace.
+      G.GAnyText
+        -> takeWhile1 (Predicate (not . isSpace) $ ExpectAnything)
 
-  -- Return the value.
-  G.GPure a
-    -> pure a
+      -- Return the value.
+      G.GPure a
+        -> pure a
 
-  -- Fail with no Expectations.
-  G.GEmpty
-    -> empty
+      -- Fail with no Expectations.
+      G.GEmpty
+        -> empty
 
-  -- If the left fails, try the right as if no input had been consumed.
-  G.GAlt g0 g1
-    -> toParser g0 <|> toParser g1
+      -- If the left fails, try the right as if no input had been consumed.
+      G.GAlt g0 g1
+        -> toParser' g0 <|> toParser' g1
 
-  -- Parse the grammar if the iso succeeds.
-  G.GIsoMap iso ga
-    -> isoMapParser iso ga
+      -- Parse the grammar if the iso succeeds.
+      G.GIsoMap iso ga
+        -> isoMapParser iso ga
 
-  -- | Tuple the result of two successive parsers.
-  G.GProductMap ga gb
-    -> productMapParser (toParser ga) (toParser gb)
+      -- | Tuple the result of two successive parsers.
+      G.GProductMap ga gb
+        -> productMapParser (toParser' ga) (toParser' gb)
 
-  -- Enhance a failing parse with a given Expect label.
-  G.GLabel l g
-    -> let Parser f = toParser g
-        in Parser $ \cur0 -> case f cur0 of
-             ParseFailure failures cur1
-               -> ParseFailure (map (\(e,c) -> (ExpectLabel l e,c)) failures) cur1
-             s -> s
+      -- Enhance a failing parse with a given Expect label.
+      G.GLabel l g
+        -> let Parser f = toParser' g
+            in Parser $ \cur0 -> case f cur0 of
+                 ParseFailure failures cur1
+                   -> ParseFailure (map (\(e,c) -> (ExpectLabel l e,c)) failures) cur1
+                 s -> s
 
-  G.GTry g0
-    -> P.try . toParser $ g0
+      G.GTry g0
+        -> P.try . toParser' $ g0
 
+    -- A Parser that accepts that grammar if the Iso also succeeds.
+    isoMapParser
+      :: Show a
+      => Iso a b
+      -> G.Grammar a
+      -> Parser b
+    isoMapParser iso@(Iso labels _ _) gr =
+      let Parser p = toParser' gr
+       in Parser $ \cur0 -> case p cur0 of
+            ParseSuccess a cur1
+              -> case parseIso iso a of
+                   Nothing
+                     -> ParseFailure [(ExpectLabel (Text.intercalate "." labels) $ grammarExpects gr, cur0)] cur1 -- cur1
+
+                   Just b
+                     -> ParseSuccess b cur1
+
+            ParseFailure failures cur1
+              -> ParseFailure failures cur1
+
+
+
+    -- | Tuple the result of two successive parsers.
+    productMapParser :: Parser a -> Parser b -> Parser (a,b)
+    productMapParser fa fb = (,) <$> fa <*> fb
+
+    -- | A permissive grammar allows:
+    -- - Leading whitespace
+    -- - Trailing whitespace
+    -- - Parenthesis grouping allowing:
+    --   - Trailing whitespace after the opening paren
+    --   - Leading whitespace before the closing paren
+    permissive
+      :: Show a
+      => Grammar a
+      -> Grammar a
+    permissive g
+      = g
+      {-= G.try spaceAllowed G.*/ (g \|/ G.between (lparen G.\* G.try spaceAllowed) g (G.try spaceAllowed G.*/ rparen)) G.\* G.try spaceAllowed-}
+
+    -- | Make every sub-grammar 'permissive'.
+    makePermissive
+      :: Grammar a
+      -> Grammar a
+    makePermissive g = case g of
+      G.GAnyChar
+        -> permissive G.GAnyChar
+
+      -- A token of text stopping at the first whitespace.
+      G.GAnyText
+        -> permissive G.GAnyText
+
+      -- Return the value.
+      G.GPure a
+        -> G.GPure a
+
+      -- Fail with no Expectations.
+      G.GEmpty
+        -> G.GEmpty
+
+      -- If the left fails, try the right as if no input had been consumed.
+      G.GAlt g0 g1
+        -> G.GAlt (makePermissive g0) (makePermissive g1)
+
+      -- Parse the grammar if the iso succeeds.
+      G.GIsoMap iso ga
+        -> G.GIsoMap iso (makePermissive ga)
+
+      -- | Tuple the result of two successive parsers.
+      G.GProductMap ga gb
+        -> G.GProductMap (makePermissive ga) (makePermissive gb)
+
+      -- Enhance a failing parse with a given Expect label.
+      G.GLabel l g
+        -> G.GLabel l (makePermissive g)
+
+      G.GTry g
+        -> G.GTry (makePermissive g)
 
 -- | A Grammar's parser expected to see:
 grammarExpects :: forall a. Show a => Grammar a -> Expected

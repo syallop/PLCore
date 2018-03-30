@@ -45,11 +45,6 @@ import PLParser              as X
 -- eventually to a corresponing printer.
 import PLGrammar             as X
 
--- A Grammar for PL with a lisp-like syntax.
-import PL.Grammar.Lispy       as X
-import PL.Grammar.Lispy.Expr  as X
-import PL.Grammar.Lispy.Type  as X
-
 -- A NIH Pretty-Printer
 import PLPrinter              as X
 

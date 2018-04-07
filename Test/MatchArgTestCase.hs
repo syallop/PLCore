@@ -4,13 +4,13 @@
   , FlexibleContexts
   #-}
 {-|
-Module      : MatchArgTestCase
+Module      : Test.MatchArgTestCase
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 -}
-module MatchArgTestCase where
+module Test.MatchArgTestCase where
 
 import PL.Binds
 import PL.Case
@@ -18,7 +18,6 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Grammar
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
 import PL.Type
@@ -43,6 +42,7 @@ import Data.List
 import Data.Text (Text)
 
 import Test.Hspec
+import Test.Source
 
 type TestType = Type TyVar
 type TestMatchArg = MatchArg Var TyVar
@@ -111,11 +111,12 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
              ]
 
 parseToSpec
-  :: Text.Text
+  :: Parser TestMatchArg
+  -> Text.Text
   -> Text.Text
   -> TestMatchArg
   -> Spec
-parseToSpec name txt expectMatchArg =
+parseToSpec testMatchArgP name txt expectMatchArg =
   it (Text.unpack name) $ case runParser testMatchArgP txt of
     (f@(ParseFailure e c))
       -> expectationFailure $ Text.unpack $ render $ document f
@@ -133,7 +134,4 @@ parseToSpec name txt expectMatchArg =
                                   ,lineBreak
                                   ,document expectMatchArg
                                   ]
-
-testMatchArgP :: Parser TestMatchArg
-testMatchArgP = toParser $ using var (typ tyVar) tyVar matchArg
 

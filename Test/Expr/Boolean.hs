@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprSpec.Boolean
+Module      : Text.Expr.Boolean
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using a 'Boolean' type.
 -}
-module ExprSpec.Boolean
+module Test.Expr.Boolean
   ( boolTypeCtx
   , boolTypeName
   , boolType
@@ -16,12 +16,11 @@ module ExprSpec.Boolean
   , trueTerm
   , falsePat
   , truePat
-  , falseTermText
-  , trueTermText
-  , falsePatText
-  , truePatText
 
   , andExprTestCase
+
+  , TestBooleanSources (..)
+  , booleanTestCases
   )
   where
 
@@ -31,7 +30,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.FixExpr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -49,7 +47,19 @@ import qualified Data.Text as Text
 import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
 
-import ExprTestCase
+import Test.ExprTestCase
+import Test.Source
+
+data TestBooleanSources = TestBooleanSources
+  { _andTestCase :: Source
+  }
+
+booleanTestCases
+  :: TestBooleanSources
+  -> [(Text, ExprTestCase)]
+booleanTestCases t =
+  [("and", andExprTestCase . _andTestCase $ t)
+  ]
 
 boolTypeCtx = insertType "Bool" boolType emptyTypeCtx
 boolTypeName = fixType $ Named "Bool"
@@ -63,21 +73,17 @@ trueTerm      = fixExpr $ Sum (fixExpr $ Product []) 1 boolSumType
 falsePat      = MatchSum 0 (MatchProduct [])
 truePat       = MatchSum 1 (MatchProduct [])
 
-falseTermText, trueTermText, falsePatText, truePatText :: Text
-
-falseTermText = "+0 (*) (*) (*)"
-trueTermText  = "+1 (*) (*) (*)"
-falsePatText  = "(+0 (*))"
-truePatText   = "(+1 (*))"
-
 -- Boolean and
-andExprTestCase :: ExprTestCase
-andExprTestCase = ExprTestCase
-  {_underTypeCtx = ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = txt
-  }
+andExprTestCase
+  :: Source
+  -> ExprTestCase
+andExprTestCase src
+  = ExprTestCase
+      { _underTypeCtx = ctx
+      , _isExpr       = e
+      , _typed        = ty
+      , _parsesFrom   = src
+      }
   where
     ctx = fromJust boolTypeCtx
     e   = fixExpr $ Lam boolTypeName $ fixExpr $ Lam boolTypeName $ fixExpr $ -- \x:Bool y:Bool ->
@@ -97,25 +103,4 @@ andExprTestCase = ExprTestCase
             )
     ty  = fixType $ Arrow boolType (fixType $ Arrow boolType boolType)
 
-    txt = Text.unlines
-      ["λBool λBool (CASE 0"
-      ,"                  ("   -- case matches
-      ,"                    (" -- Non-default matches
-      ,"                      (|"<>falsePatText<>" "<>falseTermText<>")" -- first (and only) match
-      ,"                    )"
-      ,"                    (" -- default match
-      ,"                      (CASE 1"
-      ,"                            (" -- case matches
-      ,"                              (" --Non-default matches
-      ,"                                (|"<>falsePatText<>" "<>falseTermText<>")" -- first (and only) match
-      ,"                              )"
-      ,"                              (" -- default match
-      ,"                                "<>trueTermText<>"" -- default is the true expr
-      ,"                              )"
-      ,"                            )"
-      ,"                      )"
-      ,"                    )"
-      ,"                  )"
-      ,"            )"
-      ]
 

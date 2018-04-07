@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprSpec.Natural
+Module      : Test.Expr.Natural
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using a 'Natural' type.
 -}
-module ExprSpec.Natural
+module Test.Expr.Natural
   ( natTypeCtx
   , natTypeName
   , natType
@@ -16,9 +16,6 @@ module ExprSpec.Natural
   , sTerm
   , zPat
   , sPat
-  , zTermText
-  , sTermText
-  , zPatText
 
   , zero
   , succ
@@ -28,6 +25,9 @@ module ExprSpec.Natural
   , four
 
   , subTwoExprTestCase
+
+  , TestNaturalSources (..)
+  , naturalTestCases
   )
   where
 
@@ -37,7 +37,6 @@ import PL.Case
 import PL.Error
 import PL.FixExpr
 import PL.Expr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -56,7 +55,19 @@ import qualified Data.Text as Text
 
 import Data.Monoid ((<>))
 
-import ExprTestCase
+import Test.ExprTestCase
+import Test.Source
+
+data TestNaturalSources = TestNaturalSources
+  { _subTwoTestCase :: Source
+  }
+
+naturalTestCases
+  :: TestNaturalSources
+  -> [(Text, ExprTestCase)]
+naturalTestCases t =
+  [ ("subtract two", subTwoExprTestCase . _subTwoTestCase $ t)
+  ]
 
 natTypeCtx = insertRecType "Nat" natType emptyTypeCtx
 natTypeName = fixType $ Named "Nat"
@@ -76,12 +87,6 @@ zPat = MatchSum 0 (MatchProduct [])
 sPat :: MatchArg Var tb -> MatchArg Var tb
 sPat = MatchSum 1
 
-zTermText, sTermText, zPatText :: Text
-zTermText  = "+0(*) (*) Nat"
-sTermText  = "λNat (+1 0 (*) Nat)"
-zPatText   = "+0(*)"
-sPatText p = "+1"<>p
-
 suc :: Expr Var (Type tb) tb -> Expr Var (Type tb) tb
 suc n = fixExpr $ App sTerm (n)
 
@@ -95,13 +100,16 @@ four  = suc three
 -- Test nested pattern matching
 -- n > 2     ~> n-2
 -- otherwise ~> 0
-subTwoExprTestCase :: ExprTestCase
-subTwoExprTestCase = ExprTestCase
-  {_underTypeCtx = ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = txt
-  }
+subTwoExprTestCase
+  :: Source
+  -> ExprTestCase
+subTwoExprTestCase src
+  = ExprTestCase
+      { _underTypeCtx = ctx
+      , _isExpr       = e
+      , _typed        = ty
+      , _parsesFrom   = src
+      }
   where
     ctx = fromJust natTypeCtx
 
@@ -116,11 +124,4 @@ subTwoExprTestCase = ExprTestCase
                   zTerm                                                 --   _     -> Z
             )
     ty = fixType $ Arrow natType natType
-
-    txt = Text.unlines
-      ["λNat (CASE 0"
-      ,"         (|" <> sPatText (sPatText "?") <>" 0)"
-      ,"         "<>zTermText
-      ,"     )"
-      ]
 

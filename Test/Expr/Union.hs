@@ -1,14 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprSpec.Union
+Module      : Test.Expr.Union
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using the 'Union' type.
 -}
-module ExprSpec.Union
+module Test.Expr.Union
   ( unionTwoExprTestCase
+
+  , TestUnionSources (..)
+  , unionTestCases
   )
   where
 
@@ -18,7 +21,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.FixExpr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -37,19 +39,34 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Text as Text
 import qualified Data.Set as Set
 
-import ExprSpec.Boolean
-import ExprSpec.Natural
+import Test.Expr.Boolean
+import Test.Expr.Natural
 
-import ExprTestCase
+import Test.ExprTestCase
+import Test.Source
+
+data TestUnionSources = TestUnionSources
+  { _unionTwoTestCase :: Source
+  }
+
+unionTestCases
+  :: TestUnionSources
+  -> [(Text, ExprTestCase)]
+unionTestCases t =
+  [ ("union of two types", unionTwoExprTestCase . _unionTwoTestCase $ t)
+  ]
 
 -- : <Nat|Bool> -> Bool
-unionTwoExprTestCase :: ExprTestCase
-unionTwoExprTestCase = ExprTestCase
-  {_underTypeCtx = ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = txt
-  }
+unionTwoExprTestCase
+  :: Source
+  -> ExprTestCase
+unionTwoExprTestCase src =
+  ExprTestCase
+    { _underTypeCtx = ctx
+    , _isExpr       = e
+    , _typed        = ty
+    , _parsesFrom   = src
+    }
   where
     ctx = fromJust $ boolTypeCtx <> natTypeCtx
     e   = fixExpr $ Lam (fixType $ UnionT $ Set.fromList [natTypeName,boolTypeName]) $ fixExpr $ -- \x : <Nat|Bool>
@@ -64,13 +81,4 @@ unionTwoExprTestCase = ExprTestCase
                     falseTerm                                                   -- _          -> False
                 )
     ty  = fixType $ Arrow (fixType $ UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
-    txt = Text.unlines
-      ["λ(∪ Bool Nat) (CASE 0"
-      ,"                (| (∪ Nat  (+0 (*))) (+0 (*) (*) (*)))"
-      ,"                (| (∪ Nat  (+1 ?))   (+1 (*) (*) (*)))"
-      ,"                (| (∪ Bool (+1 (*))) (+1 (*) (*) (*)))"
-      ,""
-      ,"                (+0 (*) (*) (*))"
-      ,"              )"
-      ]
 

@@ -1,14 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : MatchArgSpec.Union
+Module      : Test.MatchArg.Union
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module MatchArgSpec.Union
-  ( unionMatchArgTestCases
+module Test.MatchArg.Union
+  (TestUnionSources (..)
+  , unionTestCases
   )
   where
 
@@ -17,7 +18,6 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -34,29 +34,39 @@ import Data.Text (Text)
 
 import qualified Data.Set as Set
 
-import MatchArgTestCase
+import Test.MatchArgTestCase
 
-import ExprSpec.Boolean
+import Test.Expr.Boolean
+import Test.Source
+
+data TestUnionSources = TestUnionSources
+  { _unionTestCase :: Source
+  }
 
 -- Test the union constructor of MatchArgs.
-unionMatchArgTestCases :: [(Text,MatchArgTestCase)]
-unionMatchArgTestCases =
-  [--("Single union", unionMatchArgTestCase)
+unionTestCases
+  :: TestUnionSources
+  -> [(Text, MatchArgTestCase)]
+unionTestCases t =
+  [("Single union", unionMatchArgTestCase . _unionTestCase $ t)
   ]
 
 -- A simple MatchArg on a union constructor.
 -- Intended to be used in more complex test cases by field substitution.
-defaultUnionMatchArgTestCase :: MatchArgTestCase
-defaultUnionMatchArgTestCase = MatchArgTestCase
-  {_underTypeCtx         = typeCtx
-  ,_underExprBindCtx     = exprBindCtx
-  ,_underTypeBindCtx     = typeBindCtx
-  ,_underTypeBindings    = typeBindings
-  ,_isMatchArg           = isMatchArg
-  ,_typed                = typed
-  ,_checkMatchWithResult = checkMatchWithResult
-  ,_parsesFrom           = parsesFrom
-  }
+defaultUnionMatchArgTestCase
+  :: Source
+  -> MatchArgTestCase
+defaultUnionMatchArgTestCase src
+  = MatchArgTestCase
+      {_underTypeCtx         = typeCtx
+      ,_underExprBindCtx     = exprBindCtx
+      ,_underTypeBindCtx     = typeBindCtx
+      ,_underTypeBindings    = typeBindings
+      ,_isMatchArg           = isMatchArg
+      ,_typed                = typed
+      ,_checkMatchWithResult = checkMatchWithResult
+      ,_parsesFrom           = parsesFrom
+      }
   where
     typeCtx              = emptyTypeCtx
     exprBindCtx          = emptyCtx
@@ -66,7 +76,11 @@ defaultUnionMatchArgTestCase = MatchArgTestCase
     isMatchArg           = MatchUnion (fixType $ ProductT []) (MatchProduct [])
     typed                = fixType $ UnionT $ Set.fromList $ [fixType $ ProductT []]
     checkMatchWithResult = Right []
-    parsesFrom           = "∪ (*)"
+    parsesFrom           = src
 
-unionMatchArgTestCase :: MatchArgTestCase
-unionMatchArgTestCase = defaultUnionMatchArgTestCase
+unionMatchArgTestCase
+  :: Source
+  -> MatchArgTestCase
+unionMatchArgTestCase
+  = defaultUnionMatchArgTestCase
+

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprTestCase
+Module      : Test.ExprTestCase
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -8,7 +8,7 @@ Stability   : experimental
 Functions for testing expression parsing, typechecking, reduction, etc.
 Also exports 'ExprTestCase' which encapsulates an example which can have all of these properties tested.
 -}
-module ExprTestCase
+module Test.ExprTestCase
   ( TestExpr
   , TestType
   , ExprTestCase(..)
@@ -29,7 +29,6 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Grammar
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Reduce
 import PL.TyVar
 import PL.Type
@@ -54,6 +53,7 @@ import Data.List
 import Data.Text (Text)
 
 import Test.Hspec
+import Test.Source
 
 type TestType = Type TyVar
 type TestExpr = Expr Var TestType TyVar
@@ -67,7 +67,12 @@ data ExprTestCase = ExprTestCase
 
 -- | Test whether an expression typechecks.
 -- Name an expression, check it fully typechecks AND type checks to the given type
-typeChecksTo :: TypeCtx TyVar -> Text -> TestExpr -> TestType -> Spec
+typeChecksTo
+  :: TypeCtx TyVar
+  -> Text
+  -> TestExpr
+  -> TestType
+  -> Spec
 typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprType typeCtx expr of
   Left err
     -> expectationFailure $ Text.unpack $ renderDocument err
@@ -82,15 +87,28 @@ typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprTy
 --
 -- Name an expression, apply it to a list of (argnames,argument,expected result) tuples.
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
-manyAppliedReducesToSpec :: String -> TestExpr -> [(String,[TestExpr],TestExpr)] -> Spec
+manyAppliedReducesToSpec
+  :: String
+  -> TestExpr
+  -> [(String,[TestExpr],TestExpr)]
+  -> Spec
 manyAppliedReducesToSpec name expr reductions = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult) reductions
 
 -- Name an expression, apply it to a list of expressions. Does it reduce to the given expression?
-appliedReducesToSpec :: TestExpr -> String -> [TestExpr] -> TestExpr -> Spec
+appliedReducesToSpec
+  :: TestExpr
+  -> String
+  -> [TestExpr]
+  -> TestExpr
+  -> Spec
 appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 
 -- Name an expression. Check it reduces to an expression.
-reduceToSpec :: String -> TestExpr -> TestExpr -> Spec
+reduceToSpec
+  :: String
+  -> TestExpr
+  -> TestExpr
+  -> Spec
 reduceToSpec name expr eqExpr = it name $ case reduce expr of
   Left exprErr
     -> expectationFailure $ Text.unpack $ render $ text "target expression does not reduce: " <> document exprErr
@@ -116,16 +134,17 @@ reduceToSpec name expr eqExpr = it name $ case reduce expr of
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
-testExprP :: Parser TestExpr
-testExprP = toParser $ expr var (typ tyVar) tyVar
+{-testExprP :: Parser TestExpr-}
+{-testExprP = toParser $ expr var (typ tyVar) tyVar-}
 
 -- | Test whether some text parses to some expression
 parseToSpec
-  :: Text.Text
+  :: Parser TestExpr
+  -> Text.Text
   -> Text.Text
   -> TestExpr
   -> Spec
-parseToSpec name txt expectExpr = it (Text.unpack name) $ case runParser testExprP txt of
+parseToSpec testExprP name txt expectExpr = it (Text.unpack name) $ case runParser testExprP txt of
   (f@(ParseFailure e c))
     -> expectationFailure $ Text.unpack $ render $ document f
 
@@ -144,8 +163,12 @@ parseToSpec name txt expectExpr = it (Text.unpack name) $ case runParser testExp
                                    ,document expectExpr
                                    ]
 
-testPipeline :: TypeCtx TyVar -> Text.Text -> String
-testPipeline typeCtx txt = case runParser testExprP txt of
+testPipeline
+  :: Parser TestExpr
+  -> TypeCtx TyVar
+  -> Text.Text
+  -> String
+testPipeline testExprP typeCtx txt = case runParser testExprP txt of
   ParseFailure expected c
     -> unlines ["Parse failure"
                ,"Parse expected: " ++ show expected

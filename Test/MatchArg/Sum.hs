@@ -1,14 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : MatchArgSpec.Sum
+Module      : Test.MatchArg.Sum
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module MatchArgSpec.Sum
-  ( sumMatchArgTestCases
+module Test.MatchArg.Sum
+  ( TestSumSources (..)
+  , sumTestCases
   )
   where
 
@@ -17,7 +18,6 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -32,29 +32,39 @@ import PLParser
 import Data.Text (Text)
 import Data.Maybe (fromJust)
 
-import MatchArgTestCase
+import Test.MatchArgTestCase
 
-import ExprSpec.Boolean
+import Test.Expr.Boolean
+import Test.Source
+
+data TestSumSources = TestSumSources
+  { _sumTestCase :: Source
+  }
 
 -- Test the sum constructor of MatchArgs.
-sumMatchArgTestCases :: [(Text,MatchArgTestCase)]
-sumMatchArgTestCases =
-  [--("Empty sum", sumMatchArgTestCase)
+sumTestCases
+  :: TestSumSources
+  -> [(Text,MatchArgTestCase)]
+sumTestCases t =
+  [("Empty sum", sumMatchArgTestCase . _sumTestCase $ t)
   ]
 
 -- (One of) the simplest MatchArgs on a sum constructor. Intended to be used in
 -- more complex test cases by field substitution.
-defaultSumMatchArgTestCase :: MatchArgTestCase
-defaultSumMatchArgTestCase = MatchArgTestCase
-  {_underTypeCtx         = typeCtx
-  ,_underExprBindCtx     = exprBindCtx
-  ,_underTypeBindCtx     = typeBindCtx
-  ,_underTypeBindings    = typeBindings
-  ,_isMatchArg           = isMatchArg
-  ,_typed                = typed
-  ,_checkMatchWithResult = checkMatchWithResult
-  ,_parsesFrom           = parsesFrom
-  }
+defaultSumMatchArgTestCase
+  :: Source
+  -> MatchArgTestCase
+defaultSumMatchArgTestCase src
+  = MatchArgTestCase
+      {_underTypeCtx         = typeCtx
+      ,_underExprBindCtx     = exprBindCtx
+      ,_underTypeBindCtx     = typeBindCtx
+      ,_underTypeBindings    = typeBindings
+      ,_isMatchArg           = isMatchArg
+      ,_typed                = typed
+      ,_checkMatchWithResult = checkMatchWithResult
+      ,_parsesFrom           = parsesFrom
+      }
   where
     typeCtx              = emptyTypeCtx
     exprBindCtx          = emptyCtx
@@ -67,7 +77,11 @@ defaultSumMatchArgTestCase = MatchArgTestCase
     isMatchArg           = MatchSum 0 (MatchProduct [])
     typed                = fixType $ SumT [fixType $ ProductT []]
     checkMatchWithResult = Right []
-    parsesFrom           = "(+ (*))"
+    parsesFrom           = src
 
-sumMatchArgTestCase :: MatchArgTestCase
-sumMatchArgTestCase = defaultSumMatchArgTestCase
+sumMatchArgTestCase
+  :: Source
+  -> MatchArgTestCase
+sumMatchArgTestCase
+  = defaultSumMatchArgTestCase
+

@@ -1,14 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprSpec.Sum
+Module      : Test.Expr.Sum
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using the 'sum' type.
 -}
-module ExprSpec.Sum
+module Test.Expr.Sum
   ( sumThreeExprTestCase
+
+  , TestSumSources (..)
+  , sumTestCases
   )
   where
 
@@ -18,7 +21,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.FixExpr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -36,19 +38,34 @@ import Data.Monoid
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 
-import ExprSpec.Natural
-import ExprSpec.Boolean
+import Test.Expr.Natural
+import Test.Expr.Boolean
 
-import ExprTestCase
+import Test.ExprTestCase
+import Test.Source
+
+data TestSumSources = TestSumSources
+  { _sumThreeTestCase :: Source
+  }
+
+sumTestCases
+  :: TestSumSources
+  -> [(Text, ExprTestCase)]
+sumTestCases t =
+  [ ("sum three types", sumThreeExprTestCase . _sumThreeTestCase $ t)
+  ]
 
 -- Test case analysis on a sum type with overlapping members
-sumThreeExprTestCase :: ExprTestCase
-sumThreeExprTestCase = ExprTestCase
-  {_underTypeCtx = ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = txt
-  }
+sumThreeExprTestCase
+  :: Source
+  -> ExprTestCase
+sumThreeExprTestCase src =
+  ExprTestCase
+    { _underTypeCtx = ctx
+    , _isExpr       = e
+    , _typed        = ty
+    , _parsesFrom   = src
+    }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
     e   = fixExpr $ Lam (fixType $ SumT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $    -- \x : Nat|Bool|Nat ->
@@ -64,14 +81,4 @@ sumThreeExprTestCase = ExprTestCase
                 )
                 Nothing
     ty  = fixType $ Arrow (fixType $ SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
-    txt = Text.unlines
-      ["λ(+ Nat Bool Nat) (CASE 0"
-      ,"                   (| (+ 0 +1 ?)  (0))"
-      ,"                   (| (+ 0 +0 *)  (+0 (*) (*) Nat))"
-      ,"                   (| (+ 1 +0 *)  (+0 (*) (*) Nat))"
-      ,"                   (| (+ 1 +1 *)  (@ (λNat (+1 (0) (*) Nat))  (+0 (*) (*) Nat)))"
-      ,"                   (| (+ 2 +1 ?)  (+0 (*) (*) Nat))"
-      ,"                   (| (+ 2 +0 *)  (@ (λNat (+1 (0) (*) Nat))  (+0 (*) (*) Nat)))"
-      ,"                 )"
-      ]
 

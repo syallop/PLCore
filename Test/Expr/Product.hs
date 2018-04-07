@@ -1,14 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprSpec.Product
+Module      : Test.Expr.Product
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using the 'product' type.
 -}
-module ExprSpec.Product
+module Test.Expr.Product
   ( productThreeExprTestCase
+
+  , TestProductSources (..)
+  , productTestCases
   )
   where
 
@@ -18,7 +21,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.FixExpr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -36,18 +38,33 @@ import Data.Monoid ((<>))
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 
-import ExprSpec.Natural
-import ExprSpec.Boolean
+import Test.Expr.Natural
+import Test.Expr.Boolean
 
-import ExprTestCase
+import Test.ExprTestCase
+import Test.Source
 
-productThreeExprTestCase :: ExprTestCase
-productThreeExprTestCase = ExprTestCase
-  {_underTypeCtx = ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = txt
+data TestProductSources = TestProductSources
+  { _productThreeTestCase :: Source
   }
+
+productTestCases
+  :: TestProductSources
+  -> [(Text, ExprTestCase)]
+productTestCases t =
+  [ ("product three types", productThreeExprTestCase . _productThreeTestCase $ t)
+  ]
+
+productThreeExprTestCase
+  :: Source
+  -> ExprTestCase
+productThreeExprTestCase src
+  = ExprTestCase
+      { _underTypeCtx = ctx
+      , _isExpr       = e
+      , _typed        = ty
+      , _parsesFrom   = src
+      }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
     e   = fixExpr $ Lam (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $ -- \x : Nat*Bool*Nat ->
@@ -60,12 +77,4 @@ productThreeExprTestCase = ExprTestCase
               falseTerm                                                               -- _ -> False
           )
     ty = fixType $ Arrow (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
-    txt = Text.unlines
-      ["λ(* Nat Bool Nat) (CASE 0"
-      ,"                    (| (* (+0 (*)) (?) (+0 (*))) (0))"
-      ,"                    (| (* (?)      (?) (+0 (*))) (0))"
-      ,""
-      ,"                    (+0 (*) (*) (*))"
-      ,"                  )"
-      ]
 

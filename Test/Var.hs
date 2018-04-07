@@ -1,12 +1,12 @@
 {-|
-Module      : Var
+Module      : Test.Var
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 Functions used for testing PL.Var
 -}
-module Var where
+module Test.Var where
 
 import Test.QuickCheck
 

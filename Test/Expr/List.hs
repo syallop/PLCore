@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : ExprSpec.List
+Module      : Test.Expr.List
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -8,7 +8,7 @@ Stability   : experimental
 HSpec tests for PL.Expr using a heterogenous 'List' type parameterised by some
 element type.
 -}
-module ExprSpec.List
+module Test.Expr.List
   ( listTypeCtx
   , listTypeName
   , listType
@@ -26,7 +26,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.FixExpr
-import PL.Grammar.Lispy hiding (appise,lamise)
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -42,15 +41,16 @@ import Data.Text (Text)
 import Data.Monoid ((<>))
 import Data.Maybe
 
-import ExprSpec.Natural
-import ExprTestCase
+import Test.Expr.Natural
+import Test.ExprTestCase
+import Test.Source
 
 listTypeCtx  = insertRecType "List" listType emptyTypeCtx
 listTypeName = fixType $ Named "List"
 listType     = fixType $ TypeLam Kind $ fixType $ SumT listSumType
 listSumType  = map fixType
-                 [ProductT [] -- : List a
-                 ,ProductT $ map fixType $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)]
+                 [ ProductT [] -- : List a
+                 , ProductT $ map fixType $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)]
                  ]
 
 emptyTerm :: Expr Var (Type TyVar) TyVar
@@ -60,16 +60,19 @@ consTerm :: Expr Var (Type TyVar) TyVar
 consTerm = fixExpr $ BigLam Kind $ fixExpr $ Lam (fixType $ TypeBinding $ TyVar VZ) $ fixExpr $ Lam (fixType $ TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)) $ fixExpr $ Sum (fixExpr $ Product [fixExpr $ Binding $ VS VZ, fixExpr $ Binding VZ]) 1 listSumType
 
 -- [0]
-listNatExprTestCase :: ExprTestCase
-listNatExprTestCase = ExprTestCase
-  {_underTypeCtx = ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = txt
-  }
+listNatExprTestCase
+  :: Source
+  -> ExprTestCase
+listNatExprTestCase src
+  = ExprTestCase
+      { _underTypeCtx = ctx
+      , _isExpr       = e
+      , _typed        = ty
+      , _parsesFrom   = src
+      }
   where
     ctx = fromJust $ listTypeCtx <> natTypeCtx
     e   = fixExpr $ App (fixExpr $ App (fixExpr $ BigApp consTerm natTypeName) zero) (fixExpr $ BigApp emptyTerm natTypeName)
     ty  = fixType $ TypeApp listTypeName natType
-    txt = undefined
+    {-src = undefined-}
 

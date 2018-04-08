@@ -22,7 +22,6 @@ library
                      , PL.Expr
                      , PL.FixExpr
                      , PL.ExprLike
-                     , PL.Grammar
                      , PL.Kind
                      , PL.Name
                      , PL.Reduce

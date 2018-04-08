@@ -17,7 +17,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.Grammar
 import PL.Reduce
 import PL.TyVar
 import PL.Type
@@ -59,7 +58,8 @@ data MatchArgTestCase = MatchArgTestCase
   }
 
 hasExpectedResultSpec
-  :: TypeCtx TyVar
+  :: Document (ParseResult TestMatchArg)
+  => TypeCtx TyVar
   -> ExprBindCtx Var TyVar
   -> TypeBindCtx TyVar
   -> TypeBindings TyVar
@@ -111,7 +111,8 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
              ]
 
 parseToSpec
-  :: Parser TestMatchArg
+  :: Document (ParseResult TestMatchArg)
+  => Parser TestMatchArg
   -> Text.Text
   -> Text.Text
   -> TestMatchArg

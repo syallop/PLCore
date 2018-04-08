@@ -1,4 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , OverloadedStrings
+  #-}
 {-|
 Module      : PL.Test.Expr
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -96,7 +99,8 @@ testCases t = mconcat
 --
 -- to define a spec testing your Expr parser.
 parserSpec
-  :: TestExprSources
+  :: Document (ParseResult TestExpr)
+  => TestExprSources
   -> Parser TestExpr
   -> Spec
 parserSpec testSources testExprP
@@ -179,7 +183,8 @@ reducesToSpec testSources
 
 -- Test that Text strings parse to an expected expression
 parsesToSpec
-  :: TestExprSources
+  :: Document (ParseResult TestExpr)
+  => TestExprSources
   -> Parser TestExpr
   -> Spec
 parsesToSpec sources testExprP

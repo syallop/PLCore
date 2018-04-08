@@ -1,4 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE
+    FlexibleContexts
+  , OverloadedStrings
+  #-}
 {-|
 Module      : PL.Test.MatchArg
 Copyright   : (c) Samuel A. Yallop, 2017
@@ -86,7 +89,8 @@ testCases t = mconcat
 --
 -- to define a spec testing your MatchArg parser.
 parserSpec
-  :: TestMatchArgSources
+  :: Document (ParseResult TestMatchArg)
+  => TestMatchArgSources
   -> Parser TestMatchArg
   -> Spec
 parserSpec sources testMatchArgP
@@ -97,7 +101,8 @@ parserSpec sources testMatchArgP
 
 -- Test that Text strings parse to an expected expression
 parseTo
-  :: TestMatchArgSources
+  :: Document (ParseResult TestMatchArg)
+  => TestMatchArgSources
   -> Parser TestMatchArg
   -> Spec
 parseTo sources testMatchArgP
@@ -109,7 +114,8 @@ parseTo sources testMatchArgP
 
 -- Test that MatchArgs bind the expected types or fail predictably.
 hasExpectedResult
-  :: TestMatchArgSources
+  :: Document (ParseResult TestMatchArg)
+  => TestMatchArgSources
   -> Spec
 hasExpectedResult sources
   = describe "A MatchArg evaluates to the expected result"

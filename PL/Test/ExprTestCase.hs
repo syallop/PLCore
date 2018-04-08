@@ -1,4 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE
+    OverloadedStrings
+  , FlexibleContexts
+  #-}
 {-|
 Module      : PL.Test.ExprTestCase
 Copyright   : (c) Samuel A. Yallop, 2017
@@ -28,7 +31,6 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
-import PL.Grammar
 import PL.Reduce
 import PL.TyVar
 import PL.Type
@@ -40,6 +42,7 @@ import PL.Bindings
 import PLGrammar
 import PLParser
 import PLParser (runParser,Parser,ParseResult(..),pointTo)
+import PLParser.Cursor
 import PLPrinter
 
 import Control.Applicative
@@ -139,7 +142,8 @@ uncurry3 f (a,b,c) = f a b c
 
 -- | Test whether some text parses to some expression
 parseToSpec
-  :: Parser TestExpr
+  :: Document (ParseResult TestExpr)
+  => Parser TestExpr
   -> Text.Text
   -> Text.Text
   -> TestExpr
@@ -164,15 +168,16 @@ parseToSpec testExprP name txt expectExpr = it (Text.unpack name) $ case runPars
                                    ]
 
 testPipeline
-  :: Parser TestExpr
+  :: (Document (ParseResult TestExpr), Document Pos)
+  => Parser TestExpr
   -> TypeCtx TyVar
   -> Text.Text
   -> String
 testPipeline testExprP typeCtx txt = case runParser testExprP txt of
   ParseFailure expected c
-    -> unlines ["Parse failure"
-               ,"Parse expected: " ++ show expected
-               ,Text.unpack $ pointTo renderDocument c
+    -> unlines [ "Parse failure"
+               , "Parse expected: " ++ show expected
+               , Text.unpack $ pointTo renderDocument c
                ]
 
   ParseSuccess expr c

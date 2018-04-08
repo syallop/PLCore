@@ -12,6 +12,7 @@ import qualified PLParser  as P
 
 import qualified Data.List as List
 import qualified Data.Text as Text
+import qualified Data.Map  as Map
 
 import Data.Text (Text)
 import Data.Char
@@ -344,24 +345,26 @@ instance Document a
 
     ParseFailure failures cur0
       -> mconcat $
-           [text "Parse failure at:"
-           ,lineBreak
+           [ text "Parse failure at:"
+           , lineBreak
 
-           ,indent1 $ document cur0
-           ,lineBreak
+           , indent1 $ document cur0
+           , lineBreak
            ]
            ++
            if null failures
              then mempty
-             else [text "The failures backtracked from were:"
-                  ,lineBreak
-                  ,indent1 $ mconcat $ map (\(expected,cursor) -> mconcat [document cursor
-
-                                                                          ,text "Expected:"
-                                                                          ,document expected
-                                                                          ,lineBreak
-                                                                          ]
-                                           )
-                                           failures
+             else [ text "The failures backtracked from were:"
+                  , lineBreak
+                  , indent1 . mconcat
+                            . map (\(expected,cursor) -> mconcat [ document cursor
+                                                                 , text "Expected:"
+                                                                 , document expected
+                                                                 , lineBreak
+                                                                 ]
+                                  )
+                            . Map.toList
+                            . collectFailures
+                            $ failures
                   ]
 

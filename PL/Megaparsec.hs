@@ -24,10 +24,6 @@ toParser grammar = case grammar of
   G.GAnyChar
     -> Mega.anyChar
 
-  -- A token of text stopping at the first whitespace.
-  G.GAnyText
-    -> Text.pack <$> Mega.someTill Mega.anyChar Mega.spaceChar
-
   -- Return the value.
   G.GPure a
     -> pure a

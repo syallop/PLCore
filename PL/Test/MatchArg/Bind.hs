@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.MatchArg.Bind
+Module      : PL.Test.MatchArg.Bind
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module Test.MatchArg.Bind
+module PL.Test.MatchArg.Bind
   ( TestBindSources (..)
   , bindTestCases
   )
@@ -32,10 +32,10 @@ import PLParser
 import Data.Text (Text)
 import Data.Maybe (fromJust)
 
-import Test.MatchArgTestCase
+import PL.Test.MatchArgTestCase
 
-import Test.Expr.Boolean
-import Test.Source
+import PL.Test.Expr.Boolean
+import PL.Test.Source
 
 data TestBindSources = TestBindSources
   { _bindEmptySum     :: Source

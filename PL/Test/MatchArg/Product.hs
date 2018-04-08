@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.MatchArg.Sum
+Module      : PL.Test.MatchArg.Product
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module Test.MatchArg.Sum
-  ( TestSumSources (..)
-  , sumTestCases
+module PL.Test.MatchArg.Product
+  ( TestProductSources (..)
+  , productTestCases
   )
   where
 
@@ -32,29 +32,30 @@ import PLParser
 import Data.Text (Text)
 import Data.Maybe (fromJust)
 
-import Test.MatchArgTestCase
+import PL.Test.MatchArgTestCase
 
-import Test.Expr.Boolean
-import Test.Source
+import PL.Test.Expr.Boolean
+import PL.Test.Source
 
-data TestSumSources = TestSumSources
-  { _sumTestCase :: Source
+data TestProductSources = TestProductSources
+  { _productTestCase :: Source
   }
 
--- Test the sum constructor of MatchArgs.
-sumTestCases
-  :: TestSumSources
-  -> [(Text,MatchArgTestCase)]
-sumTestCases t =
-  [("Empty sum", sumMatchArgTestCase . _sumTestCase $ t)
+-- Test the product constructor of MatchArgs.
+productTestCases
+  :: TestProductSources
+  -> [(Text, MatchArgTestCase)]
+productTestCases t =
+  [("Empty product", productMatchArgTestCase . _productTestCase $ t)
   ]
 
--- (One of) the simplest MatchArgs on a sum constructor. Intended to be used in
+-- The simplest MatchArg on a product constructor is the empty product.
+-- Intended to be used in
 -- more complex test cases by field substitution.
-defaultSumMatchArgTestCase
+defaultProductMatchArgTestCase
   :: Source
   -> MatchArgTestCase
-defaultSumMatchArgTestCase src
+defaultProductMatchArgTestCase src
   = MatchArgTestCase
       {_underTypeCtx         = typeCtx
       ,_underExprBindCtx     = exprBindCtx
@@ -71,17 +72,14 @@ defaultSumMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
 
-    -- MatchArg might not support matching on empty sums.
-    -- One of the simplest patterns is therefore a single sum of an empty
-    -- product.
-    isMatchArg           = MatchSum 0 (MatchProduct [])
-    typed                = fixType $ SumT [fixType $ ProductT []]
+    isMatchArg           = MatchProduct []
+    typed                = fixType $ ProductT []
     checkMatchWithResult = Right []
     parsesFrom           = src
 
-sumMatchArgTestCase
+productMatchArgTestCase
   :: Source
   -> MatchArgTestCase
-sumMatchArgTestCase
-  = defaultSumMatchArgTestCase
+productMatchArgTestCase
+  = defaultProductMatchArgTestCase
 

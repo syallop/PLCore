@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Util
+Module      : PL.Test.Util
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 Utility functions used when testing PL.
 -}
-module Test.Util
+module PL.Test.Util
   ( putColor
   , putGreen
   , putRed

@@ -1,27 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.MatchArg
+Module      : PL.Test.MatchArg
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr's MatchArg
 -}
-module Test.MatchArg where
+module PL.Test.MatchArg where
 
 -- Abstracts the pattern of testing MatchArg parsing and typechecking.
-import Test.MatchArgTestCase
+import PL.Test.MatchArgTestCase
 
 -- Some specific MatchArg tests
-import Test.MatchArg.Bind
-import Test.MatchArg.Binding
-import Test.MatchArg.Product
-import Test.MatchArg.Sum
-import Test.MatchArg.Union
+import PL.Test.MatchArg.Bind
+import PL.Test.MatchArg.Binding
+import PL.Test.MatchArg.Product
+import PL.Test.MatchArg.Sum
+import PL.Test.MatchArg.Union
 
-import Test.Expr.Boolean
-import Test.Expr.Natural
-import Test.Expr.List
+import PL.Test.Expr.Boolean
+import PL.Test.Expr.Natural
+import PL.Test.Expr.List
 
 import PL.Bindings
 import PL.Binds
@@ -49,7 +49,7 @@ import qualified Data.Set as Set
 import qualified Data.Text as Text
 
 import Test.Hspec
-import Test.Source
+import PL.Test.Source
 
 -- type context of bools and nats
 typeCtx :: TypeCtx TyVar

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.ExprTestCase
+Module      : PL.Test.ExprTestCase
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -8,7 +8,7 @@ Stability   : experimental
 Functions for testing expression parsing, typechecking, reduction, etc.
 Also exports 'ExprTestCase' which encapsulates an example which can have all of these properties tested.
 -}
-module Test.ExprTestCase
+module PL.Test.ExprTestCase
   ( TestExpr
   , TestType
   , ExprTestCase(..)
@@ -53,7 +53,7 @@ import Data.List
 import Data.Text (Text)
 
 import Test.Hspec
-import Test.Source
+import PL.Test.Source
 
 type TestType = Type TyVar
 type TestExpr = Expr Var TestType TyVar

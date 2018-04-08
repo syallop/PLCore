@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.MatchArg.Union
+Module      : PL.Test.MatchArg.Union
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module Test.MatchArg.Union
+module PL.Test.MatchArg.Union
   (TestUnionSources (..)
   , unionTestCases
   )
@@ -34,10 +34,10 @@ import Data.Text (Text)
 
 import qualified Data.Set as Set
 
-import Test.MatchArgTestCase
+import PL.Test.MatchArgTestCase
 
-import Test.Expr.Boolean
-import Test.Source
+import PL.Test.Expr.Boolean
+import PL.Test.Source
 
 data TestUnionSources = TestUnionSources
   { _unionTestCase :: Source

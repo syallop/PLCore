@@ -1,27 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.ExprSpec
+Module      : PL.Test.Expr
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr
 -}
-module Test.Expr where
+module PL.Test.Expr where
 
 -- Abstracts the pattern of testing expressions parsing, reducing and typechecking
-import Test.ExprTestCase
+import PL.Test.ExprTestCase
 
 -- Some specific ExprSpec tests
-import Test.Expr.BigLam
-import Test.Expr.Boolean
-import Test.Expr.Function
-import Test.Expr.Lam
-import Test.Expr.List
-import Test.Expr.Natural
-import Test.Expr.Product
-import Test.Expr.Sum
-import Test.Expr.Union
+import PL.Test.Expr.BigLam
+import PL.Test.Expr.Boolean
+import PL.Test.Expr.Function
+import PL.Test.Expr.Lam
+import PL.Test.Expr.List
+import PL.Test.Expr.Natural
+import PL.Test.Expr.Product
+import PL.Test.Expr.Sum
+import PL.Test.Expr.Union
 
 import PL.Bindings
 import PL.Binds
@@ -50,7 +50,7 @@ import qualified Data.Set as Set
 import qualified Data.Text as Text
 
 import Test.Hspec
-import Test.Source
+import PL.Test.Source
 
 -- type context of bools and nats
 typeCtx :: TypeCtx TyVar

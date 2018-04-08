@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Text.Expr.Boolean
+Module      : PL.Text.Expr.Boolean
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using a 'Boolean' type.
 -}
-module Test.Expr.Boolean
+module PL.Test.Expr.Boolean
   ( boolTypeCtx
   , boolTypeName
   , boolType
@@ -47,8 +47,8 @@ import qualified Data.Text as Text
 import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
 
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 data TestBooleanSources = TestBooleanSources
   { _andTestCase :: Source

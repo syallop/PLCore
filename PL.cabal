@@ -35,25 +35,25 @@ library
                      , PL.Var
                      , PL.Megaparsec
 
-                     , Test.Expr
-                     , Test.Expr.BigLam
-                     , Test.Expr.Boolean
-                     , Test.Expr.Function
-                     , Test.Expr.Lam
-                     , Test.Expr.List
-                     , Test.Expr.Natural
-                     , Test.Expr.Product
-                     , Test.Expr.Sum
-                     , Test.Expr.Union
-                     , Test.ExprTestCase
-                     , Test.MatchArg
-                     , Test.MatchArg.Bind
-                     , Test.MatchArg.Binding
-                     , Test.MatchArg.Product
-                     , Test.MatchArg.Sum
-                     , Test.MatchArg.Union
-                     , Test.MatchArgTestCase
-                     , Test.Source
+                     , PL.Test.Expr
+                     , PL.Test.Expr.BigLam
+                     , PL.Test.Expr.Boolean
+                     , PL.Test.Expr.Function
+                     , PL.Test.Expr.Lam
+                     , PL.Test.Expr.List
+                     , PL.Test.Expr.Natural
+                     , PL.Test.Expr.Product
+                     , PL.Test.Expr.Sum
+                     , PL.Test.Expr.Union
+                     , PL.Test.ExprTestCase
+                     , PL.Test.MatchArg
+                     , PL.Test.MatchArg.Bind
+                     , PL.Test.MatchArg.Binding
+                     , PL.Test.MatchArg.Product
+                     , PL.Test.MatchArg.Sum
+                     , PL.Test.MatchArg.Union
+                     , PL.Test.MatchArgTestCase
+                     , PL.Test.Source
 
   -- other-modules:       
   other-extensions:    OverloadedStrings

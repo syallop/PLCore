@@ -1,4 +1,4 @@
-module Test.Source
+module PL.Test.Source
   ( Source
   )
   where

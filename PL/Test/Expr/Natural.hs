@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Expr.Natural
+Module      : PL.Test.Expr.Natural
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using a 'Natural' type.
 -}
-module Test.Expr.Natural
+module PL.Test.Expr.Natural
   ( natTypeCtx
   , natTypeName
   , natType
@@ -55,8 +55,8 @@ import qualified Data.Text as Text
 
 import Data.Monoid ((<>))
 
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 data TestNaturalSources = TestNaturalSources
   { _subTwoTestCase :: Source

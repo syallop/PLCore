@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Expr.List
+Module      : PL.Test.Expr.List
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -8,7 +8,7 @@ Stability   : experimental
 HSpec tests for PL.Expr using a heterogenous 'List' type parameterised by some
 element type.
 -}
-module Test.Expr.List
+module PL.Test.Expr.List
   ( listTypeCtx
   , listTypeName
   , listType
@@ -41,9 +41,9 @@ import Data.Text (Text)
 import Data.Monoid ((<>))
 import Data.Maybe
 
-import Test.Expr.Natural
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.Expr.Natural
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 listTypeCtx  = insertRecType "List" listType emptyTypeCtx
 listTypeName = fixType $ Named "List"

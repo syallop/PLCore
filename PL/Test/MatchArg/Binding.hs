@@ -1,15 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.MatchArg.Product
+Module      : PL.Test.MatchArg.Binding
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
-HSpec tests for PL.Expr using 'function' types.
 -}
-module Test.MatchArg.Product
-  ( TestProductSources (..)
-  , productTestCases
+module PL.Test.MatchArg.Binding
+  ( TestBindingSources (..)
+  , bindingTestCases
   )
   where
 
@@ -32,30 +31,29 @@ import PLParser
 import Data.Text (Text)
 import Data.Maybe (fromJust)
 
-import Test.MatchArgTestCase
+import PL.Test.MatchArgTestCase
 
-import Test.Expr.Boolean
-import Test.Source
+import PL.Test.Expr.Boolean
+import PL.Test.Source
 
-data TestProductSources = TestProductSources
-  { _productTestCase :: Source
+data TestBindingSources = TestBindingSources
+  { _bindingTestCase :: Source
   }
 
--- Test the product constructor of MatchArgs.
-productTestCases
-  :: TestProductSources
+-- Test the binding constructor of MatchArgs.
+bindingTestCases
+  :: TestBindingSources
   -> [(Text, MatchArgTestCase)]
-productTestCases t =
-  [("Empty product", productMatchArgTestCase . _productTestCase $ t)
+bindingTestCases t =
+  [("Binding", bindingMatchArgTestCase . _bindingTestCase $ t)
   ]
 
--- The simplest MatchArg on a product constructor is the empty product.
--- Intended to be used in
--- more complex test cases by field substitution.
-defaultProductMatchArgTestCase
+-- (One of) the simplest MatchArgs on a binding constructor.
+-- Intended to be used in more complex test cases by field substitution.
+defaultBindingMatchArgTestCase
   :: Source
   -> MatchArgTestCase
-defaultProductMatchArgTestCase src
+defaultBindingMatchArgTestCase src
   = MatchArgTestCase
       {_underTypeCtx         = typeCtx
       ,_underExprBindCtx     = exprBindCtx
@@ -68,18 +66,17 @@ defaultProductMatchArgTestCase src
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = emptyCtx
+    exprBindCtx          = addBinding (fixType $ ProductT []) $ emptyCtx
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
-
-    isMatchArg           = MatchProduct []
+    isMatchArg           = MatchBinding VZ
     typed                = fixType $ ProductT []
     checkMatchWithResult = Right []
     parsesFrom           = src
 
-productMatchArgTestCase
+bindingMatchArgTestCase
   :: Source
   -> MatchArgTestCase
-productMatchArgTestCase
-  = defaultProductMatchArgTestCase
+bindingMatchArgTestCase
+  = defaultBindingMatchArgTestCase
 

@@ -4,13 +4,13 @@
   , FlexibleContexts
   #-}
 {-|
-Module      : Test.MatchArgTestCase
+Module      : PL.Test.MatchArgTestCase
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 -}
-module Test.MatchArgTestCase where
+module PL.Test.MatchArgTestCase where
 
 import PL.Binds
 import PL.Case
@@ -42,7 +42,7 @@ import Data.List
 import Data.Text (Text)
 
 import Test.Hspec
-import Test.Source
+import PL.Test.Source
 
 type TestType = Type TyVar
 type TestMatchArg = MatchArg Var TyVar

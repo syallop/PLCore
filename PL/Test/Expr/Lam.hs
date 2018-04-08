@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Expr.Lam
+Module      : PL.Test.Expr.Lam
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using the 'Lam' constructor.
 -}
-module Test.Expr.Lam
+module PL.Test.Expr.Lam
   ( lamTypeCtx
   , lamTestCases
   , TestLamSources (..)
@@ -37,8 +37,8 @@ import qualified Data.Text as Text
 import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
 
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 -- A record of the sources required to run all the TestLamSources tests.
 data TestLamSources = TestLamSources

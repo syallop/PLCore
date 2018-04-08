@@ -1,14 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.MatchArg.Binding
+Module      : PL.Test.MatchArg.Sum
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
+HSpec tests for PL.Expr using 'function' types.
 -}
-module Test.MatchArg.Binding
-  ( TestBindingSources (..)
-  , bindingTestCases
+module PL.Test.MatchArg.Sum
+  ( TestSumSources (..)
+  , sumTestCases
   )
   where
 
@@ -31,29 +32,29 @@ import PLParser
 import Data.Text (Text)
 import Data.Maybe (fromJust)
 
-import Test.MatchArgTestCase
+import PL.Test.MatchArgTestCase
 
-import Test.Expr.Boolean
-import Test.Source
+import PL.Test.Expr.Boolean
+import PL.Test.Source
 
-data TestBindingSources = TestBindingSources
-  { _bindingTestCase :: Source
+data TestSumSources = TestSumSources
+  { _sumTestCase :: Source
   }
 
--- Test the binding constructor of MatchArgs.
-bindingTestCases
-  :: TestBindingSources
-  -> [(Text, MatchArgTestCase)]
-bindingTestCases t =
-  [("Binding", bindingMatchArgTestCase . _bindingTestCase $ t)
+-- Test the sum constructor of MatchArgs.
+sumTestCases
+  :: TestSumSources
+  -> [(Text,MatchArgTestCase)]
+sumTestCases t =
+  [("Empty sum", sumMatchArgTestCase . _sumTestCase $ t)
   ]
 
--- (One of) the simplest MatchArgs on a binding constructor.
--- Intended to be used in more complex test cases by field substitution.
-defaultBindingMatchArgTestCase
+-- (One of) the simplest MatchArgs on a sum constructor. Intended to be used in
+-- more complex test cases by field substitution.
+defaultSumMatchArgTestCase
   :: Source
   -> MatchArgTestCase
-defaultBindingMatchArgTestCase src
+defaultSumMatchArgTestCase src
   = MatchArgTestCase
       {_underTypeCtx         = typeCtx
       ,_underExprBindCtx     = exprBindCtx
@@ -66,17 +67,21 @@ defaultBindingMatchArgTestCase src
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = addBinding (fixType $ ProductT []) $ emptyCtx
+    exprBindCtx          = emptyCtx
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
-    isMatchArg           = MatchBinding VZ
-    typed                = fixType $ ProductT []
+
+    -- MatchArg might not support matching on empty sums.
+    -- One of the simplest patterns is therefore a single sum of an empty
+    -- product.
+    isMatchArg           = MatchSum 0 (MatchProduct [])
+    typed                = fixType $ SumT [fixType $ ProductT []]
     checkMatchWithResult = Right []
     parsesFrom           = src
 
-bindingMatchArgTestCase
+sumMatchArgTestCase
   :: Source
   -> MatchArgTestCase
-bindingMatchArgTestCase
-  = defaultBindingMatchArgTestCase
+sumMatchArgTestCase
+  = defaultSumMatchArgTestCase
 

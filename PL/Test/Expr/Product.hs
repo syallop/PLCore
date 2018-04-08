@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Expr.Product
+Module      : PL.Test.Expr.Product
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using the 'product' type.
 -}
-module Test.Expr.Product
+module PL.Test.Expr.Product
   ( productThreeExprTestCase
 
   , TestProductSources (..)
@@ -38,11 +38,11 @@ import Data.Monoid ((<>))
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 
-import Test.Expr.Natural
-import Test.Expr.Boolean
+import PL.Test.Expr.Natural
+import PL.Test.Expr.Boolean
 
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 data TestProductSources = TestProductSources
   { _productThreeTestCase :: Source

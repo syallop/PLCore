@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Expr.Function
+Module      : PL.Test.Expr.Function
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module Test.ExprCase
+module PL.Test.ExprCase
   (
   )
   where
@@ -29,8 +29,8 @@ import PLParser
 
 import Data.Text (Text)
 
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 bindExprTestCase
   :: Source

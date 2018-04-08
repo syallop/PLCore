@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : Test.Expr.Union
+Module      : PL.Test.Expr.Union
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using the 'Union' type.
 -}
-module Test.Expr.Union
+module PL.Test.Expr.Union
   ( unionTwoExprTestCase
 
   , TestUnionSources (..)
@@ -39,11 +39,11 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Text as Text
 import qualified Data.Set as Set
 
-import Test.Expr.Boolean
-import Test.Expr.Natural
+import PL.Test.Expr.Boolean
+import PL.Test.Expr.Natural
 
-import Test.ExprTestCase
-import Test.Source
+import PL.Test.ExprTestCase
+import PL.Test.Source
 
 data TestUnionSources = TestUnionSources
   { _unionTwoTestCase :: Source

@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-|
-Module      : Name
+Module      : PL.Name
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -8,7 +8,7 @@ Stability   : experimental
 Functions used for testing PL.Name
 -}
 
-module Name where
+module PL.Test.Name where
 
 import Test.QuickCheck
 

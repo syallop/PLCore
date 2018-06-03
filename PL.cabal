@@ -72,6 +72,7 @@ library
                      , quickcheck-instances
                      , PLParser
                      , PLPrinter
+                     , Reversible
 
   -- hs-source-dirs:      
   default-language:    Haskell2010

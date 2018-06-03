@@ -5,8 +5,9 @@
 module PL.Megaparsec where
 
 import qualified PLGrammar as G
-import PLGrammar.Iso
 import PLPrinter
+import Reversible
+import Reversible.Iso
 
 import qualified Data.Text as Text
 import Data.Void
@@ -19,54 +20,56 @@ import qualified Text.Megaparsec as Mega
 
 -- | Convert a Grammar to a Parser that accepts it.
 toParser :: G.Grammar a -> Mega.Parsec Void Text a
-toParser grammar = case grammar of
-  -- A single character if one is available.
-  G.GAnyChar
-    -> Mega.anyChar
+toParser (Reversible r) = case r of
+  ReversibleInstr i
+    -> case i of
+         -- A single character if one is available.
+         G.GAnyChar
+           -> Mega.anyChar
+
+         -- Enhance a failing parse with a given Expect label.
+         G.GLabel l g
+           -> toParser g Mega.<?> (Text.unpack $ renderDocument l)
+
+         G.GTry g
+           -> Mega.try $ toParser g
 
   -- Return the value.
-  G.GPure a
+  RPure a
     -> pure a
 
   -- Fail with no Expectations.
-  G.GEmpty
+  REmpty
     -> empty
 
   -- If the left fails, try the right as if no input had been consumed.
-  G.GAlt g0 g1
+  RAlt g0 g1
     -> toParser g0 <|> toParser g1
 
   -- Parse the grammar if the iso succeeds.
-  G.GIsoMap iso ga
-    -> isoMapParser iso ga
+  RMap iso ga
+    -> rmapParser iso ga
 
   -- | Tuple the result of two successive parsers.
-  G.GProductMap ga gb
-    -> productMapParser (toParser ga) (toParser gb)
+  RAp ga gb
+    -> rapParser (toParser ga) (toParser gb)
 
-  -- Enhance a failing parse with a given Expect label.
-  G.GLabel l g
-    -> toParser g Mega.<?> (Text.unpack $ renderDocument l)
-
-  G.GTry g
-    -> Mega.try $ toParser g
-
-isoMapParser
+rmapParser
   :: Show a
   => Iso a b
   -> G.Grammar a
   -> Mega.Parsec Void Text b
-isoMapParser iso g = do
+rmapParser iso g = do
   a <- toParser g
-  case parseIso iso a of
+  case forwards iso a of
     Nothing
-      -> fail $ Text.unpack $ Text.intercalate "." . _isoLabel $ iso
+      -> fail "iso"
     Just b
       -> pure b
 
-productMapParser
+rapParser
   :: Mega.Parsec Void Text a
   -> Mega.Parsec Void Text b
   -> Mega.Parsec Void Text (a, b)
-productMapParser pl pr = (,) <$> pl <*> pr
+rapParser pl pr = (,) <$> pl <*> pr
 

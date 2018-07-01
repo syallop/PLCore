@@ -52,7 +52,7 @@ lamTestCases
   -> [(Text,ExprTestCase)]
 lamTestCases t =
   [ ("Single lambda" , singleLamTestCase . _singleLamTestCase $ t)
-  , ("Nested lambda" , nestedLamTestCase . _nestedLamTestCase $ t)
+  {-, ("Nested lambda" , nestedLamTestCase . _nestedLamTestCase $ t)-}
   {-,("Chained lambda", chainedLamTestCase)-} -- TODO: Re-enable chaining
   ]
 

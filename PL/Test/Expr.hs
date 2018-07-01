@@ -83,14 +83,14 @@ testCases
   -> [(Text.Text, ExprTestCase)]
 testCases t = mconcat
   [ lamTestCases      . _lamTestCases      $ t
-  , bigLamTestCases   . _bigLamTestCases   $ t
-  , booleanTestCases  . _booleanTestCases  $ t
-  , naturalTestCases  . _naturalTestCases  $ t
-  , sumTestCases      . _sumTestCases      $ t
-  , productTestCases  . _productTestCases  $ t
-  , unionTestCases    . _unionTestCases    $ t
-  , functionTestCases . _functionTestCases $ t
-  , listTestCases     . _listTestCases     $ t
+  {-, bigLamTestCases   . _bigLamTestCases   $ t-}
+  {-, booleanTestCases  . _booleanTestCases  $ t-}
+  {-, naturalTestCases  . _naturalTestCases  $ t-}
+  {-, sumTestCases      . _sumTestCases      $ t-}
+  {-, productTestCases  . _productTestCases  $ t-}
+  {-, unionTestCases    . _unionTestCases    $ t-}
+  {-, functionTestCases . _functionTestCases $ t-}
+  {-, listTestCases     . _listTestCases     $ t-}
   ]
 
 -- Define:

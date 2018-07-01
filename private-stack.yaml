@@ -4,36 +4,45 @@ flags:
 extra-package-dbs: []
 packages:
 - '.'
+
 - location:
     git: "git@bitbucket.com:syallop/plgrammar.git"
     commit: master
   extra-dep: true
+
 - location:
     git: "git@bitbucket.com:syallop/plparser.git"
     commit: master
   extra-dep: true
+
 - location:
     git: "git@bitbucket.com:syallop/plprinter.git"
     commit: master
   extra-dep: true
+
 - location:
     git: "git@bitbucket.com:syallop/pllabel.git"
     commit: master
   extra-dep: true
+
 - location:
     git: "git@bitbucket.com:syallop/reversible.git"
     commit: master
   extra-dep: true
+
 - location:
     git: https://github.com/syallop/DSL-Compose.git
     commit: 8e49641f049c586e21c36c6982f51670082e1e3f
   extra-dep: true
+
 - location:
     git: https://github.com/rootmos/haskeline.git
     commit: bcd94f5cc0c4e919cbda3bb43dde482cac56dd51
   extra-dep: true
+
 extra-deps:
 - haskeline-0.7.4.0
 - megaparsec-6.4.0
 - parser-combinators-0.4.0
 resolver: lts-9.18
+

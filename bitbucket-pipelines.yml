@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: haskell:8.0.2
+image: fpco/stack-build:lts-9.18
 
 pipelines:
   default:

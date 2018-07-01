@@ -11,4 +11,5 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - apt update
           - apt install ssh --assume-yes
+          - git clone git@bitbucket.org:syallop/plgrammar.git
           - stack test --stack-yaml=private-stack.yaml

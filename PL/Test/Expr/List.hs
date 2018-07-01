@@ -17,6 +17,9 @@ module PL.Test.Expr.List
   , consTerm
 
   , listNatExprTestCase
+
+  , TestListSources (..)
+  , listTestCases
   )
   where
 
@@ -44,6 +47,17 @@ import Data.Maybe
 import PL.Test.Expr.Natural
 import PL.Test.ExprTestCase
 import PL.Test.Source
+
+data TestListSources = TestListSources
+  { _listTestCase :: Source
+  }
+
+listTestCases
+  :: TestListSources
+  -> [(Text, ExprTestCase)]
+listTestCases t =
+  [
+  ]
 
 listTypeCtx  = insertRecType "List" listType emptyTypeCtx
 listTypeName = fixType $ Named "List"
@@ -74,5 +88,5 @@ listNatExprTestCase src
     ctx = fromJust $ listTypeCtx <> natTypeCtx
     e   = fixExpr $ App (fixExpr $ App (fixExpr $ BigApp consTerm natTypeName) zero) (fixExpr $ BigApp emptyTerm natTypeName)
     ty  = fixType $ TypeApp listTypeName natType
-    {-src = undefined-}
+    src = undefined
 

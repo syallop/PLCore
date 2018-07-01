@@ -73,7 +73,7 @@ data TestExprSources = TestExprSources
   , _productTestCases  :: TestProductSources
   , _unionTestCases    :: TestUnionSources
   , _functionTestCases :: TestFunctionSources
-  {-, _listTestCase     :: TestListSources-}
+  , _listTestCases     :: TestListSources
   }
 
 -- A List of named TestCase structures for testing expressions depends upon a
@@ -90,6 +90,7 @@ testCases t = mconcat
   , productTestCases  . _productTestCases  $ t
   , unionTestCases    . _unionTestCases    $ t
   , functionTestCases . _functionTestCases $ t
+  , listTestCases     . _listTestCases     $ t
   ]
 
 -- Define:

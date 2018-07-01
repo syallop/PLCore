@@ -68,6 +68,7 @@ library
                      , PLParser
                      , megaparsec >=6.4.0
                      , hspec
+                     , hedgehog
                      , QuickCheck
                      , quickcheck-instances
                      , PLParser

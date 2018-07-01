@@ -38,52 +38,52 @@ data TypeF tb typ
 
   -- | Some name
   = Named
-    {_hasType :: TypeName
+    {_hasType :: !TypeName
     }
 
   -- | A Function type between types
   | Arrow
-    {_from :: typ
-    ,_to   :: typ
+    {_from :: !typ
+    ,_to   :: !typ
     }
 
   -- | Ordered alternative types
   | SumT
-    {_sumTypes :: [typ]
+    {_sumTypes :: ![typ]
     }
 
   -- | Ordered product types
   | ProductT
-    {_productTypes :: [typ]
+    {_productTypes :: ![typ]
     }
 
   -- | Set of union types
   | UnionT
-    {_unionTypes :: Set.Set typ
+    {_unionTypes :: !(Set.Set typ)
     }
 
   -- Type of BigLambda
   -- Is this distinct from TypeLam??
   | BigArrow
-    {_takeType :: Kind
-    ,_type     :: typ
+    {_takeType :: !Kind
+    ,_type     :: !typ
     }
 
 
   -- Type-level lambda abstraction
   | TypeLam
-    {_takeType :: Kind
-    ,_type     :: typ
+    {_takeType :: !Kind
+    ,_type     :: !typ
     }
 
   -- Type-level application.
   | TypeApp
-    {_f :: typ
+    {_f :: !typ
     ,_x :: typ
     }
 
   | TypeBinding
-    {_binding :: tb
+    {_binding :: !tb
     }
   deriving (Eq,Ord,Show)
 
@@ -101,8 +101,8 @@ a --> b = fixType $ Arrow a b
 ty :: TypeName -> Type tb
 ty = fixType . Named
 
-instance Document tb => Document (Type tb) where
-  document t = case unfixType t of
+instance (Document tb, Document typ) => Document (TypeF tb typ) where
+  document t = case t of
     Arrow from to
       -> char '^' <> parens (document from) <> parens (document to)
 

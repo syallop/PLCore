@@ -64,24 +64,24 @@ data ExprF b abs tb expr
 
     -- | Lambda abstraction
     = Lam
-      {_take :: abs
-      ,_expr :: expr
+      {_take :: !abs
+      ,_expr :: !expr
       }
 
     -- | Application
     | App
-      {_f :: expr
-      ,_x :: expr
+      {_f :: !expr
+      ,_x :: !expr
       }
 
     -- | Binding
     | Binding
-      {_binding :: b
+      {_binding :: !b
       }
 
     -- | Case analysis of an expression
     | CaseAnalysis
-      {_caseAnalysis :: Case expr (MatchArg b tb)
+      {_caseAnalysis :: !(Case expr (MatchArg b tb))
       }
 
     -- | An expression is indexed within a Sum type
@@ -89,33 +89,33 @@ data ExprF b abs tb expr
     -- Currently assuming type guarantees index is within bounds of sumType
     -- (Not unless type-checked that that the expr has that type)
     | Sum
-      {_sumExpr  :: expr
+      {_sumExpr  :: !expr
       ,_sumIndex :: Int
       ,_sumType  :: [Type tb]
       }
 
     -- | An expression is a product of many expressions
     | Product
-      {_prodExprs :: [expr]
+      {_prodExprs :: ![expr]
       }
 
     -- | An expression has one of many unique types
     | Union
-      {_unionExpr      :: expr
-      ,_unionTypeIndex :: Type tb
-      ,_unionType      :: Set.Set (Type tb)
+      {_unionExpr      :: !expr
+      ,_unionTypeIndex :: !(Type tb)
+      ,_unionType      :: !(Set.Set (Type tb))
       }
 
     -- Big lambda abstract type under an expression
     | BigLam
-      {_takeTy :: Kind -- replace with tabs
-      ,_expr   :: expr
+      {_takeTy :: !Kind -- replace with tabs
+      ,_expr   :: !expr
       }
 
     -- Big application type under an expression
     | BigApp
-      {_f   :: expr
-      ,_xTy :: Type tb
+      {_f   :: !expr
+      ,_xTy :: !(Type tb)
       }
       deriving Show
 
@@ -231,10 +231,10 @@ mapSubExpressions f e = fixExpr $ case unfixExpr e of
 -- case ... of
 --  T {A b (C d E)} -> ...
 data MatchArg b tb
-  = MatchSum     Int      (MatchArg b tb)  -- ^ Match against a sum alternative (which may be applied to more patterns)
-  | MatchProduct          [MatchArg b tb]  -- ^ Match against a product of many types (which may be applied to more patterns)
-  | MatchUnion   (Type tb) (MatchArg b tb) -- ^ Match against a union of alternatives
-  | MatchBinding b                         -- ^ Match for exact structural equality
+  = MatchSum     Int        !(MatchArg b tb)  -- ^ Match against a sum alternative (which may be applied to more patterns)
+  | MatchProduct            ![MatchArg b tb]  -- ^ Match against a product of many types (which may be applied to more patterns)
+  | MatchUnion   !(Type tb) !(MatchArg b tb) -- ^ Match against a union of alternatives
+  | MatchBinding !b                         -- ^ Match for exact structural equality
   | Bind                                   -- ^ Match anything and bind it
   deriving (Show,Eq)
 

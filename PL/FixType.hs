@@ -31,7 +31,7 @@ newtype FixType tb typ = FixType {_unFixType :: typ tb (FixType tb typ)}
 deriving instance Show (typ tb (FixType tb typ)) => Show (FixType tb typ)
 deriving instance Ord (typ tb (FixType tb typ)) => Ord (FixType tb typ)
 deriving instance Eq (typ tb (FixType tb typ)) => Eq (FixType tb typ)
-{-deriving instance Document (typ tb (FixType tb typ)) => Document (FixType tb typ)-}
+deriving instance Document (typ tb (FixType tb typ)) => Document (FixType tb typ)
 
 unfixType
   :: FixType tb typ

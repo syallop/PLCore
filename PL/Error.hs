@@ -29,13 +29,13 @@ data Error tb
   | ETermNotDefined TermName -- ^ No such term
 
   -- ^ Two typed things cannot be applied to each other
-  | EAppMismatch (Type tb) (Type tb) --
+  | EAppMismatch !(Type tb) !(Type tb) --
 
   -- ^ Something with type cannot be big-applied to something with kind
-  | EBigAppMismatch (Type tb) Kind
+  | EBigAppMismatch !(Type tb) !Kind
 
   -- ^ Something with kind cannot be type-applied to something with kind
-  | ETypeAppMismatch Kind Kind
+  | ETypeAppMismatch !Kind !Kind
   deriving (Ord,Eq,Show)
 
 instance Document tb => Document (Error tb) where

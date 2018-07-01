@@ -5,23 +5,23 @@ extra-package-dbs: []
 packages:
 - '.'
 - location:
-    git: ssh://syallop@bitbucket.com/syallop/plgrammar.git
+    git: "git@bitbucket.com:syallop/plgrammar.git"
     commit: master
   extra-dep: true
 - location:
-    git: ssh://syallop@bitbucket.com/syallop/plparser.git
+    git: "git@bitbucket.com:syallop/plparser.git"
     commit: master
   extra-dep: true
 - location:
-    git: ssh://syallop@bitbucket.com/syallop/plprinter.git
+    git: "git@bitbucket.com:syallop/plprinter.git"
     commit: master
   extra-dep: true
 - location:
-    git: ssh://syallop@bitbucket.com/syallop/pllabel.git
+    git: "git@bitbucket.com:syallop/pllabel.git"
     commit: master
   extra-dep: true
 - location:
-    git: ssh://syallop@bitbucket.com/syallop/reversible.git
+    git: "git@bitbucket.com:syallop/reversible.git"
     commit: master
   extra-dep: true
 - location:

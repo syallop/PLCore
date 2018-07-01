@@ -3,10 +3,12 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: fpco/stack-build:lts-9.18
+image: haskell:8.0.2
 
 pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
+          - apt update
+          - apt install ssh
           - stack test --stack-yaml=private-stack.yaml

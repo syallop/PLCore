@@ -10,5 +10,5 @@ pipelines:
     - step:
         script: # Modify the commands below to build your repository.
           - apt update
-          - apt install ssh
+          - apt install ssh --assume-yes
           - stack test --stack-yaml=private-stack.yaml

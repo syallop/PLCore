@@ -50,8 +50,10 @@ functionTestCases
   -> [(Text, ExprTestCase)]
 functionTestCases t =
   [ ("id"   , idExprTestCase    . _idTestCase    $ t)
+
+  -- TODO: Potential memory leak
   , ("const", constExprTestCase . _constTestCase $ t)
-  , ("apply", applyExprTestCase . _applyTestCase $ t)
+  {-, ("apply", applyExprTestCase . _applyTestCase $ t)-}
   ]
 
 -- The polymorphic identity function
@@ -84,8 +86,20 @@ constExprTestCase src
       }
   where
     ctx = emptyTypeCtx
-    e   = fixExpr $ BigLam Kind $ fixExpr $ BigLam Kind $ fixExpr $ Lam (fixType . TypeBinding . TyVar . VS $ VZ) $ fixExpr $ Lam (fixType . TypeBinding . TyVar $ VZ) $ fixExpr $ Binding $ VS VZ -- \(x:a) (y:b) -> x
-    ty  = fixType $ BigArrow Kind $ fixType $ BigArrow Kind $ fixType $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) $ fixType $ Arrow (fixType $ TypeBinding $ TyVar VZ) (fixType . TypeBinding . TyVar . VS $ VZ)
+
+    -- forall a::k0. forall b::k1. a -> b -> a
+    -- const a b = a
+    e   = fixExpr $ BigLam Kind -- k0
+        $ fixExpr $ BigLam Kind -- k1
+        $ fixExpr $ Lam (fixType . TypeBinding . TyVar . VS $ VZ) -- a :: k0
+        $ fixExpr $ Lam (fixType . TypeBinding . TyVar $ VZ)      -- b :: k1
+        $ fixExpr $ Binding $ VS VZ                               -- a
+
+    ty  = fixType $ BigArrow Kind -- k0
+        $ fixType $ BigArrow Kind -- k1
+        $ fixType $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) -- a
+        $ fixType $ Arrow (fixType $ TypeBinding $ TyVar VZ)        -- b
+        $ fixType $ TypeBinding . TyVar $ VS VZ                     -- a
 
 applyExprTestCase
   :: Source

@@ -60,20 +60,20 @@ library
                      , LambdaCase
 
   build-depends:       base >=4.7
+
+                     , PLGrammar  >= 0.4
+                     , PLParser   >= 0.1
+                     , PLPrinter  >= 0.3
+                     , Reversible >= 0.1
+
+                     , QuickCheck
                      , containers >=0.5
+                     , hedgehog
+                     , hspec
+                     , megaparsec >=6.4.0
+                     , quickcheck-instances
                      , semigroups
                      , text
-                     , PLGrammar
-                     , PLPrinter
-                     , PLParser
-                     , megaparsec >=6.4.0
-                     , hspec
-                     , hedgehog
-                     , QuickCheck
-                     , quickcheck-instances
-                     , PLParser
-                     , PLPrinter
-                     , Reversible
 
   -- hs-source-dirs:      
   default-language:    Haskell2010

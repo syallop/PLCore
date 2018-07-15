@@ -1,9 +1,11 @@
-{-# LANGUAGE FlexibleInstances
-           , MultiParamTypeClasses
-           , ScopedTypeVariables
-           , StandaloneDeriving
-           , OverloadedStrings
-           #-}
+{-# LANGUAGE
+    FlexibleInstances
+  , DeriveAnyClass
+  , MultiParamTypeClasses
+  , ScopedTypeVariables
+  , StandaloneDeriving
+  , OverloadedStrings
+  #-}
 {-|
 Module      : PL.Type
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -31,61 +33,146 @@ import qualified Data.Set as Set
 import Data.Proxy
 import Data.Monoid
 
+-- | Types classify 'Expr'essions.
+--
+-- - 'tb' is the type of bindings which refer to some abstraction.
+--   This could be a variable name "sometype".
+--   Current uses of this AST use De Bruijn indexes, I.E. a natural number which
+--   points a number of binders away to a type abstraction "0","1", etc.
 type Type tb = FixType tb TypeF
 
--- Describe properties of expressions
+-- | Types classify 'Expr'essions.
+--
+-- - 'tb' is the type of bindings which refer to some abstraction.
+--   This could be a variable name "sometype".
+--   Current uses of this AST use De Bruijn indexes, I.E. a natural number which
+--   points a number of binders away to a type abstraction "0","1", etc.
+--
+-- - 'typ' is the recursive type of subexpressions. This is usually instantiated
+--   using FixType such that it refers to itself.
+--   This allows us to use recursion schemes.
+--
+--   Any examples used in constructor comments use completly arbitrary syntax.
 data TypeF tb typ
 
-  -- | Some name
+  -- | Named type.
+  --
+  -- A name which refers to a type definition tracked in some external type context.
   = Named
-    {_hasType :: !TypeName
+    { _hasType :: TypeName
     }
 
-  -- | A Function type between types
+  -- | Arrow is the type of expression functions.
+  --
+  -- E.G. 'Expr's 'Lam' constructor representing:
+  --
+  -- \x::Bool x
+  --
+  -- Might have type:
+  --
+  -- `Arrow Bool Bool`
   | Arrow
-    {_from :: !typ
-    ,_to   :: !typ
+    { _from :: typ
+    , _to   :: typ
     }
 
-  -- | Ordered alternative types
+  -- | SumT is the type of expressions which are an ordered alternative of
+  -- types.
+  --
+  -- E.G. 'Expr's 'Sum' constructor representing:
+  --
+  -- true :: 1 :: Bool|Int|Char
+  --
+  -- Might have type:
+  --
+  -- `SumT [Bool,Int,Char]`
   | SumT
-    {_sumTypes :: ![typ]
+    { _sumTypes :: [typ]
     }
 
-  -- | Ordered product types
+  -- | ProductT is the type of expressions which are an ordered product of each
+  -- of the given types.
+  --
+  -- E.G. 'Expr's 'Product' constructor representing:
+  --
+  -- (true, 1, 'a')
+  --
+  -- Might have type:
+  --
+  -- `ProductT [Bool,Int,Char]`
   | ProductT
-    {_productTypes :: ![typ]
+    { _productTypes :: [typ]
     }
 
-  -- | Set of union types
+  -- | UnionT is the type of expressions which are part of a set types.
+  --
+  -- E.G. 'Expr's 'Union' constructor representing:
+  --
+  -- x :: Bool :: {Char, Bool, Int}
+  --
+  -- Might have type:
+  --
+  -- `UnionT $ set.FromList [Int,Char,Bool]`
   | UnionT
-    {_unionTypes :: !(Set.Set typ)
+    { _unionTypes :: Set.Set typ
     }
 
-  -- Type of BigLambda
-  -- Is this distinct from TypeLam??
+  -- | BigArrow is the type of expressions which abstract a _Type_ into an
+  -- expression.
+  --
+  -- E.G. 'Expr's 'BigLam' constructor representing:
+  --
+  -- \(t :: Kind). 1
+  --
+  -- Might have type:
+  --
+  -- `BigArrow KIND Int`
+  --
+  -- TODO: How is this distinct from TypeLam??
   | BigArrow
-    {_takeType :: !Kind
-    ,_type     :: !typ
+    { _takeType :: Kind
+    , _type     :: typ
     }
 
-
-  -- Type-level lambda abstraction
+  -- | TypeLam is a lambda abstraction performed at the type level.
+  --
+  -- E.G.
+  --
+  -- \Kind. 0
+  --
+  -- TODO: Is being able to bind types at the expression and type level
+  -- problematic?
   | TypeLam
-    {_takeType :: !Kind
-    ,_type     :: !typ
+    { _takeType :: Kind
+    , _type     :: typ
     }
 
-  -- Type-level application.
+  -- | Type application.
+  --
+  -- Apply a type to another.
+  --
+  -- E.G.
+  -- (\t::Kind -> t) Bool
   | TypeApp
-    {_f :: !typ
-    ,_x :: typ
+    { _f :: typ
+    , _x :: typ
     }
 
+  -- | Type bindings.
+  --
+  -- Bind the type refered to by 'tb'.
+  --
+  -- E.G.
+  --
+  -- 0
+  --
+  -- where 0 counts the number of `TypeLam`s away a type was abstracted.
   | TypeBinding
-    {_binding :: !tb
+    { _binding :: tb
     }
   deriving (Eq,Ord,Show)
+
+deriving instance (Document tb, Document typ) => Document (TypeF tb typ)
 
 -- | Is a Type a simple named type
 isType :: Type tb -> Bool
@@ -100,36 +187,6 @@ a --> b = fixType $ Arrow a b
 -- | Construct a simple named type
 ty :: TypeName -> Type tb
 ty = fixType . Named
-
-instance (Document tb, Document typ) => Document (TypeF tb typ) where
-  document t = case t of
-    Arrow from to
-      -> char '^' <> parens (document from) <> parens (document to)
-
-    Named belongs
-      -> document belongs
-
-    SumT tys
-      -> text "+" <> (mconcat . map (parens . document) $ tys)
-
-    ProductT tys
-      -> text "*" <> (mconcat . map (parens . document) $ tys)
-
-    UnionT tys
-      -> text "U" <> (mconcat . map (parens . document) . Set.toList $ tys)
-
-    BigArrow from to
-      -> text "^^" <> parens (document from) <> parens (document to)
-
-    TypeLam takeKy ty
-      -> text "\\" <> parens (document takeKy) <> parens (document ty)
-
-    TypeApp f x
-      -> text "@" <> parens (document f) <> parens (document x)
-
-    TypeBinding b
-      -> document b
-
 
 -- PARTIAL
 -- [a]   ~> Type a
@@ -148,6 +205,8 @@ unarrowise t = case unfixType t of
   Arrow a b
     -> a : unarrowise b
   t -> [fixType t]
+
+-- TODO: Can likely use recursion schemes.
 
 instance HasAbs (Type tb) where
   applyToAbs f ty = fixType $ case unfixType ty of
@@ -183,7 +242,15 @@ instance Ord tb => HasNonAbs (Type tb) where
 
     ty -> ty
 
-instantiate :: forall tb. (Ord tb,BindingIx tb) => Type tb -> Type tb -> Type tb
+-- instantiate a type within some other.
+instantiate
+  :: forall tb
+   . ( Ord tb
+     , BindingIx tb
+     )
+  => Type tb
+  -> Type tb
+  -> Type tb
 instantiate = instantiate' 0
   where
     instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb

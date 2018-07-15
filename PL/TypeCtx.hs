@@ -1,6 +1,7 @@
 {-# LANGUAGE
     FlexibleContexts
   , OverloadedStrings
+  , UndecidableInstances
   #-}
 {-|
 Module      : PL.TypeCtx
@@ -80,7 +81,7 @@ data TypeInfo tb
     }
   deriving Show
 
-instance Document tb => Document (TypeInfo tb) where
+instance (Document (Type tb), Document tb) => Document (TypeInfo tb) where
   document (TypeInfo isRecursive kind def) = mconcat
     [ document isRecursive
     , lineBreak

@@ -30,10 +30,12 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -71,7 +73,10 @@ data ExprTestCase = ExprTestCase
 -- | Test whether an expression typechecks.
 -- Name an expression, check it fully typechecks AND type checks to the given type
 typeChecksTo
-  :: TypeCtx TyVar
+  :: ( Document TestExpr
+     , Document TestType
+     )
+  => TypeCtx TyVar
   -> Text
   -> TestExpr
   -> TestType
@@ -82,16 +87,20 @@ typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprTy
 
   Right exprTy
     -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
-         Nothing    -> expectationFailure $ Text.unpack $ render $ text "A given type name does not exist in the context"
-         Just False -> expectationFailure $ Text.unpack $ render $ text "Expected: " <> document expectTy <> text " got: " <> document exprTy
-         Just True  -> return ()
+         Left err -> expectationFailure $ Text.unpack $ render $ text "A given type name does not exist in the context"
+         Right False -> expectationFailure $ Text.unpack $ render $ text "Expected: " <> document expectTy <> text " got: " <> document exprTy
+         Right True  -> return ()
 
 -- | Test whether an expression reduces to another.
 --
 -- Name an expression, apply it to a list of (argnames,argument,expected result) tuples.
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 manyAppliedReducesToSpec
-  :: String
+  :: ( Document TestExpr
+     , Document TestType
+     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     )
+  => String
   -> TestExpr
   -> [(String,[TestExpr],TestExpr)]
   -> Spec
@@ -99,7 +108,11 @@ manyAppliedReducesToSpec name expr reductions = describe name $ mapM_ (\(appName
 
 -- Name an expression, apply it to a list of expressions. Does it reduce to the given expression?
 appliedReducesToSpec
-  :: TestExpr
+  :: ( Document TestExpr
+     , Document TestType
+     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     )
+  => TestExpr
   -> String
   -> [TestExpr]
   -> TestExpr
@@ -108,13 +121,18 @@ appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 
 -- Name an expression. Check it reduces to an expression.
 reduceToSpec
-  :: String
+  :: ( Document TestExpr
+     , Document TestType
+     , Document (Type TyVar)
+     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     )
+  => String
   -> TestExpr
   -> TestExpr
   -> Spec
 reduceToSpec name expr eqExpr = it name $ case reduce expr of
   Left exprErr
-    -> expectationFailure $ Text.unpack $ render $ text "target expression does not reduce: " <> document exprErr
+    -> expectationFailure $ Text.unpack $ render $ document $ exprErr
 
   Right redExpr
     -> if redExpr == eqExpr
@@ -142,7 +160,9 @@ uncurry3 f (a,b,c) = f a b c
 
 -- | Test whether some text parses to some expression
 parseToSpec
-  :: Document (ParseResult TestExpr)
+  :: ( Document (ParseResult TestExpr)
+     , Document TestExpr
+     )
   => Parser TestExpr
   -> Text.Text
   -> Text.Text
@@ -168,7 +188,11 @@ parseToSpec testExprP name txt expectExpr = it (Text.unpack name) $ case runPars
                                    ]
 
 testPipeline
-  :: (Document (ParseResult TestExpr), Document Pos)
+  :: ( Document (ParseResult TestExpr)
+     , Document Pos
+     , Document TestExpr
+     , Document TestType
+     )
   => Parser TestExpr
   -> TypeCtx TyVar
   -> Text.Text

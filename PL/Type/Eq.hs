@@ -33,105 +33,90 @@ import qualified Data.Text as Text
 
 import Debug.Trace
 
-typeEq :: forall tb
-        . (Eq tb
-          ,Ord tb
-          ,Binds tb Kind
-          ,HasBinding (Type tb) tb
-          ,Document tb
-          )
-       => BindCtx tb Kind
-       -> Bindings (Type tb)
-       -> TypeCtx tb
-       -> Type tb
-       -> Type tb
-       -> Maybe Bool
-typeEq = typeEq' 0
-
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
-typeEq' :: forall tb
-         . (Eq tb
-           ,Ord tb
-           ,Binds tb Kind
-           ,HasBinding (Type tb) tb
-           ,Document tb
-           )
-        => Int
-        -> BindCtx tb Kind
-        -> Bindings (Type tb)
-        -> TypeCtx tb
-        -> Type tb
-        -> Type tb
-        -> Maybe Bool
-typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [document t0,document t1,document typeBindings]) $ case (unfixType t0, unfixType t1) of
+typeEq
+  :: forall tb
+   . ( Eq tb
+     , Ord tb
+     , Binds tb Kind
+     , HasBinding (Type tb) tb
+     )
+  => BindCtx tb Kind
+  -> Bindings (Type tb)
+  -> TypeCtx tb
+  -> Type tb
+  -> Type tb
+  -> Either (Error tb) Bool
+typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixType t1) of
 
   -- Named Types are ONLY equal if they have the same name.
-  (Named n0,Named n1)
-    | n0 == n1  -> traceIndent i ("T"::Text.Text) $ Just True
-    | otherwise -> traceIndent i ("F"::Text.Text) $ Just False
+  (Named n0, Named n1)
+    | n0 == n1  -> Right True
+    | otherwise -> Right False
     {-| otherwise -> do it0 <- lookupTypeNameInitialInfo n0 typeNameCtx-}
                       {-it1 <- lookupTypeNameInitialInfo n1 typeNameCtx-}
                       {-typeEq typeBindCtx typeNameCtx (_typeInfoType it0) (_typeInfoType it1)-}
 
   -- To compare a Named type to a non-named type, lookup the definition of the
   -- name and recurse.
-  (_,Named _)
-    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 t0
-  (Named n0,_)
-    -> do it0 <- lookupTypeNameInitialInfo n0 typeNameCtx
-          traceStep ("Lookup name"::Text.Text) $
-            typeEq' (i+1) typeBindCtx typeBindings typeNameCtx (_typeInfoType it0) t1
+  (_, Named _)
+    -> typeEq typeBindCtx typeBindings typeNameCtx t1 t0
+  (Named n0, _)
+    -> let it0 = lookupTypeNameInitialInfo n0 typeNameCtx
+        in case it0 of
+             Nothing -> Left $ EMsg $ text "Failed to lookup named type"
+             Just t0 -> typeEq typeBindCtx typeBindings typeNameCtx (_typeInfoType t0) t1
 
 
   -- Type bindings are 'equal' when they unify.
   -- TODO: If we're unifying unbound types with types, should we be back
   -- propogating this unification? If so, the current data structures and
   -- algorithm is not appropriate.
-  (TypeBinding b0,TypeBinding b1)
+  (TypeBinding b0, TypeBinding b1)
     -> let binding0 = fromMaybe (error "") $ safeIndex (Proxy :: Proxy tb) typeBindings (bindDepth b0)
            binding1 = index (Proxy :: Proxy tb) typeBindings (bindDepth b1)
-          in traceStep ("Lookup both bindings"::Text.Text) $ case (binding0,binding1) of
+          in case (binding0,binding1) of
                -- Two unbound are unified
-               (Unbound,Unbound)
-                 -> traceIndent i ("Both unbound => T"::Text.Text) $ Just True
+               (Unbound, Unbound)
+                 -> Right True
 
                -- An unbound unifies with a bound
-               (Unbound,Bound ty1)
-                 -> traceIndent i ("One bound => unifies => T"::Text.Text) $ Just True
-               (Bound ty1,Unbound)
-                 -> traceIndent i ("One bound => unifies => T"::Text.Text) $ Just True
+               (Unbound, Bound ty1)
+                 -> Right True
+               (Bound ty1, Unbound)
+                 -> Right True
 
                -- Two bound types are equal if the bound types are equal
-               (Bound ty0,Bound ty1)
-                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 ty1
+               (Bound ty0, Bound ty1)
+                 -> typeEq typeBindCtx typeBindings typeNameCtx ty0 ty1
 
   -- To compare a binding to a non-binding
-  (ty0,TypeBinding _)
-    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
-  (TypeBinding b0,ty1)
+  (ty0, TypeBinding _)
+    -> typeEq typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
+  (TypeBinding b0, ty1)
     -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0)
-          in traceStep ("Lookup binding"::Text.Text) $ case binding0 of
+          in case binding0 of
                Unbound
-                 -> traceIndent i ("Unbound => T"::Text.Text) $ Just True
+                 -> Right True
 
                Bound ty0
-                 -> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx ty0 (fixType ty1)
+                 -> typeEq typeBindCtx typeBindings typeNameCtx ty0 (fixType ty1)
 
 
   -- Two type applications are equal if both of their corresponding parts are
   -- equal
-  (TypeApp f0 x0,TypeApp f1 x1)
-    -> traceStep ("Both eq"::Text.Text) $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx x0 x1
+  (TypeApp f0 x0, TypeApp f1 x1)
+    -> (&&) <$> typeEq typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq typeBindCtx typeBindings typeNameCtx x0 x1
 
   -- A TypeApp is equal to something else when, after reducing it, it is equal
   -- to that other thing.
-  (ty0,TypeApp _ _)
-    -> traceStep ("Reverse"::Text.Text) $ typeEq' (i+1) typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
-  (TypeApp f0 x0,ty1)
-    -> traceStep ("Reduce application function,under arg"::Text.Text) $ case reduceTypeStep typeBindings typeNameCtx f0 of
+  (ty0, TypeApp _ _)
+    -> typeEq typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
+  (TypeApp f0 x0, ty1)
+    -> case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
-           -> error $ Text.unpack $ render $ text "When typechecking typeapp, one lhs of a typeapp doesnt reduce with " <> document e
+           -> Left e
 
          Right redF0
            -> case unfixType redF0 of
@@ -139,63 +124,77 @@ typeEq' i typeBindCtx typeBindings typeNameCtx t0 t1 = traceIndent i (mconcat [d
                 -- The resulting type is then the rhs of the typelam under the
                 -- context of what it was applied to
                 TypeLam aKy bTy
-                  -> typeEq' (i+1) (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy (fixType ty1)
+                  -> typeEq (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy (fixType ty1)
 
-                _ -> error "In typeEq: Cant type apply a non-lambda type to a type"
+                _ -> Left $ EMsg $ text "In typeEq: Cant type apply a non-lambda type to a type"
 
 
   -- Arrow types are equal when their corresponding to and from types are the
   -- same
-  (Arrow from0 to0,Arrow from1 to1)
-    -> traceStep ("Both eq"::Text.Text) $ (&&) <$> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx from0 from1 <*> typeEq' (i+1) typeBindCtx typeBindings typeNameCtx to0 to1
+  (Arrow from0 to0, Arrow from1 to1)
+    -> (&&) <$> typeEq typeBindCtx typeBindings typeNameCtx from0 from1 <*> typeEq typeBindCtx typeBindings typeNameCtx to0 to1
 
-  (SumT ts0,SumT ts1)
-    -> traceStep ("All eq"::Text.Text) $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx ts0 ts1
+  (SumT ts0, SumT ts1)
+    -> typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
 
-  (ProductT ts0,ProductT ts1)
-    -> traceStep ("All eq"::Text.Text) $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx ts0 ts1
+  (ProductT ts0, ProductT ts1)
+    -> typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
 
-  (UnionT ts0,UnionT ts1)
-    -> traceStep ("All eq"::Text.Text) $ typeEqs' (i+1) typeBindCtx typeBindings typeNameCtx(Set.toList ts0) (Set.toList ts1)
+  (UnionT ts0, UnionT ts1)
+    -> typeEqs typeBindCtx typeBindings typeNameCtx (Set.toList ts0) (Set.toList ts1)
 
-  (BigArrow fromKy0 toTy0,BigArrow fromKy1 toTy1)
-    -> traceStep ("Both eq"::Text.Text) $
-       let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
+  (BigArrow fromKy0 toTy0, BigArrow fromKy1 toTy1)
+    -> let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
            newTypeBindings = unbound $ bury typeBindings
           in if kindEq fromKy0 fromKy1
-               then typeEq' (i+1) newTypeBindCtx newTypeBindings typeNameCtx toTy0 toTy1
-               else traceIndent i ("F"::Text.Text) $ Just False
+               then typeEq newTypeBindCtx newTypeBindings typeNameCtx toTy0 toTy1
+               else Right False
 
   -- Two type lambda are equivalent if their corresponding from and to are the
   -- same
   -- TODO: Should probably UnBound the type vars when checking theyre equal
-  (TypeLam k0 ty0,TypeLam k1 ty1)
-    -> traceStep ("Both eq"::Text.Text) $
-       let newTypeBindCtx  = addBinding k0 typeBindCtx
+  (TypeLam k0 ty0, TypeLam k1 ty1)
+    -> let newTypeBindCtx  = addBinding k0 typeBindCtx
            newTypeBindings = unbound $ bury typeBindings
-          in (&&) <$> pure (k0 == k1) <*> typeEq' (i+1) newTypeBindCtx newTypeBindings typeNameCtx ty0 ty1
+          in (&&) <$> pure (k0 == k1) <*> typeEq newTypeBindCtx newTypeBindings typeNameCtx ty0 ty1
 
   -- A non-Named, non identical type
-  _ -> Just False
+  _ -> Right False
 
 
 -- Are two lists of types pairwise equivalent under a typectx?
-typeEqs :: (Eq tb,Ord tb,Document tb,Binds tb Kind,HasBinding (Type tb) tb) => BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
-typeEqs = typeEqs' 0
-
-typeEqs' :: (Eq tb,Ord tb,Document tb,Binds tb Kind,HasBinding (Type tb) tb) => Int -> BindCtx tb Kind -> Bindings (Type tb) -> TypeCtx tb -> [Type tb] -> [Type tb] -> Maybe Bool
-typeEqs' i typeBindCtx typeBindings typeNameCtx ts0 ts1
-  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEq' i typeBindCtx typeBindings typeNameCtx) ts0 ts1
+typeEqs
+  :: forall tb
+   . ( Eq tb
+     , Ord tb
+     , Binds tb Kind
+     , HasBinding (Type tb) tb
+     )
+  => BindCtx tb Kind
+  -> Bindings (Type tb)
+  -> TypeCtx tb
+  -> [Type tb]
+  -> [Type tb]
+  -> Either (Error tb) Bool
+typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
+  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEq typeBindCtx typeBindings typeNameCtx) ts0 ts1
                                   in case mEq of
-                                       Just True -> traceIndent i ("T"::Text.Text) mEq
-                                       _         -> traceIndent i ("F"::Text.Text) mEq
-  | otherwise                = Just False
+                                       Right True -> mEq
+                                       _          -> mEq
+  | otherwise                = Right False
 
 
 
 -- | Under a given bindings context, kind-check a type.
--- TODO: Break move to more approritate location.
-typeKind :: (Show tb, Binds tb Kind) => BindCtx tb Kind -> TypeCtx tb -> Type tb -> Either (Error tb) Kind
+-- TODO: Break move to more appropriate location.
+typeKind
+  :: ( Show tb
+     , Binds tb Kind
+     )
+  => BindCtx tb Kind
+  -> TypeCtx tb
+  -> Type tb
+  -> Either (Error tb) Kind
 typeKind typeBindCtx typeCtx ty = case unfixType ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.

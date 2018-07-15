@@ -172,8 +172,6 @@ data TypeF tb typ
     }
   deriving (Eq,Ord,Show)
 
-deriving instance (Document tb, Document typ) => Document (TypeF tb typ)
-
 -- | Is a Type a simple named type
 isType :: Type tb -> Bool
 isType t = case unfixType t of

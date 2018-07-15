@@ -58,7 +58,9 @@ data MatchArgTestCase = MatchArgTestCase
   }
 
 hasExpectedResultSpec
-  :: Document (ParseResult TestMatchArg)
+  :: ( Document (ParseResult TestMatchArg)
+     , Document TestType
+     )
   => TypeCtx TyVar
   -> ExprBindCtx Var TyVar
   -> TypeBindCtx TyVar
@@ -70,6 +72,10 @@ hasExpectedResultSpec
 hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg expectTy expect =
   it "Has expected result" $ isExpected (checkMatchWith testMatchArg expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
+    fromRight :: b -> Either a b -> b
+    fromRight _ (Right b) = b
+    fromRight b _         = b
+
     isExpected :: Either (Error TyVar) [Type TyVar] -> Either (Error TyVar) [Type TyVar] -> Expectation
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
@@ -83,7 +89,7 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
 
       (Right resultTys, Right expectedTys)
         | length resultTys == length expectedTys
-          && all (fromMaybe False . uncurry (typeEq typeBindCtx typeBindings typeCtx)) (zip resultTys expectedTys)
+          && all (fromRight False . uncurry (typeEq typeBindCtx typeBindings typeCtx)) (zip resultTys expectedTys)
           -> return ()
 
         | otherwise
@@ -111,7 +117,9 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
              ]
 
 parseToSpec
-  :: Document (ParseResult TestMatchArg)
+  :: ( Document (ParseResult TestMatchArg)
+     , Document TestMatchArg
+     )
   => Parser TestMatchArg
   -> Text.Text
   -> Text.Text
@@ -127,12 +135,12 @@ parseToSpec testMatchArgP name txt expectMatchArg =
            $ expectationFailure . Text.unpack
                                 . render
                                 . mconcat
-                                $ [text "Parses successfully, BUT not as expected. Got:"
-                                  ,lineBreak
-                                  ,document matchArg
-                                  ,lineBreak
-                                  ,text "expected"
-                                  ,lineBreak
-                                  ,document expectMatchArg
+                                $ [ text "Parses successfully, BUT not as expected. Got:"
+                                  , lineBreak
+                                  , document matchArg
+                                  , lineBreak
+                                  , text "expected"
+                                  , lineBreak
+                                  , document expectMatchArg
                                   ]
 

@@ -40,6 +40,17 @@ data Error tb
 
   -- ^ Something with kind cannot be type-applied to something with kind
   | ETypeAppMismatch !Kind !Kind
+
+  -- ^ A Type app must apply a type lambda.
+  | ETypeAppLambda (Type tb)
+
+  -- ^ An expression had a type, and claimed to have the type indexed within a
+  -- sum type but doesnt.
+  | ESumMismatch (Type tb) Int [Type tb]
+
+  -- ^ The default branch and the first branch of a case statement have
+  -- different types.
+  | ECaseDefaultMismatch (Type tb) (Type tb)
   deriving (Ord,Eq,Show)
 
 instance (Document (Type tb)) => Document (Error tb) where
@@ -83,3 +94,24 @@ instance (Document (Type tb)) => Document (Error tb) where
                  , text "'."
                  ]
 
+    ETypeAppLambda fTy
+      -> mconcat [ text "Cannot type-apply a non type-lam: "
+                 , document fTy
+                 ]
+
+    ESumMismatch actualType index sumTys
+      -> mconcat [ text "Expression had type: "
+                 , document actualType
+                 , text "and claimed to be contained within the sum"
+                 , mconcat . fmap document $ sumTys
+                 , text "at index"
+                 , document index
+                 ]
+
+    ECaseDefaultMismatch defaultTy firstBranchTy
+      -> mconcat [ text "In a case statement the default branch had type: "
+                 , document defaultTy
+                 , text "whereas the first branch had type: "
+                 , document firstBranchTy
+                 , text " but branches must have the same type."
+                 ]

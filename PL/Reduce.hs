@@ -37,7 +37,13 @@ import Data.Proxy
 import PLPrinter
 
 -- | Reduce an 'Expr'.
-reduce :: forall b abs tb. (BindAbs b abs tb,Eq b) => Expr b abs tb -> Either (Error tb) (Expr b abs tb)
+reduce
+  :: forall b abs tb
+   . ( BindAbs b abs tb
+     , Eq b
+     )
+  => Expr b abs tb
+  -> Either (Error tb) (Expr b abs tb)
 reduce = reduceRec emptyBindings
   where
   -- Recursively reduce an expression until it no longer reduces

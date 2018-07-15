@@ -37,7 +37,14 @@ import qualified Data.Text as Text
 
 -- | Reduce a top-level type - A type under no outer abstractions
 -- Assume kind checked?
-reduceType :: forall tb. (Ord tb,Document tb,BindingIx tb) => TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
+reduceType
+  :: forall tb
+   . ( Ord tb
+     , BindingIx tb
+     )
+  => TypeCtx tb
+  -> Type tb
+  -> Either (Error tb) (Type tb)
 reduceType = reduceTypeRec emptyBindings
   where
 
@@ -48,34 +55,29 @@ reduceType = reduceTypeRec emptyBindings
     if reducedTy == ty then pure ty else reduceTypeRec bindings typeNameCtx reducedTy
 
 -- Reduce a type by a single reduction step.
-reduceTypeStep :: forall tb. (Ord tb,Document tb,BindingIx tb) => Bindings (Type tb) -> TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
-reduceTypeStep = reduceTypeStep' 0
-
-
-reduceTypeStep' :: forall tb
-                 . (Ord tb
-                   ,BindingIx tb
-                   ,Document tb
-                   )
-                => Int
-                -> Bindings (Type tb)
-                -> TypeCtx tb
-                -> Type tb
-                -> Either (Error tb) (Type tb)
-reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [text "~>",document bindings,document ty]) $ case unfixType ty of
+reduceTypeStep
+  :: forall tb
+   . ( Ord tb
+     , BindingIx tb
+     )
+  => Bindings (Type tb)
+  -> TypeCtx tb
+  -> Type tb
+  -> Either (Error tb) (Type tb)
+reduceTypeStep bindings typeNameCtx ty = case unfixType ty of
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
     -> traceStep ("Lookup binding"::Text.Text) $ pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
-         Unbound   -> traceIndent i ("Unbound. No reduction":: Text.Text) $ fixType $ TypeBinding b
-         Bound ty' -> traceIndent i ("Bound" :: Text.Text) ty' -- maybe should reduce again?
+         Unbound   -> fixType $ TypeBinding b
+         Bound ty' -> ty' -- maybe should reduce again?
 
   TypeApp f x
-    -> do x' <- reduceTypeStep' (i+1) bindings typeNameCtx x
-          f' <- reduceTypeStep' (i+1) bindings typeNameCtx f
+    -> do x' <- reduceTypeStep bindings typeNameCtx x
+          f' <- reduceTypeStep bindings typeNameCtx f
           case unfixType f' of
             TypeLam _ fTy
-              -> reduceTypeStep' (i+1) (bind x' bindings) typeNameCtx fTy
+              -> reduceTypeStep (bind x' bindings) typeNameCtx fTy
 
             Named n
               -> case lookupTypeNameInfo n typeNameCtx of
@@ -87,17 +89,17 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [text "~>",do
                    -- like to terminate...
                    Just ti -> Right $ fixType $ TypeApp f' x'
 
-            _ -> Left $ EMsg $ text "Cant reduce type application of non-lambda term: f: " <> document f'
+            _ -> Left $ ETypeAppLambda f
 
   -- Reduce under a lambda by noting the abstraction is buried and Unbound
   -- TODO: Maybe dont reduce under
   TypeLam takeKind ty
-    -> (fixType . TypeLam takeKind) <$> reduceTypeStep' (i+1) (unbound $ bury bindings) typeNameCtx ty
+    -> (fixType . TypeLam takeKind) <$> reduceTypeStep (unbound $ bury bindings) typeNameCtx ty
 
   -- TODO: Remain unconvinced by this definition.
   -- Reduce the rhs by noting the abstraction is Unbound
   BigArrow from to
-    -> (fixType . BigArrow from) <$> reduceTypeStep' (i+1) (unbound bindings) typeNameCtx to
+    -> (fixType . BigArrow from) <$> reduceTypeStep (unbound bindings) typeNameCtx to
 
   -- Dont reduce names
   Named n
@@ -115,14 +117,14 @@ reduceTypeStep' i bindings typeNameCtx ty = traceIndent i (mconcat [text "~>",do
            -> Right ty
 
   Arrow from to
-    -> (\a b -> fixType $ Arrow a b) <$> reduceTypeStep' (i+1) bindings typeNameCtx from <*> reduceTypeStep' (i+1) bindings typeNameCtx to
+    -> (\a b -> fixType $ Arrow a b) <$> reduceTypeStep bindings typeNameCtx from <*> reduceTypeStep bindings typeNameCtx to
 
   SumT types
-    -> (fixType . SumT) <$> mapM (reduceTypeStep' (i+1) bindings typeNameCtx) types
+    -> (fixType . SumT) <$> mapM (reduceTypeStep bindings typeNameCtx) types
 
   ProductT types
-    -> (fixType . ProductT) <$> mapM (reduceTypeStep' (i+1) bindings typeNameCtx) types
+    -> (fixType . ProductT) <$> mapM (reduceTypeStep bindings typeNameCtx) types
 
   UnionT types
-    -> (fixType . UnionT . Set.fromList) <$> mapM (reduceTypeStep' (i+1) bindings typeNameCtx) (Set.toList types)
+    -> (fixType . UnionT . Set.fromList) <$> mapM (reduceTypeStep bindings typeNameCtx) (Set.toList types)
 

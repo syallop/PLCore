@@ -89,7 +89,10 @@ testCases t = mconcat
 --
 -- to define a spec testing your MatchArg parser.
 parserSpec
-  :: Document (ParseResult TestMatchArg)
+  :: ( Document (ParseResult TestMatchArg)
+     , Document TestMatchArg
+     , Document TestType
+     )
   => TestMatchArgSources
   -> Parser TestMatchArg
   -> Spec
@@ -101,7 +104,9 @@ parserSpec sources testMatchArgP
 
 -- Test that Text strings parse to an expected expression
 parseTo
-  :: Document (ParseResult TestMatchArg)
+  :: ( Document (ParseResult TestMatchArg)
+     , Document TestMatchArg
+     )
   => TestMatchArgSources
   -> Parser TestMatchArg
   -> Spec
@@ -114,7 +119,10 @@ parseTo sources testMatchArgP
 
 -- Test that MatchArgs bind the expected types or fail predictably.
 hasExpectedResult
-  :: Document (ParseResult TestMatchArg)
+  :: ( Document (ParseResult TestMatchArg)
+     , Document TestMatchArg
+     , Document TestType
+     )
   => TestMatchArgSources
   -> Spec
 hasExpectedResult sources

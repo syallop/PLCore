@@ -100,7 +100,10 @@ testCases t = mconcat
 --
 -- to define a spec testing your Expr parser.
 parserSpec
-  :: Document (ParseResult TestExpr)
+  :: ( Document (ParseResult TestExpr)
+     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     , Document (Type TyVar)
+     )
   => TestExprSources
   -> Parser TestExpr
   -> Spec
@@ -113,7 +116,10 @@ parserSpec testSources testExprP
 
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec
-  :: TestExprSources
+  :: ( Document (Type TyVar)
+     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     )
+  => TestExprSources
   -> Spec
 typeChecksSpec testSources
   = describe "fully typecheck AND typechecks to the correct type"
@@ -122,7 +128,10 @@ typeChecksSpec testSources
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec
-  :: TestExprSources
+  :: ( Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     , Document (Type TyVar)
+     )
+  => TestExprSources
   -> Spec
 reducesToSpec testSources
   = describe "when applied to a list of arguments must reduce to an expected expression"
@@ -184,7 +193,10 @@ reducesToSpec testSources
 
 -- Test that Text strings parse to an expected expression
 parsesToSpec
-  :: Document (ParseResult TestExpr)
+  :: ( Document (ParseResult TestExpr)
+     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
+     , Document (Type TyVar)
+     )
   => TestExprSources
   -> Parser TestExpr
   -> Spec

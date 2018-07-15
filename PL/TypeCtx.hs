@@ -46,6 +46,7 @@ import Data.Monoid
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+-- | Rec describes whether a type recurses on itself or not.
 data Rec
   = Rec
   | NonRec
@@ -66,7 +67,7 @@ instance Monoid (TypeCtx tb) where
   mempty = TypeCtx mempty
   mappend (TypeCtx t0) (TypeCtx t1) = TypeCtx (t0 <> t1)
 
-instance Document tb => Document (TypeCtx tb) where
+instance (Document (Type tb), Document tb) => Document (TypeCtx tb) where
   document (TypeCtx m) = mconcat . Map.foldrWithKey
                                    (\typeName typeInfo acc -> document typeName : lineBreak : indent 2 (document typeInfo) : lineBreak : lineBreak : acc)
                                    []

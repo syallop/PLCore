@@ -19,6 +19,6 @@ packages:
     commit: bcd94f5cc0c4e919cbda3bb43dde482cac56dd51
   extra-dep: true
 extra-deps:
-- megaparsec-6.4.0
-- parser-combinators-0.4.0
+- megaparsec-7.0.4
+- parser-combinators-1.0.1
 allow-newer: true

@@ -9,13 +9,13 @@ import PLPrinter
 import Reversible
 import Reversible.Iso
 
-import qualified Data.Text as Text
-import Data.Void
-import Data.Text (Text)
 import Control.Applicative
-import qualified Text.Megaparsec.Char as Mega
-import qualified Text.Megaparsec.Expr as Mega
+import Data.Text (Text)
+import Data.Void
+import qualified Control.Monad.Combinators.Expr as Mega
+import qualified Data.Text as Text
 import qualified Text.Megaparsec as Mega
+import qualified Text.Megaparsec.Char as Mega
 
 
 -- | Convert a Grammar to a Parser that accepts it.
@@ -25,7 +25,7 @@ toParser (Reversible r) = case r of
     -> case i of
          -- A single character if one is available.
          G.GAnyChar
-           -> Mega.anyChar
+           -> Mega.anySingle
 
          -- Enhance a failing parse with a given Expect label.
          G.GLabel l g

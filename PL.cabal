@@ -71,6 +71,7 @@ library
                      , hedgehog
                      , hspec
                      , megaparsec >=6.4.0
+                     , parser-combinators
                      , quickcheck-instances
                      , semigroups
                      , text

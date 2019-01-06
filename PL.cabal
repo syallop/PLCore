@@ -59,7 +59,7 @@ library
                      , GeneralizedNewtypeDeriving
                      , LambdaCase
 
-  build-depends:       base >=4.7
+  build-depends:       base >= 4.12
 
                      , PLGrammar  >= 0.4
                      , PLParser   >= 0.1

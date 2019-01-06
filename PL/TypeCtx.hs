@@ -43,6 +43,7 @@ import PLPrinter
 import Control.Applicative
 import Data.Maybe
 import Data.Monoid
+import Data.Semigroup
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -63,9 +64,11 @@ instance Document Rec where
 newtype TypeCtx tb = TypeCtx {_unTypeCtx :: Map.Map TypeName (TypeInfo tb)}
   deriving Show
 
+instance Semigroup (TypeCtx tb) where
+  (TypeCtx t0) <> (TypeCtx t1) = TypeCtx (t0 <> t1)
+
 instance Monoid (TypeCtx tb) where
   mempty = TypeCtx mempty
-  mappend (TypeCtx t0) (TypeCtx t1) = TypeCtx (t0 <> t1)
 
 instance (Document (Type tb), Document tb) => Document (TypeCtx tb) where
   document (TypeCtx m) = mconcat . Map.foldrWithKey

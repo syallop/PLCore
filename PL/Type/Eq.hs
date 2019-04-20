@@ -17,7 +17,6 @@ import PL.Error
 import PL.ExprLike
 import PL.Kind
 import PLPrinter
-import PLPrinter.Debug
 import PL.ReduceType
 import PL.Type
 import PL.FixType

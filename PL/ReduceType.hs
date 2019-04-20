@@ -26,7 +26,6 @@ import PL.Type
 import PL.TypeCtx
 import PL.FixType
 import PLPrinter
-import PLPrinter.Debug
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -68,7 +67,7 @@ reduceTypeStep bindings typeNameCtx ty = case unfixType ty of
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
-    -> traceStep ("Lookup binding"::Text.Text) $ pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
+    -> pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
          Unbound   -> fixType $ TypeBinding b
          Bound ty' -> ty' -- maybe should reduce again?
 

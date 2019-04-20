@@ -48,9 +48,6 @@ import PLGrammar             as X
 -- A NIH Pretty-Printer
 import PLPrinter              as X
 
--- Wraps Debug.Trace into a pretty printer.
-import PLPrinter.Debug        as X
-
 -- Reduce expressions by maintaining a binding ctx and performing substitution
 -- and recursive reduction when necessary.
 import PL.Reduce             as X

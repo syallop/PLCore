@@ -14,6 +14,7 @@ Maps names to types allowing type resolution.
 module PL.TypeCtx
   ( TypeCtx ()
   , emptyTypeCtx
+  , typeCtxMapping
 
   , Rec (..)
   , TypeInfo (..)
@@ -63,6 +64,10 @@ instance Document Rec where
 -- do so a finite amount of times.
 newtype TypeCtx tb = TypeCtx {_unTypeCtx :: Map.Map TypeName (TypeInfo tb)}
   deriving Show
+
+-- Retrieve the underlying map of type names to their information
+typeCtxMapping :: TypeCtx tb -> Map.Map TypeName (TypeInfo tb)
+typeCtxMapping = _unTypeCtx
 
 instance Semigroup (TypeCtx tb) where
   (TypeCtx t0) <> (TypeCtx t1) = TypeCtx (t0 <> t1)

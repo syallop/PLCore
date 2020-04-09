@@ -100,42 +100,47 @@ testCases t = mconcat
 --
 -- to define a spec testing your Expr parser.
 parserSpec
-  :: ( Document (ParseResult TestExpr)
-     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     , Document (Type TyVar)
-     )
-  => TestExprSources
+  :: TestExprSources
   -> Parser TestExpr
+  -> (TestExpr -> Doc)
+  -> (TestType -> Doc)
   -> Spec
-parserSpec testSources testExprP
+parserSpec testSources testExprP ppExpr ppType
   = describe "Expressions using Var for binding and Type for abstraction" $ sequence_
-  [ typeChecksSpec testSources
-  , reducesToSpec testSources
-  , parsesToSpec testSources testExprP
+  [ typeChecksSpec testSources ppType
+  , reducesToSpec testSources ppExpr ppType
+  , parsesToSpec testSources testExprP ppExpr
   ]
 
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec
-  :: ( Document (Type TyVar)
-     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     )
-  => TestExprSources
+  :: TestExprSources
+  -> (TestType -> Doc)
   -> Spec
-typeChecksSpec testSources
+typeChecksSpec testSources ppType
   = describe "fully typecheck AND typechecks to the correct type"
-  . mapM_ (\(name,testCase) -> typeChecksTo (_underTypeCtx testCase) name (_isExpr testCase) (_typed testCase))
-               $ testCases testSources
+  . mapM_ (\(name,testCase) -> typeChecksTo (_underTypeCtx testCase)
+                                            name
+                                            (_isExpr testCase)
+                                            (_typed testCase)
+                                            ppType
+          )
+  $ testCases testSources
 
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec
-  :: ( Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     , Document (Type TyVar)
-     )
-  => TestExprSources
+  :: TestExprSources
+  -> (TestExpr -> Doc)
+  -> (TestType -> Doc)
   -> Spec
-reducesToSpec testSources
+reducesToSpec testSources ppExpr ppType
   = describe "when applied to a list of arguments must reduce to an expected expression"
-  . mapM_ (\(name,testCase,reductionTests) -> manyAppliedReducesToSpec name (_isExpr testCase) reductionTests)
+  . mapM_ (\(name,testCase,reductionTests) -> manyAppliedReducesToSpec name
+                                                                       (_isExpr testCase)
+                                                                       reductionTests
+                                                                       ppExpr
+                                                                       ppType
+          )
   $
   [("boolean and"
    ,(andExprTestCase . _andTestCase . _booleanTestCases $ testSources)
@@ -193,16 +198,13 @@ reducesToSpec testSources
 
 -- Test that Text strings parse to an expected expression
 parsesToSpec
-  :: ( Document (ParseResult TestExpr)
-     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     , Document (Type TyVar)
-     )
-  => TestExprSources
+  :: TestExprSources
   -> Parser TestExpr
+  -> (TestExpr -> Doc)
   -> Spec
-parsesToSpec sources testExprP
+parsesToSpec sources testExprP ppExpr
   = describe "are parsed by given strings"
-  . mapM_ (\(name,testCase) -> parseToSpec testExprP name (_parsesFrom testCase) (_isExpr testCase))
+  . mapM_ (\(name,testCase) -> parseToSpec testExprP name (_parsesFrom testCase) (_isExpr testCase) ppExpr)
   . testCases
   $ sources
 

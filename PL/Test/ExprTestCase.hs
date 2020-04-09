@@ -1,6 +1,7 @@
 {-# LANGUAGE
     OverloadedStrings
   , FlexibleContexts
+  , RankNTypes
   #-}
 {-|
 Module      : PL.Test.ExprTestCase
@@ -35,6 +36,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.Name
 import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
@@ -46,6 +48,7 @@ import PLParser
 import PLParser (runParser,Parser,ParseResult(..),pointTo)
 import PLParser.Cursor
 import PLPrinter
+import PLPrinter.Doc
 
 import Control.Applicative
 import Control.Monad
@@ -54,11 +57,14 @@ import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.Map as Map
+import qualified Data.List as List
 import Data.List
 import Data.Text (Text)
 
 import Test.Hspec
 import PL.Test.Source
+import PL.Test.Util
 
 type TestType = Type TyVar
 type TestExpr = Expr Var TestType TyVar
@@ -73,22 +79,20 @@ data ExprTestCase = ExprTestCase
 -- | Test whether an expression typechecks.
 -- Name an expression, check it fully typechecks AND type checks to the given type
 typeChecksTo
-  :: ( Document TestExpr
-     , Document TestType
-     )
-  => TypeCtx TyVar
+  :: TypeCtx TyVar
   -> Text
   -> TestExpr
   -> TestType
+  -> (TestType -> Doc)
   -> Spec
-typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprType typeCtx expr of
+typeChecksTo typeCtx name expr expectTy ppType = it (Text.unpack name) $ case topExprType typeCtx expr of
   Left err
-    -> expectationFailure $ Text.unpack $ renderDocument err
+    -> expectationFailure $ Text.unpack $ render $ ppError ppType err
 
   Right exprTy
     -> case typeEq emptyCtx emptyBindings typeCtx exprTy expectTy of
          Left err -> expectationFailure $ Text.unpack $ render $ text "A given type name does not exist in the context"
-         Right False -> expectationFailure $ Text.unpack $ render $ text "Expected: " <> document expectTy <> text " got: " <> document exprTy
+         Right False -> expectationFailure $ Text.unpack $ render $ text "Expected: " <> ppType expectTy <> text " got: " <> ppType exprTy
          Right True  -> return ()
 
 -- | Test whether an expression reduces to another.
@@ -96,43 +100,36 @@ typeChecksTo typeCtx name expr expectTy = it (Text.unpack name) $ case topExprTy
 -- Name an expression, apply it to a list of (argnames,argument,expected result) tuples.
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 manyAppliedReducesToSpec
-  :: ( Document TestExpr
-     , Document TestType
-     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     )
-  => String
+  :: String
   -> TestExpr
   -> [(String,[TestExpr],TestExpr)]
+  -> (TestExpr -> Doc)
+  -> (TestType -> Doc)
   -> Spec
-manyAppliedReducesToSpec name expr reductions = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult) reductions
+manyAppliedReducesToSpec name expr reductions ppExpr ppType = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult ppExpr ppType) reductions
 
 -- Name an expression, apply it to a list of expressions. Does it reduce to the given expression?
 appliedReducesToSpec
-  :: ( Document TestExpr
-     , Document TestType
-     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     )
-  => TestExpr
+  :: TestExpr
   -> String
   -> [TestExpr]
   -> TestExpr
+  -> (TestExpr -> Doc)
+  -> (TestType -> Doc)
   -> Spec
 appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 
 -- Name an expression. Check it reduces to an expression.
 reduceToSpec
-  :: ( Document TestExpr
-     , Document TestType
-     , Document (Type TyVar)
-     , Document (ExprF Var TestType TyVar (FixExpr Var TestType TyVar ExprF))
-     )
-  => String
+  :: String
   -> TestExpr
   -> TestExpr
+  -> (TestExpr -> Doc)
+  -> (TestType -> Doc)
   -> Spec
-reduceToSpec name expr eqExpr = it name $ case reduce expr of
+reduceToSpec name expr eqExpr ppExpr ppType = it name $ case reduce expr of
   Left exprErr
-    -> expectationFailure $ Text.unpack $ render $ document $ exprErr
+    -> expectationFailure $ Text.unpack $ render $ ppError ppType exprErr
 
   Right redExpr
     -> if redExpr == eqExpr
@@ -144,7 +141,7 @@ reduceToSpec name expr eqExpr = it name $ case reduce expr of
                 Left eqExprErr
                   -> expectationFailure $ Text.unpack $ render $ mconcat
                        [text "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
-                       ,document eqExprErr
+                       ,ppError ppType eqExprErr
                        ]
 
                 Right redEqExpr
@@ -160,17 +157,37 @@ uncurry3 f (a,b,c) = f a b c
 
 -- | Test whether some text parses to some expression
 parseToSpec
-  :: ( Document (ParseResult TestExpr)
-     , Document TestExpr
-     )
-  => Parser TestExpr
+  :: Parser TestExpr
   -> Text.Text
   -> Text.Text
   -> TestExpr
+  -> (TestExpr -> Doc)
   -> Spec
-parseToSpec testExprP name txt expectExpr = it (Text.unpack name) $ case runParser testExprP txt of
-  (f@(ParseFailure e c))
-    -> expectationFailure $ Text.unpack $ render $ document f
+parseToSpec testExprP name txt expectExpr ppExpr = it (Text.unpack name) $ case runParser testExprP txt of
+  (f@(ParseFailure failures cursor))
+    -> expectationFailure $ Text.unpack $ render $ mconcat $
+         [ text "Parse failure at:"
+         , lineBreak
+
+         , indent1 $ ppCursor cursor
+         , lineBreak
+         ]
+         ++
+         if null failures
+           then mempty
+           else [ text "The failures backtracked from were:"
+                , lineBreak
+                , indent1 . mconcat
+                          . map (\(cursor,expected) -> mconcat [ ppCursor cursor
+                                                               , ppExpected expected
+                                                               , lineBreak
+                                                               , lineBreak
+                                                               ]
+                                )
+                          . Map.toList
+                          . collectFailures
+                          $ failures
+                ]
 
   ParseSuccess expr c
     -> if expr == expectExpr
@@ -180,58 +197,63 @@ parseToSpec testExprP name txt expectExpr = it (Text.unpack name) $ case runPars
                                  . mconcat
                                  $ [text "Parses successfully, BUT not as expected. Got:"
                                    ,lineBreak
-                                   ,document expr
+                                   ,ppExpr expr
                                    ,lineBreak
                                    ,text "expected"
                                    ,lineBreak
-                                   ,document expectExpr
+                                   ,ppExpr expectExpr
                                    ]
 
+-- TODO: Derive parser and printer from grammar
 testPipeline
-  :: ( Document (ParseResult TestExpr)
-     , Document Pos
-     , Document TestExpr
-     , Document TestType
-     )
-  => Parser TestExpr
+  :: Grammar TestExpr
+  -> Grammar TestType
+  -> (forall a. Grammar a -> (Parser a,Printer a))
   -> TypeCtx TyVar
   -> Text.Text
   -> String
-testPipeline testExprP typeCtx txt = case runParser testExprP txt of
-  ParseFailure expected c
-    -> unlines [ "Parse failure"
-               , "Parse expected: " ++ show expected
-               , Text.unpack $ pointTo renderDocument c
-               ]
+testPipeline testExprGrammar testTypeGrammar parseprint typeCtx txt =
+  let (testExprParser, testExprPrinter) = parseprint testExprGrammar
+      (testTypeParser, testTypePrinter) = parseprint testTypeGrammar
 
-  ParseSuccess expr c
-    -> case topExprType typeCtx expr of
-          Left err
-            -> Text.unpack . render . mconcat . intersperse lineBreak $
-                 [ text "Type check failure: "
-                 , text "Parses: "
-                 , document expr
-                 , text "Type error: "
-                 , document err
-                 ]
+      ppExpr = fromMaybe mempty . pprint testExprPrinter
+      ppType = fromMaybe mempty . pprint testTypePrinter
 
-          Right exprTy
-            -> case reduce expr of
-                 Left err
-                   -> "reduce error"
+   in case runParser testExprParser txt of
+        ParseFailure expected c
+          -> unlines [ "Parse failure"
+                     , "Parse expected: " ++ show expected
+                     , Text.unpack $ pointTo (render . ppPos) c
+                     ]
 
-                 Right redExpr
-                   -> Text.unpack . render . mconcat . intersperse lineBreak $
-                        [text "Success"
-                        ,text "Parses:"
-                        ,document expr
-                        ,lineBreak
+        ParseSuccess expr c
+          -> case topExprType typeCtx expr of
+                Left err
+                  -> Text.unpack . render . mconcat . intersperse lineBreak $
+                       [ text "Type check failure: "
+                       , text "Parses: "
+                       , ppExpr expr
+                       , text "Type error: "
+                       , ppError ppType err
+                       ]
 
-                        ,text "Type checks:"
-                        ,document exprTy
-                        ,lineBreak
+                Right exprTy
+                  -> case reduce expr of
+                       Left err
+                         -> "reduce error"
 
-                        ,text "Reduces:"
-                        ,document redExpr
-                        ]
+                       Right redExpr
+                         -> Text.unpack . render . mconcat . intersperse lineBreak $
+                              [text "Success"
+                              ,text "Parses:"
+                              ,ppExpr expr
+                              ,lineBreak
+
+                              ,text "Type checks:"
+                              ,ppType exprTy
+                              ,lineBreak
+
+                              ,text "Reduces:"
+                              ,ppExpr redExpr
+                              ]
 

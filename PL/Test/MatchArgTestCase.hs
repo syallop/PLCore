@@ -39,9 +39,11 @@ import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List
 import Data.Text (Text)
+import qualified Data.Map as Map
 
 import Test.Hspec
 import PL.Test.Source
+import PL.Test.Util
 
 type TestType = Type TyVar
 type TestMatchArg = MatchArg Var TyVar
@@ -58,18 +60,16 @@ data MatchArgTestCase = MatchArgTestCase
   }
 
 hasExpectedResultSpec
-  :: ( Document (ParseResult TestMatchArg)
-     , Document TestType
-     )
-  => TypeCtx TyVar
+  :: TypeCtx TyVar
   -> ExprBindCtx Var TyVar
   -> TypeBindCtx TyVar
   -> TypeBindings TyVar
   -> TestMatchArg
   -> Type TyVar
   -> Either (Error TyVar) [Type TyVar]
+  -> (TestType -> Doc)
   -> Spec
-hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg expectTy expect =
+hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg expectTy expect ppType =
   it "Has expected result" $ isExpected (checkMatchWith testMatchArg expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
     fromRight :: b -> Either a b -> b
@@ -82,9 +82,9 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
         | resultErr == expectedErr -> return ()
         | otherwise  -> expectationFailure $ Text.unpack $ render $ mconcat
             [ text "MatchArg expected error:"
-            , document expectedErr
+            , ppError ppType expectedErr
             , text "but got:"
-            , document resultErr
+            , ppError ppType resultErr
             ]
 
       (Right resultTys, Right expectedTys)
@@ -95,52 +95,72 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
         | otherwise
           -> expectationFailure $ Text.unpack $ render $ mconcat
                [ text "MatchArg expected to bind:"
-               , foldr ((<>) . document) mempty expectedTys
+               , foldr ((<>) . ppType) mempty expectedTys
                , text "but bound:"
-               , foldr ((<>) . document) mempty resultTys
+               , foldr ((<>) . ppType) mempty resultTys
                ]
 
       (Right resultTys, Left expectedErr)
         -> expectationFailure $ Text.unpack $ render $ mconcat
              [ text "MatchArg expected error:"
-             , document expectedErr
+             , ppError ppType expectedErr
              , text "but got successful result, binding types:"
-             , foldr ((<>) . document) mempty resultTys
+             , foldr ((<>) . ppType) mempty resultTys
              ]
 
       (Left resultErr, Right expectedTys)
         -> expectationFailure $ Text.unpack $ render $ mconcat
              [ text "MatchArg expected to bind:"
-             , foldr ((<>) . document) mempty expectedTys
+             , foldr ((<>) . ppType) mempty expectedTys
              , text "but got error:"
-             , document resultErr
+             , ppError ppType resultErr
              ]
 
 parseToSpec
-  :: ( Document (ParseResult TestMatchArg)
-     , Document TestMatchArg
-     )
-  => Parser TestMatchArg
+  :: Parser TestMatchArg
   -> Text.Text
   -> Text.Text
   -> TestMatchArg
+  -> (TestMatchArg -> Doc)
   -> Spec
-parseToSpec testMatchArgP name txt expectMatchArg =
-  it (Text.unpack name) $ case runParser testMatchArgP txt of
-    (f@(ParseFailure e c))
-      -> expectationFailure $ Text.unpack $ render $ document f
+parseToSpec testMatchArgP name txt expectMatchArg ppMatchArg = it (Text.unpack name) $ case runParser testMatchArgP txt of
+  (f@(ParseFailure failures cursor))
+    -> expectationFailure $ Text.unpack $ render $ mconcat $
+         [ text "Parse failure at:"
+         , lineBreak
 
-    ParseSuccess matchArg c
-      -> when (matchArg /= expectMatchArg)
-           $ expectationFailure . Text.unpack
-                                . render
-                                . mconcat
-                                $ [ text "Parses successfully, BUT not as expected. Got:"
-                                  , lineBreak
-                                  , document matchArg
-                                  , lineBreak
-                                  , text "expected"
-                                  , lineBreak
-                                  , document expectMatchArg
-                                  ]
+         , indent1 $ ppCursor cursor
+         , lineBreak
+         ]
+         ++
+         if null failures
+           then mempty
+           else [ text "The failures backtracked from were:"
+                , lineBreak
+                , indent1 . mconcat
+                          . map (\(cursor,expected) -> mconcat [ ppCursor cursor
+                                                               , ppExpected expected
+                                                               , lineBreak
+                                                               , lineBreak
+                                                               ]
+                                )
+                          . Map.toList
+                          . collectFailures
+                          $ failures
+                ]
+
+
+  ParseSuccess matchArg cursor
+    -> when (matchArg /= expectMatchArg)
+         $ expectationFailure . Text.unpack
+                              . render
+                              . mconcat
+                              $ [ text "Parses successfully, BUT not as expected. Got:"
+                                , lineBreak
+                                , ppMatchArg matchArg
+                                , lineBreak
+                                , text "expected"
+                                , lineBreak
+                                , ppMatchArg expectMatchArg
+                                ]
 

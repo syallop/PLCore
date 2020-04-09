@@ -89,43 +89,41 @@ testCases t = mconcat
 --
 -- to define a spec testing your MatchArg parser.
 parserSpec
-  :: ( Document (ParseResult TestMatchArg)
-     , Document TestMatchArg
-     , Document TestType
-     )
-  => TestMatchArgSources
+  :: TestMatchArgSources
   -> Parser TestMatchArg
+  -> (TestType -> Doc)
+  -> (TestMatchArg -> Doc)
   -> Spec
-parserSpec sources testMatchArgP
+parserSpec sources testMatchArgP ppType ppMatchArg
   = describe "MatchArg Var TyVar" $ sequence_
-    [ parseTo sources testMatchArgP
-    , hasExpectedResult sources
+    [ parseTo sources testMatchArgP ppMatchArg
+    , hasExpectedResult sources ppType
     ]
 
 -- Test that Text strings parse to an expected expression
 parseTo
-  :: ( Document (ParseResult TestMatchArg)
-     , Document TestMatchArg
-     )
-  => TestMatchArgSources
+  :: TestMatchArgSources
   -> Parser TestMatchArg
+  -> (TestMatchArg -> Doc)
   -> Spec
-parseTo sources testMatchArgP
+parseTo sources testMatchArgP ppMatchArg
   = describe "A String parses to the expected MatchArg"
-  . mapM_ (\(name,testCase) -> parseToSpec testMatchArgP name (_parsesFrom testCase) (_isMatchArg testCase))
+  . mapM_ (\(name,testCase) -> parseToSpec testMatchArgP
+                                           name
+                                           (_parsesFrom testCase)
+                                           (_isMatchArg testCase)
+                                           ppMatchArg
+          )
   . testCases
   $ sources
 
 
 -- Test that MatchArgs bind the expected types or fail predictably.
 hasExpectedResult
-  :: ( Document (ParseResult TestMatchArg)
-     , Document TestMatchArg
-     , Document TestType
-     )
-  => TestMatchArgSources
+  :: TestMatchArgSources
+  -> (TestType -> Doc)
   -> Spec
-hasExpectedResult sources
+hasExpectedResult sources ppType
   = describe "A MatchArg evaluates to the expected result"
   . mapM_ (\(name,testCase) -> hasExpectedResultSpec (_underTypeCtx         testCase)
                                                      (_underExprBindCtx     testCase)
@@ -134,6 +132,7 @@ hasExpectedResult sources
                                                      (_isMatchArg           testCase)
                                                      (_typed                testCase)
                                                      (_checkMatchWithResult testCase)
+                                                     ppType
           )
           . testCases
           $ sources

@@ -86,6 +86,13 @@ reduce = reduceRec emptyBindings
                 Lam _ fExpr -> reduceStep (bind x' bindings) fExpr
                 _           -> error "Cant reduce application of non-lambda term"
 
+      -- Reduce under the Big Lambda/ App
+      -- TODO: Pass kind bindings through the reduction as with Lam
+      BigLam takeKind lamExpr
+        -> Left $ EMsg $ text "Reducing under big lambdas is not implemented yet"
+      BigApp f ty
+        -> Left $ EMsg $ text "Reducing under big applications is not implemented yet"
+
       -- If the case scrutinee is an unbound variable, reduce all of the possible branches
       -- , otherwise, find the first matching branch and bind all matching variables into the RHS before reducing it.
       CaseAnalysis (Case caseScrutinee caseBranches)

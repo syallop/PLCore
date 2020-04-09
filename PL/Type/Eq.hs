@@ -272,6 +272,10 @@ typeKind typeBindCtx typeCtx ty = case unfixType ty of
           -- resolve the initial kind here if named kinds are added..
 
           case fKy of
+            -- Plain Kinds cannot be applied
+            Kind
+              -> Left $ ETypeAppMismatch fKy xKy
+
             -- Regular big application attempt
             KindArrow aKy bKy
 
@@ -279,4 +283,5 @@ typeKind typeBindCtx typeCtx ty = case unfixType ty of
               -- match => The kind is the right hand side of the kind arrow
               | kindEq aKy xKy -> Right bKy
               | otherwise      -> Left $ ETypeAppMismatch fKy xKy
+
 

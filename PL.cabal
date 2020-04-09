@@ -53,6 +53,7 @@ library
                      , PL.Test.MatchArg.Union
                      , PL.Test.MatchArgTestCase
                      , PL.Test.Source
+                     , PL.Test.Util
 
   -- other-modules:       
   other-extensions:    OverloadedStrings

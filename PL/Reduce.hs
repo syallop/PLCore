@@ -34,6 +34,8 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Proxy
 
+import qualified Data.Text as Text
+
 import PLPrinter
 
 -- | Reduce an 'Expr'.
@@ -57,9 +59,17 @@ reduce = reduceRec emptyBindings
 
       -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
       Binding b
-        -> pure $ case index (Proxy :: Proxy b) bindings (bindDepth b) of
-              Unbound -> fixExpr $ Binding b
-              Bound e -> e -- maybe should reduce again?
+        -> let ix = bindDepth b
+            in case safeIndex (Proxy :: Proxy b) bindings ix of
+              Just Unbound
+                -> pure $ fixExpr $ Binding b
+
+              Just (Bound e)
+                -> pure $ e -- maybe should reduce again?
+
+              -- TODO: Is there a better stage to detect invalid bindings?
+              Nothing
+                -> Left $ EMsg $ text "Cannot bind an expression from " <> (text . Text.pack . show $ ix) <> text " abstractions away as there are not that many abstractions"
 
       -- Reduce the sums expression
       Sum sumExpr sumIx sumTy

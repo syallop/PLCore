@@ -47,6 +47,7 @@ import Control.Applicative
 import Control.Monad
 import Data.List
 import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
@@ -158,9 +159,9 @@ reducesToSpec testSources ppExpr ppType
 
   ,("sum expressions"
    , (sumThreeExprTestCase . _sumThreeTestCase . _sumTestCases $ testSources)
-   , [ ("+1 False ~> 0", [fixExpr $ Sum falseTerm 1 [natTypeName,boolTypeName,natTypeName]], zero)
-     , ("+0 0     ~> 0", [fixExpr $ Sum zero      0 [natTypeName,boolTypeName,natTypeName]], zero)
-     , ("+2 0     ~> 1", [fixExpr $ Sum zero      2 [natTypeName,boolTypeName,natTypeName]], one)
+   , [ ("+1 False ~> 0", [fixExpr $ Sum falseTerm 1 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]], zero)
+     , ("+0 0     ~> 0", [fixExpr $ Sum zero      0 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]], zero)
+     , ("+2 0     ~> 1", [fixExpr $ Sum zero      2 $ NE.fromList $[natTypeName,boolTypeName,natTypeName]], one)
      ])
 
   ,("product expressions"

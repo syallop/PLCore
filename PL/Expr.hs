@@ -41,6 +41,7 @@ import PL.TypeCtx
 import Control.Applicative
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
 import Data.Monoid hiding (Sum,Product)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -158,7 +159,7 @@ data ExprF b abs tb expr
     | Sum
       { _sumExpr  :: expr
       , _sumIndex :: Int
-      , _sumType  :: [Type tb]
+      , _sumType  :: NonEmpty (Type tb)
       }
 
     -- | An Product is many ordered expressions.
@@ -375,7 +376,11 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
           exprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
-          _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy (inTypr !! ix) of
+          sumTy <- if NE.length inTypr < ix
+                     then Left $ EMsg $ text "Can't type check a sum because the index is larger than the number of types in the sum"
+                     else Right (inTypr NE.!! ix)
+
+          _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy sumTy of
                    Left err -> Left err
                    Right isSameType
                      | isSameType -> Right ()
@@ -565,7 +570,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                       _             -> Left . EMsg . text $ "Expected sum type in pattern match"
 
             -- index must be within the number of alternative in the sum type
-            matchedTy <- if length sumTypes < sumIndex then Left $ EMsg $ text "Matching on a larger sum index than the sum type contains" else Right (sumTypes !! sumIndex)
+            matchedTy <- if NE.length sumTypes < sumIndex then Left $ EMsg $ text "Matching on a larger sum index than the sum type contains" else Right (sumTypes NE.!! sumIndex)
 
             -- must have the expected index type
             checkMatchWith nestedMatchArg matchedTy exprBindCtx typeBindCtx typeBindings typeCtx

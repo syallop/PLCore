@@ -22,6 +22,8 @@ import PLPrinter
 
 import Data.Monoid
 import Data.Text
+import Data.List.NonEmpty
+import qualified Data.List.NonEmpty as NE
 
 data Error tb
 
@@ -46,7 +48,7 @@ data Error tb
 
   -- ^ An expression had a type, and claimed to have the type indexed within a
   -- sum type but doesnt.
-  | ESumMismatch (Type tb) Int [Type tb]
+  | ESumMismatch (Type tb) Int (NonEmpty (Type tb))
 
   -- ^ The default branch and the first branch of a case statement have
   -- different types.
@@ -103,7 +105,7 @@ instance (Document (Type tb)) => Document (Error tb) where
       -> mconcat [ text "Expression had type: "
                  , document actualType
                  , text "and claimed to be contained within the sum"
-                 , mconcat . fmap document $ sumTys
+                 , mconcat . NE.toList . fmap document $ sumTys
                  , text "at index"
                  , document index
                  ]
@@ -115,3 +117,4 @@ instance (Document (Type tb)) => Document (Error tb) where
                  , document firstBranchTy
                  , text " but branches must have the same type."
                  ]
+

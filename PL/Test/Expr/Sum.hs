@@ -37,6 +37,7 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 
 import PL.Test.Expr.Natural
 import PL.Test.Expr.Boolean
@@ -68,7 +69,7 @@ sumThreeExprTestCase src =
     }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = fixExpr $ Lam (fixType $ SumT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $    -- \x : Nat|Bool|Nat ->
+    e   = fixExpr $ Lam (fixType $ SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) $ fixExpr $    -- \x : Nat|Bool|Nat ->
             CaseAnalysis $ Case (fixExpr $ Binding VZ)                               -- case x of
               $ CaseBranches                                                         --
                 (CaseBranch (MatchSum 0 $ sPat Bind) (fixExpr $ Binding VZ)          --  0| S n   -> n
@@ -80,5 +81,5 @@ sumThreeExprTestCase src =
                     ]
                 )
                 Nothing
-    ty  = fixType $ Arrow (fixType $ SumT [natTypeName,boolTypeName,natTypeName]) natTypeName
+    ty  = fixType $ Arrow (fixType $ SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) natTypeName
 

@@ -32,6 +32,7 @@ import Data.List
 import qualified Data.Set as Set
 import Data.Proxy
 import Data.Monoid
+import Data.List.NonEmpty (NonEmpty)
 
 -- | Types classify 'Expr'essions.
 --
@@ -87,7 +88,7 @@ data TypeF tb typ
   --
   -- `SumT [Bool,Int,Char]`
   | SumT
-    { _sumTypes :: [typ]
+    { _sumTypes :: NonEmpty typ
     }
 
   -- | ProductT is the type of expressions which are an ordered product of each
@@ -224,7 +225,7 @@ instance Ord tb => HasNonAbs (Type tb) where
       -> Arrow (f from) (f to)
 
     SumT types
-      -> SumT (map f types)
+      -> SumT (fmap f types)
 
     ProductT types
       -> ProductT (map f types)
@@ -257,7 +258,7 @@ instantiate = instantiate' 0
         -> fixType $ Arrow (instantiate' i instType from) (instantiate' i instType to)
 
       SumT ts
-        -> fixType $ SumT $ map (instantiate' i instType) ts
+        -> fixType $ SumT $ fmap (instantiate' i instType) ts
 
       ProductT ts
         -> fixType $ ProductT $ map (instantiate' i instType) ts

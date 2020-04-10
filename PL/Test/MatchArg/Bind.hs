@@ -31,6 +31,7 @@ import PLParser
 
 import Data.Text (Text)
 import Data.Maybe (fromJust)
+import qualified Data.List.NonEmpty as NE
 
 import PL.Test.MatchArgTestCase
 
@@ -72,8 +73,8 @@ defaultBindMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
     isMatchArg           = Bind
-    typed                = fixType $ SumT []
-    checkMatchWithResult = Right [fixType $ SumT []]
+    typed                = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
+    checkMatchWithResult = Right [fixType $ SumT $ NE.fromList [FixType $ ProductT []]]
     parsesFrom           = src
 
 -- Test binding an empty sum.

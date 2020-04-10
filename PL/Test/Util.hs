@@ -46,6 +46,7 @@ import PLPrinter
 import PLPrinter.Doc
 import PLParser.Cursor
 
+import qualified Data.List.NonEmpty as NE
 import qualified Data.List as List
 import qualified Data.Text as Text
 
@@ -116,7 +117,7 @@ ppError ppType e = case e of
     -> mconcat [ PLPrinter.text "Expression had type: "
                , ppType actualType
                , PLPrinter.text "and claimed to be contained within the sum"
-               , mconcat . fmap ppType $ sumTys
+               , mconcat . fmap ppType . NE.toList $ sumTys
                , PLPrinter.text "at index"
                , document index
                ]

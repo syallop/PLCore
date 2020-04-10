@@ -27,6 +27,7 @@ import Control.Monad
 import Data.Maybe
 import Data.Monoid
 import Data.Proxy
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
@@ -134,7 +135,7 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixTyp
     -> (&&) <$> typeEq typeBindCtx typeBindings typeNameCtx from0 from1 <*> typeEq typeBindCtx typeBindings typeNameCtx to0 to1
 
   (SumT ts0, SumT ts1)
-    -> typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
+    -> typeEqs typeBindCtx typeBindings typeNameCtx (NE.toList ts0) (NE.toList ts1)
 
   (ProductT ts0, ProductT ts1)
     -> typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1

@@ -36,6 +36,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
@@ -64,11 +65,11 @@ lamTypeCtx
   . insertType "Baz" bazType
   $ emptyTypeCtx
 fooTypeName = fixType $ Named "Foo"
-fooType     = fixType $ SumT []
+fooType     = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
 barTypeName = fixType $ Named "Bar"
-barType     = fixType $ SumT []
+barType     = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
 bazTypeName = fixType $ Named "Baz"
-bazType     = fixType $ SumT []
+bazType     = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
 
 
 -- \() -> ()

@@ -31,6 +31,7 @@ import PLParser
 
 import Data.Text (Text)
 import Data.Maybe (fromJust)
+import qualified Data.List.NonEmpty as NE
 
 import PL.Test.MatchArgTestCase
 
@@ -75,7 +76,7 @@ defaultSumMatchArgTestCase src
     -- One of the simplest patterns is therefore a single sum of an empty
     -- product.
     isMatchArg           = MatchSum 0 (MatchProduct [])
-    typed                = fixType $ SumT [fixType $ ProductT []]
+    typed                = fixType $ SumT $ NE.fromList [fixType $ ProductT []]
     checkMatchWithResult = Right []
     parsesFrom           = src
 

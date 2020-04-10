@@ -51,6 +51,7 @@ import PLParser
 import Data.Text (Text)
 import Data.Maybe
 import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as Text
 
 import Data.Monoid ((<>))
@@ -72,7 +73,7 @@ naturalTestCases t =
 natTypeCtx = insertRecType "Nat" natType emptyTypeCtx
 natTypeName = fixType $ Named "Nat"
 natType    = fixType $ SumT natSumType
-natSumType = map fixType $
+natSumType = fmap fixType . NE.fromList $
                [ProductT []
                ,Named "Nat"
                ]

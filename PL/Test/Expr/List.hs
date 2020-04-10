@@ -43,6 +43,7 @@ import PLParser
 import Data.Text (Text)
 import Data.Monoid ((<>))
 import Data.Maybe
+import qualified Data.List.NonEmpty as NE
 
 import PL.Test.Expr.Natural
 import PL.Test.ExprTestCase
@@ -62,7 +63,7 @@ listTestCases t =
 listTypeCtx  = insertRecType "List" listType emptyTypeCtx
 listTypeName = fixType $ Named "List"
 listType     = fixType $ TypeLam Kind $ fixType $ SumT listSumType
-listSumType  = map fixType
+listSumType  = fmap fixType . NE.fromList $
                  [ ProductT [] -- : List a
                  , ProductT $ map fixType $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)]
                  ]

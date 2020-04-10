@@ -46,6 +46,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
@@ -64,7 +65,7 @@ booleanTestCases t =
 boolTypeCtx = insertType "Bool" boolType emptyTypeCtx
 boolTypeName = fixType $ Named "Bool"
 boolType = fixType $ SumT boolSumType
-boolSumType = map fixType
+boolSumType = fmap fixType . NE.fromList $
                 [ProductT []
                 ,ProductT []
                 ]

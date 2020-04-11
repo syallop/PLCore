@@ -94,6 +94,7 @@ reduce = reduceRec emptyBindings
               f' <- reduceStep bindings f
               case unfixExpr f' of
                 Lam _ fExpr -> reduceStep (bind x' bindings) fExpr
+                Binding var -> pure $ fixExpr $ App (fixExpr $ Binding var) x'
                 _           -> Left $ EMsg $ text "Can't reduce because the expression in function position of an application isn't a lambda"
 
       -- Reduce under the Big Lambda/ App

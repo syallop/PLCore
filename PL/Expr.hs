@@ -300,11 +300,25 @@ mapSubExpressions f e = fixExpr $ case unfixExpr e of
 -- case ... of
 --  T {A b (C d E)} -> ...
 data MatchArg b tb
-  = MatchSum     Int        (MatchArg b tb) -- ^ Match against a sum alternative (which may be applied to more patterns)
-  | MatchProduct            [MatchArg b tb] -- ^ Match against a product of many types (which may be applied to more patterns)
-  | MatchUnion   (Type tb) (MatchArg b tb)  -- ^ Match against a union of alternatives
-  | MatchBinding b                          -- ^ Match for exact structural equality
-  | Bind                                    -- ^ Match anything and bind it
+  = MatchSum
+      { _index :: Int           -- ^ The index of the type within the sum we wish to match
+      , _match :: MatchArg b tb -- ^ Match within the sum
+      }
+
+  | MatchProduct
+      { _matches :: [MatchArg b tb] -- ^ Match against each of the products values
+      }
+
+  | MatchUnion
+      { _typeIndex :: Type tb       -- ^ The index of the type within the union we weish to match
+      , _match     :: MatchArg b tb -- ^ Match within the union
+      }
+
+  | MatchBinding
+      { _equalTo :: b -- ^ The value should match the value of the binding
+      }
+
+  | Bind -- ^ Match anything and bind it
   deriving (Show,Eq)
 
 -- | A top-level expression is an expression without a bindings context.

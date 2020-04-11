@@ -94,7 +94,7 @@ reduce = reduceRec emptyBindings
               f' <- reduceStep bindings f
               case unfixExpr f' of
                 Lam _ fExpr -> reduceStep (bind x' bindings) fExpr
-                _           -> error "Cant reduce application of non-lambda term"
+                _           -> Left $ EMsg $ text "Can't reduce because the expression in function position of an application isn't a lambda"
 
       -- Reduce under the Big Lambda/ App
       -- TODO: Pass kind bindings through the reduction as with Lam

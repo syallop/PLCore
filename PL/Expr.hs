@@ -390,7 +390,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
           exprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
-          sumTy <- if NE.length inTypr < ix
+          sumTy <- if  NE.length inTypr <= ix
                      then Left $ EMsg $ text "Can't type check a sum because the index is larger than the number of types in the sum"
                      else Right (inTypr NE.!! ix)
 
@@ -584,7 +584,9 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                       _             -> Left . EMsg . text $ "Expected sum type in pattern match"
 
             -- index must be within the number of alternative in the sum type
-            matchedTy <- if NE.length sumTypes < sumIndex then Left $ EMsg $ text "Matching on a larger sum index than the sum type contains" else Right (sumTypes NE.!! sumIndex)
+            matchedTy <- if NE.length sumTypes <= sumIndex
+                           then Left $ EMsg $ text "Matching on a larger sum index than the sum type contains"
+                           else Right (sumTypes NE.!! sumIndex)
 
             -- must have the expected index type
             checkMatchWith nestedMatchArg matchedTy exprBindCtx typeBindCtx typeBindings typeCtx

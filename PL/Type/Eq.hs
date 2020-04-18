@@ -54,9 +54,6 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixTyp
   (Named n0, Named n1)
     | n0 == n1  -> Right True
     | otherwise -> Right False
-    {-| otherwise -> do it0 <- lookupTypeNameInitialInfo n0 typeNameCtx-}
-                      {-it1 <- lookupTypeNameInitialInfo n1 typeNameCtx-}
-                      {-typeEq typeBindCtx typeNameCtx (_typeInfoType it0) (_typeInfoType it1)-}
 
   -- To compare a Named type to a non-named type, lookup the definition of the
   -- name and recurse.

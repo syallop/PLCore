@@ -27,30 +27,30 @@ import qualified Data.List.NonEmpty as NE
 
 data Error tb
 
-  -- ^ Generic error
+  -- | Generic error
   = EMsg Doc
 
   -- No such name
   | ETypeNotDefined TypeName -- ^ No such type
   | ETermNotDefined TermName -- ^ No such term
 
-  -- ^ Two typed things cannot be applied to each other
+  -- | Two typed things cannot be applied to each other
   | EAppMismatch (Type tb) (Type tb) --
 
-  -- ^ Something with type cannot be big-applied to something with kind
+  -- | Something with type cannot be big-applied to something with kind
   | EBigAppMismatch (Type tb) Kind
 
-  -- ^ Something with kind cannot be type-applied to something with kind
+  -- | Something with kind cannot be type-applied to something with kind
   | ETypeAppMismatch !Kind !Kind
 
-  -- ^ A Type app must apply a type lambda.
+  -- | A Type app must apply a type lambda.
   | ETypeAppLambda (Type tb)
 
-  -- ^ An expression had a type, and claimed to have the type indexed within a
+  -- | An expression had a type, and claimed to have the type indexed within a
   -- sum type but doesnt.
   | ESumMismatch (Type tb) Int (NonEmpty (Type tb))
 
-  -- ^ The default branch and the first branch of a case statement have
+  -- | The default branch and the first branch of a case statement have
   -- different types.
   | ECaseDefaultMismatch (Type tb) (Type tb)
   deriving (Ord,Eq,Show)

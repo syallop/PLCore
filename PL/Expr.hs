@@ -352,7 +352,7 @@ exprType
   -> Either (Error tb) (Type tb)
 exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
 
-  -- | ODDITY/ TODO: Can abstract over types which dont exist..
+  -- ODDITY/ TODO: Can abstract over types which dont exist..
   --                 They therefore can never be applied.
   --
   --      x : absTy     expr : exprTy
@@ -363,7 +363,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
           exprTy <- exprType newExprBindCtx typeBindCtx typeBindings typeCtx expr
           Right $ fixType $ Arrow (absTy abs) exprTy
 
-  -- |
+  --
   --   f : a -> b    x : a
   -- -----------------------
   --       App f x : b
@@ -435,7 +435,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
           -- the type is the claimed union
           Right $ fixType $ UnionT unionTypes
 
-  -- | A binding is typed by the context
+  -- A binding is typed by the context
   -- It is assumed the exprBindCtx has been type checked
   --
   -- b : t IN exprBindCtx

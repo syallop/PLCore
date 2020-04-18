@@ -50,7 +50,7 @@ toParser (Reversible r) = case r of
   RMap iso ga
     -> rmapParser iso ga
 
-  -- | Tuple the result of two successive parsers.
+  -- Tuple the result of two successive parsers.
   RAp ga gb
     -> rapParser (toParser ga) (toParser gb)
 

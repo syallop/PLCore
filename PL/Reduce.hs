@@ -26,6 +26,8 @@ import PL.Expr
 import PL.FixExpr
 import PL.Name
 import PL.Type
+import PL.Var
+import PL.TyVar
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -40,29 +42,25 @@ import PLPrinter
 
 -- | Reduce an 'Expr'.
 reduce
-  :: forall b abs tb
-   . ( BindAbs b abs tb
-     , Eq b
-     )
-  => Expr b abs tb
-  -> Either (Error tb) (Expr b abs tb)
+  :: Expr
+  -> Either (Error TyVar) Expr
 reduce = reduceRec emptyBindings
   where
   -- Recursively reduce an expression until it no longer reduces
-  reduceRec :: Bindings (Expr b abs tb) -> Expr b abs tb -> Either (Error tb) (Expr b abs tb)
+  reduceRec :: Bindings Expr -> Expr -> Either (Error TyVar) Expr
   reduceRec bindings expr = do
     redExpr <- reduceStep bindings expr
     if redExpr == expr then pure expr else reduceRec bindings redExpr
 
-  reduceStep :: Bindings (Expr b abs tb) -> Expr b abs tb -> Either (Error tb) (Expr b abs tb)
-  reduceStep bindings expr = case unfixExpr expr of
+  reduceStep :: Bindings Expr -> Expr -> Either (Error TyVar) Expr
+  reduceStep bindings expr = case expr of
 
       -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
       Binding b
         -> let ix = bindDepth b
-            in case safeIndex (Proxy :: Proxy b) bindings ix of
+            in case safeIndex (Proxy :: Proxy Var) bindings ix of
               Just Unbound
-                -> pure $ fixExpr $ Binding b
+                -> pure $ Binding b
 
               Just (Bound e)
                 -> pure $ e -- maybe should reduce again?
@@ -73,28 +71,28 @@ reduce = reduceRec emptyBindings
 
       -- Reduce the sums expression
       Sum sumExpr sumIx sumTy
-        -> fmap fixExpr $ Sum <$> reduceStep bindings sumExpr <*> pure sumIx <*> pure sumTy
+        -> Sum <$> reduceStep bindings sumExpr <*> pure sumIx <*> pure sumTy
 
       -- Reduce all product expressions
       Product productExprs
-        -> fmap fixExpr $ Product <$> mapM (reduceStep bindings) productExprs
+        -> Product <$> mapM (reduceStep bindings) productExprs
 
       -- Reduce the unionExpr
       Union unionExpr unionTyIx unionTy
-        -> fmap fixExpr $ Union <$> reduceStep bindings unionExpr <*> pure unionTyIx <*> pure unionTy
+        -> Union <$> reduceStep bindings unionExpr <*> pure unionTyIx <*> pure unionTy
 
       -- Reduce under the lambda
       Lam takeTy lamExpr
-        -> fmap fixExpr $ Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) lamExpr
+        -> Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) lamExpr
 
       -- 'strict'
       -- = reduce the argument, then the function, then the result of applying.
       App f x
         -> do x' <- reduceStep bindings x
               f' <- reduceStep bindings f
-              case unfixExpr f' of
+              case f' of
                 Lam _ fExpr -> reduceStep (bind x' bindings) fExpr
-                Binding var -> pure $ fixExpr $ App (fixExpr $ Binding var) x'
+                Binding var -> pure $ App (Binding var) x'
                 _           -> Left $ EMsg $ text "Can't reduce because the expression in function position of an application isn't a lambda"
 
       -- Reduce under the Big Lambda/ App
@@ -108,13 +106,15 @@ reduce = reduceRec emptyBindings
       -- , otherwise, find the first matching branch and bind all matching variables into the RHS before reducing it.
       CaseAnalysis (Case caseScrutinee caseBranches)
         -> do reducedCaseScrutinee <- reduceStep bindings caseScrutinee
-              case unfixExpr reducedCaseScrutinee of
-                Binding _ -> fmap fixExpr $ (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSs bindings caseBranches
+              case reducedCaseScrutinee of
+                Binding _ -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSs bindings caseBranches
                 _         -> reducePossibleCaseBranches bindings reducedCaseScrutinee caseBranches
+
+      _ -> error "Non-exhaustive pattern in reduction"
 
 
   -- The case scrutinee is not an unbound variable and so we can reduce the case expression, finding the matching branch and returning the reduced RHS.
-  reducePossibleCaseBranches :: Bindings (Expr b abs tb) -> Expr b abs tb -> CaseBranches (Expr b abs tb) (MatchArg b tb) -> Either (Error tb) (Expr b abs tb)
+  reducePossibleCaseBranches :: Bindings Expr -> Expr -> CaseBranches Expr (MatchArg Var TyVar) -> Either (Error TyVar) Expr
   reducePossibleCaseBranches bindings caseExpr = \case
     DefaultOnly defaultExpr
       -> reduceStep bindings defaultExpr
@@ -132,7 +132,7 @@ reduce = reduceRec emptyBindings
            Just (bindExprs,rhsExpr)
              -> reduceStep (bindAll (reverse bindExprs) bindings) rhsExpr
 
-  tryBranches :: Bindings (Expr b abs tb) -> Expr b abs tb -> NonEmpty (CaseBranch (Expr b abs tb) (MatchArg b tb)) -> Maybe ([Expr b abs tb],Expr b abs tb)
+  tryBranches :: Bindings Expr -> Expr -> NonEmpty (CaseBranch Expr (MatchArg Var TyVar)) -> Maybe ([Expr],Expr)
   tryBranches bindings caseScrutinee branches = firstMatch $ tryBranch bindings caseScrutinee <$> branches
     where
       -- The first 'Just'
@@ -147,21 +147,21 @@ reduce = reduceRec emptyBindings
   --
   -- We assume the input is type-checked which ensures patterns have the same type as the casescrutinee matched
   -- upon, and that all patterns are completly valid.
-  tryBranch :: Bindings (Expr b abs tb) -> Expr b abs tb -> CaseBranch (Expr b abs tb) (MatchArg b tb) -> Maybe ([Expr b abs tb],Expr b abs tb)
+  tryBranch :: Bindings Expr -> Expr -> CaseBranch Expr (MatchArg Var TyVar) -> Maybe ([Expr],Expr)
   tryBranch bindings caseScrutinee (CaseBranch matchArg rhsExpr) = (,rhsExpr) <$> patternBinding bindings caseScrutinee matchArg
 
   -- Nothing on non match or a list of exprs to bind under the rhs.
-  patternBinding :: Bindings (Expr b abs tb) -> Expr b abs tb -> MatchArg b tb -> Maybe [Expr b abs tb]
-  patternBinding bindings caseScrutinee matchArg = case (unfixExpr caseScrutinee,matchArg) of
+  patternBinding :: Bindings Expr -> Expr -> MatchArg Var TyVar -> Maybe [Expr]
+  patternBinding bindings caseScrutinee matchArg = case (caseScrutinee,matchArg) of
 
     (expr,MatchBinding b)
-      -> case index (Proxy :: Proxy b) bindings (bindDepth b) of
+      -> case index (Proxy :: Proxy Var) bindings (bindDepth b) of
              -- There is a difference between unknown if matching and not matching
              -- that is not being captured here
              Unbound     -> Nothing
 
              -- Do the two expressions reduce to exactly the same value?
-             Bound bExpr -> case exprEq bindings (fixExpr expr) bExpr of
+             Bound bExpr -> case exprEq bindings expr bExpr of
 
                                 -- One of the expressions is invalid.
                                 -- We're assuming this cant happen because:
@@ -193,18 +193,18 @@ reduce = reduceRec emptyBindings
 
     -- The entire expression is to be bound
     (expr,Bind)
-      -> Just [fixExpr expr]
+      -> Just [expr]
 
     _ -> error "Expression under case analysis has a different type to the match branch."
 
   -- Try matching all of these expressions against these patterns, return the list of bindings if successful.
   --
   -- (Type checking ensures same length lists and valid patterns)
-  patternBindings :: Bindings (Expr b abs tb) -> [Expr b abs tb] -> [MatchArg b tb] -> Maybe [Expr b abs tb]
+  patternBindings :: Bindings Expr -> [Expr] -> [MatchArg Var TyVar] -> Maybe [Expr]
   patternBindings bindings exprs matchArgs = concat <$> zipWithM (patternBinding bindings) exprs matchArgs
 
   -- | Are two expressions identical under the same bindings?
-  exprEq :: Bindings (Expr b abs tb) -> Expr b abs tb -> Expr b abs tb -> Either (Error tb) Bool
+  exprEq :: Bindings Expr -> Expr -> Expr -> Either (Error TyVar) Bool
   exprEq bindings e0 e1 = do
     redE0 <- reduceRec bindings e0
     redE1 <- reduceRec bindings e1
@@ -212,8 +212,8 @@ reduce = reduceRec emptyBindings
 
 
   -- We've decided we cant evaluate the case expression yet, so we just reduce all the possible RHSs as much as possible
-  reducePossibleCaseRHSs :: Bindings (Expr b abs tb)
-                         -> CaseBranches (Expr b abs tb) (MatchArg b tb)
-                         -> Either (Error tb) (CaseBranches (Expr b abs tb) (MatchArg b tb))
+  reducePossibleCaseRHSs :: Bindings Expr
+                         -> CaseBranches Expr (MatchArg Var TyVar)
+                         -> Either (Error TyVar) (CaseBranches Expr (MatchArg Var TyVar))
   reducePossibleCaseRHSs bindings = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings)
 

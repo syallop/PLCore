@@ -68,9 +68,9 @@ singleBigLamTestCase src
       }
   where
     ctx = bigLamTypeCtx
-    e   = fixExpr $ BigLam Kind
-            (fixExpr $ Lam (fixType . TypeBinding . TyVar $ VZ)
-                           (fixExpr $ Binding VZ)
+    e   = BigLam Kind
+            (Lam (fixType . TypeBinding . TyVar $ VZ)
+                           (Binding VZ)
             )
 
     -- forall k. (a :: k) -> (a :: k)

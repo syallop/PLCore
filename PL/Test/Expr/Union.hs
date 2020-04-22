@@ -69,10 +69,10 @@ unionTwoExprTestCase src =
     }
   where
     ctx = fromJust $ boolTypeCtx <> natTypeCtx
-    e   = fixExpr $ Lam (fixType $ UnionT $ Set.fromList [natTypeName,boolTypeName]) $ fixExpr $ -- \x : <Nat|Bool>
-            CaseAnalysis $ Case (fixExpr $ Binding VZ)                                    -- case x of
+    e   = Lam (fixType $ UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
+            CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --
-                (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm    -- Nat | Z    -> False
+                (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm      -- Nat | Z    -> False
                  :| [CaseBranch (MatchUnion natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
                     ,CaseBranch (MatchUnion boolTypeName  truePat)   trueTerm   -- Bool| True -> True
                     ]                                                           --

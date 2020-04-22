@@ -1,5 +1,5 @@
 name:                PL
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            A Programming Language 'designed' according to my whims.
 description:         Anonymous functions, sums, products and union types form
                      the base of the language which will be extended whimsically.
@@ -76,6 +76,7 @@ library
                      , quickcheck-instances
                      , semigroups
                      , text
+                     , ghc-prim
 
   -- hs-source-dirs:      
   default-language:    Haskell2010

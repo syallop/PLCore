@@ -71,7 +71,7 @@ idExprTestCase src
     ctx = emptyTypeCtx
 
     -- forall a::k. a -> a
-    e   = fixExpr $ BigLam Kind $ fixExpr $ Lam (fixType $ TypeBinding $ TyVar VZ) (fixExpr $ Binding VZ) -- \(x:a) -> x
+    e   = BigLam Kind $ Lam (fixType $ TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
     ty  = fixType $ BigArrow Kind $ fixType $ Arrow (fixType $ TypeBinding $ TyVar VZ) (fixType $ TypeBinding $ TyVar VZ)
 
 constExprTestCase
@@ -89,11 +89,11 @@ constExprTestCase src
 
     -- forall a::k0. forall b::k1. a -> b -> a
     -- const a b = a
-    e   = fixExpr $ BigLam Kind -- k0
-        $ fixExpr $ BigLam Kind -- k1
-        $ fixExpr $ Lam (fixType . TypeBinding . TyVar . VS $ VZ) -- a :: k0
-        $ fixExpr $ Lam (fixType . TypeBinding . TyVar $ VZ)      -- b :: k1
-        $ fixExpr $ Binding $ VS VZ                               -- a
+    e   = BigLam Kind -- k0
+        $ BigLam Kind -- k1
+        $ Lam (fixType . TypeBinding . TyVar . VS $ VZ) -- a :: k0
+        $ Lam (fixType . TypeBinding . TyVar $ VZ)      -- b :: k1
+        $ Binding $ VS VZ                               -- a
 
     ty  = fixType $ BigArrow Kind -- k0
         $ fixType $ BigArrow Kind -- k1
@@ -114,14 +114,10 @@ applyExprTestCase src
   where
     ctx = emptyTypeCtx
 
-    e   = fixExpr
-        $ BigLam Kind $ fixExpr $ BigLam Kind
-        $ fixExpr
+    e   = BigLam Kind $ BigLam Kind
         $ Lam (fixType $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) (fixType . TypeBinding . TyVar $ VZ))
-        $ fixExpr
         $ Lam (fixType . TypeBinding . TyVar . VS $ VZ)
-        $ fixExpr
-        $ App (fixExpr . Binding . VS $ VZ) (fixExpr $ Binding VZ)
+        $ App (Binding . VS $ VZ) (Binding VZ)
 
     -- forall k0 k1. \(f::k0 -> k1) (a::k0) -> f a:: k1
     ty  = fixType $ BigArrow Kind $ fixType $ BigArrow Kind

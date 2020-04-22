@@ -78,9 +78,9 @@ natSumType = fmap fixType . NE.fromList $
                ,Named "Nat"
                ]
 
-zTerm, sTerm :: Expr Var (Type tb) tb
-zTerm      = fixExpr $                                         Sum (fixExpr $ Product [])        0 natSumType
-sTerm      = fixExpr $ Lam (fixType $ Named "Nat") $ fixExpr $ Sum (fixExpr $ Binding (mkVar 0)) 1 natSumType
+zTerm, sTerm :: Expr
+zTerm = Sum (Product []) 0 natSumType
+sTerm = Lam (fixType $ Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
 
 zPat :: MatchArg Var tb
 zPat = MatchSum 0 (MatchProduct [])
@@ -88,10 +88,10 @@ zPat = MatchSum 0 (MatchProduct [])
 sPat :: MatchArg Var tb -> MatchArg Var tb
 sPat = MatchSum 1
 
-suc :: Expr Var (Type tb) tb -> Expr Var (Type tb) tb
-suc n = fixExpr $ App sTerm (n)
+suc :: Expr -> Expr
+suc n = App sTerm (n)
 
-zero, one, two, three, four :: Expr Var (Type tb) tb
+zero, one, two, three, four :: Expr
 zero  = zTerm
 one   = suc zero
 two   = suc one
@@ -114,15 +114,15 @@ subTwoExprTestCase src
   where
     ctx = fromJust natTypeCtx
 
-    e :: Expr Var (Type tb) tb
-    e = fixExpr $
-      Lam natTypeName $ fixExpr $                                       -- \n : Nat ->
-        CaseAnalysis $ Case (fixExpr . Binding $ VZ)                    -- case n of
-          $ CaseBranches                                                --
-            (CaseBranch (sPat $ sPat Bind) (fixExpr $ Binding VZ) :| [] --   S S n -> n
-            )                                                           --
-            (Just                                                       --
-                  zTerm                                                 --   _     -> Z
+    e :: Expr
+    e =
+      Lam natTypeName $                                       -- \n : Nat ->
+        CaseAnalysis $ Case (Binding $ VZ)                    -- case n of
+          $ CaseBranches                                      --
+            (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| [] --   S S n -> n
+            )                                                 --
+            (Just                                             --
+                  zTerm                                       --   _     -> Z
             )
     ty = fixType $ Arrow natType natType
 

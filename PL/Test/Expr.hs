@@ -64,7 +64,7 @@ typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
   , listTypeCtx
   ]
 
--- A record of the sources required to run all of the TestExpr tests.
+-- A record of the sources required to run all of the Expr tests.
 data TestExprSources = TestExprSources
   { _lamTestCases      :: TestLamSources
   , _bigLamTestCases   :: TestBigLamSources
@@ -102,9 +102,9 @@ testCases t = mconcat
 -- to define a spec testing your Expr parser.
 parserSpec
   :: TestExprSources
-  -> Parser TestExpr
-  -> (TestExpr -> Doc)
-  -> (TestType -> Doc)
+  -> Parser Expr
+  -> (Expr -> Doc)
+  -> (Type TyVar -> Doc)
   -> Spec
 parserSpec testSources testExprP ppExpr ppType
   = describe "Expressions using Var for binding and Type for abstraction" $ sequence_
@@ -116,7 +116,7 @@ parserSpec testSources testExprP ppExpr ppType
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec
   :: TestExprSources
-  -> (TestType -> Doc)
+  -> (Type TyVar -> Doc)
   -> Spec
 typeChecksSpec testSources ppType
   = describe "fully typecheck AND typechecks to the correct type"
@@ -131,8 +131,8 @@ typeChecksSpec testSources ppType
 -- Test that expressions reduce to an expected expression when applied to lists of arguments
 reducesToSpec
   :: TestExprSources
-  -> (TestExpr -> Doc)
-  -> (TestType -> Doc)
+  -> (Expr -> Doc)
+  -> (Type TyVar -> Doc)
   -> Spec
 reducesToSpec testSources ppExpr ppType
   = describe "when applied to a list of arguments must reduce to an expected expression"
@@ -159,33 +159,33 @@ reducesToSpec testSources ppExpr ppType
 
   ,("sum expressions"
    , (sumThreeExprTestCase . _sumThreeTestCase . _sumTestCases $ testSources)
-   , [ ("+1 False ~> 0", [fixExpr $ Sum falseTerm 1 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]], zero)
-     , ("+0 0     ~> 0", [fixExpr $ Sum zero      0 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]], zero)
-     , ("+2 0     ~> 1", [fixExpr $ Sum zero      2 $ NE.fromList $[natTypeName,boolTypeName,natTypeName]], one)
+   , [ ("+1 False ~> 0", [Sum falseTerm 1 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]], zero)
+     , ("+0 0     ~> 0", [Sum zero      0 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]], zero)
+     , ("+2 0     ~> 1", [Sum zero      2 $ NE.fromList $[natTypeName,boolTypeName,natTypeName]], one)
      ])
 
   ,("product expressions"
    , (productThreeExprTestCase . _productThreeTestCase . _productTestCases $ testSources)
-   , [ ("* 1 True  0 ~> True" , [fixExpr $ Product [one,trueTerm,zero]] , trueTerm)
-     , ("* 1 False 0 ~> False", [fixExpr $ Product [one,falseTerm,zero]], falseTerm)
-     , ("* 1 True  1 ~> False", [fixExpr $ Product [one,trueTerm,one]]  , falseTerm)
-     , ("* 4 False 1 ~> False", [fixExpr $ Product [four,falseTerm,one]], falseTerm)
+   , [ ("* 1 True  0 ~> True" , [Product [one,trueTerm,zero]] , trueTerm)
+     , ("* 1 False 0 ~> False", [Product [one,falseTerm,zero]], falseTerm)
+     , ("* 1 True  1 ~> False", [Product [one,trueTerm,one]]  , falseTerm)
+     , ("* 4 False 1 ~> False", [Product [four,falseTerm,one]], falseTerm)
      ])
 
   ,("union expressions"
    ,(unionTwoExprTestCase . _unionTwoTestCase . _unionTestCases $ testSources)
-   ,[("∪ 1     Nat   Nat Bool ~> True"                                   , [fixExpr $ Union one       natTypeName  $ Set.fromList [natTypeName,boolTypeName]], trueTerm)
-    ,("∪ False Bool  Nat Bool ~> False"                                  , [fixExpr $ Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]], falseTerm)
-    ,("∪ True  Bool  Bool Nat ~> False -- order of union does not matter", [fixExpr $ Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]], falseTerm)
+   ,[("∪ 1     Nat   Nat Bool ~> True"                                   , [Union one       natTypeName  $ Set.fromList [natTypeName,boolTypeName]], trueTerm)
+    ,("∪ False Bool  Nat Bool ~> False"                                  , [Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]], falseTerm)
+    ,("∪ True  Bool  Bool Nat ~> False -- order of union does not matter", [Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]], falseTerm)
     ])
   ]
   where
 
     -- name list of args applied to andExpr and the expected result
-    andOneTrue, andFalseTrue, andTrueTrue :: (String,[TestExpr],TestExpr)
+    andOneTrue, andFalseTrue, andTrueTrue :: (String,[Expr],Expr)
 
     andOneTrue   = ("True       ~> Boolean identity function" , [trueTerm] , andOneTrueExpr)
-      where andOneTrueExpr = fixExpr $ Lam boolTypeName $ fixExpr $ CaseAnalysis $ Case (fixExpr $ Binding VZ) $ CaseBranches
+      where andOneTrueExpr = Lam boolTypeName $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
                                (CaseBranch falsePat falseTerm :| []
                                )
                                (Just trueTerm)
@@ -200,8 +200,8 @@ reducesToSpec testSources ppExpr ppType
 -- Test that Text strings parse to an expected expression
 parsesToSpec
   :: TestExprSources
-  -> Parser TestExpr
-  -> (TestExpr -> Doc)
+  -> Parser Expr
+  -> (Expr -> Doc)
   -> Spec
 parsesToSpec sources testExprP ppExpr
   = describe "are parsed by given strings"

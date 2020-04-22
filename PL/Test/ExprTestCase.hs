@@ -13,9 +13,7 @@ Functions for testing expression parsing, typechecking, reduction, etc.
 Also exports 'ExprTestCase' which encapsulates an example which can have all of these properties tested.
 -}
 module PL.Test.ExprTestCase
-  ( TestExpr
-  , TestType
-  , ExprTestCase(..)
+  ( ExprTestCase(..)
   , typeChecksTo
 
   , manyAppliedReducesToSpec
@@ -66,12 +64,9 @@ import Test.Hspec
 import PL.Test.Source
 import PL.Test.Util
 
-type TestType = Type TyVar
-type TestExpr = Expr Var TestType TyVar
-
 data ExprTestCase = ExprTestCase
   {_underTypeCtx :: TypeCtx TyVar -- ^ Under this given typing context
-  ,_isExpr       :: TestExpr      -- ^ An Expr
+  ,_isExpr       :: Expr          -- ^ An Expr
   ,_typed        :: Type TyVar    -- ^ Has this type
   ,_parsesFrom   :: Text          -- ^ And also parses from this textual representation
   }
@@ -81,9 +76,9 @@ data ExprTestCase = ExprTestCase
 typeChecksTo
   :: TypeCtx TyVar
   -> Text
-  -> TestExpr
-  -> TestType
-  -> (TestType -> Doc)
+  -> Expr
+  -> Type TyVar
+  -> (Type TyVar -> Doc)
   -> Spec
 typeChecksTo typeCtx name expr expectTy ppType = it (Text.unpack name) $ case topExprType typeCtx expr of
   Left err
@@ -101,31 +96,31 @@ typeChecksTo typeCtx name expr expectTy ppType = it (Text.unpack name) $ case to
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 manyAppliedReducesToSpec
   :: String
-  -> TestExpr
-  -> [(String,[TestExpr],TestExpr)]
-  -> (TestExpr -> Doc)
-  -> (TestType -> Doc)
+  -> Expr
+  -> [(String,[Expr],Expr)]
+  -> (Expr -> Doc)
+  -> (Type TyVar -> Doc)
   -> Spec
 manyAppliedReducesToSpec name expr reductions ppExpr ppType = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult ppExpr ppType) reductions
 
 -- Name an expression, apply it to a list of expressions. Does it reduce to the given expression?
 appliedReducesToSpec
-  :: TestExpr
+  :: Expr
   -> String
-  -> [TestExpr]
-  -> TestExpr
-  -> (TestExpr -> Doc)
-  -> (TestType -> Doc)
+  -> [Expr]
+  -> Expr
+  -> (Expr -> Doc)
+  -> (Type TyVar -> Doc)
   -> Spec
 appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 
 -- Name an expression. Check it reduces to an expression.
 reduceToSpec
   :: String
-  -> TestExpr
-  -> TestExpr
-  -> (TestExpr -> Doc)
-  -> (TestType -> Doc)
+  -> Expr
+  -> Expr
+  -> (Expr -> Doc)
+  -> (Type TyVar -> Doc)
   -> Spec
 reduceToSpec name expr eqExpr ppExpr ppType = it name $ case reduce expr of
   Left exprErr
@@ -152,16 +147,13 @@ reduceToSpec name expr eqExpr ppExpr ppType = it name $ case reduce expr of
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
-{-testExprP :: Parser TestExpr-}
-{-testExprP = toParser $ expr var (typ tyVar) tyVar-}
-
 -- | Test whether some text parses to some expression
 parseToSpec
-  :: Parser TestExpr
+  :: Parser Expr
   -> Text.Text
   -> Text.Text
-  -> TestExpr
-  -> (TestExpr -> Doc)
+  -> Expr
+  -> (Expr -> Doc)
   -> Spec
 parseToSpec testExprP name txt expectExpr ppExpr = it (Text.unpack name) $ case runParser testExprP txt of
   (f@(ParseFailure failures cursor))
@@ -206,8 +198,8 @@ parseToSpec testExprP name txt expectExpr ppExpr = it (Text.unpack name) $ case 
 
 -- TODO: Derive parser and printer from grammar
 testPipeline
-  :: Grammar TestExpr
-  -> Grammar TestType
+  :: Grammar Expr
+  -> Grammar (Type TyVar)
   -> (forall a. Grammar a -> (Parser a,Printer a))
   -> TypeCtx TyVar
   -> Text.Text

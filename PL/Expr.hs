@@ -1,15 +1,22 @@
 {-# LANGUAGE
      ConstraintKinds
+   , ConstraintKinds
+   , DataKinds
+   , DeriveAnyClass
+   , EmptyCase
    , FlexibleContexts
    , FlexibleInstances
    , GADTs
    , LambdaCase
    , MultiParamTypeClasses
    , OverloadedStrings
+   , PatternSynonyms
    , RankNTypes
    , ScopedTypeVariables
    , StandaloneDeriving
-   , DeriveAnyClass
+   , TypeFamilies
+   , UndecidableInstances
+   , TypeOperators
    #-}
 {-|
 Module      : PL.Expr
@@ -19,8 +26,47 @@ Stability   : experimental
 
 An AST containing anonymous functions, sums, products and union types.
 Indexed by de bruijn indexes and with some level of type functions.
+
+The underlying expression type is parameterised over:
+- Itself for use in sub-expressions
+- Tt's phases which is used in a 'trees-that-grow' style to allow:
+  - Extending each constructor
+  - Adding new constructors
+  depending on the phase.
+
+Patterns are provided for constructing and matching on 'default' expressions.
 -}
-module PL.Expr where
+module PL.Expr
+  ( Expr
+  , pattern Lam
+  , pattern App
+  , pattern Binding
+  , pattern CaseAnalysis
+  , pattern Sum
+  , pattern Product
+  , pattern Union
+  , pattern BigLam
+  , pattern BigApp
+  , pattern ExprExtension
+
+  , ExprFor
+  , ExprF (..)
+
+  , DefaultPhase
+
+  , MatchArg (..)
+
+  , mapSubExpressions
+  , topExprType
+  , exprType
+  , branchType
+  , checkMatchWith
+  , checkMatchesWith
+
+  , appise
+  , lamise
+  )
+  where
 
 import PL.Abstracts
 import PL.Bindings
@@ -38,59 +84,56 @@ import PL.Type.Eq
 import PL.FixType
 import PL.TypeCtx
 
+import PL.Var
+import PL.TyVar
+
 import Control.Applicative
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE
 import Data.Monoid hiding (Sum,Product)
+import Data.Void
+import GHC.Types (Constraint)
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
--- | BindAbs is a synonym for the constraints that:
--- - 'b' Binds 'Type tb'
--- - 'abs' Abstracts 'tb'
-type BindAbs b abs tb = (Binds b (Type tb), Abstracts abs tb)
+-- | Expr is an 'ExprF' that:
+-- - Uses itself for sub-expressions
+-- - Uses types (without names) to abstract expressions in lambdas.
+-- - Uses De Bruijn indexes for variable (and type variable) bindings I.E. a natural number which
+--   points a number of lambda abstractions away.
+type Expr = ExprFor DefaultPhase
+
+-- | ExprFor is an 'ExprF' expression that uses itself as subexpressions.
+type ExprFor phase = FixExpr phase ExprF
 
 -- | A typed lambda calculus with anonymous sums, products, unions,
 -- type level functions and case analysis.
 --
--- - 'b' is the type of bindings which refer to an 'abs'traction.
+-- 'phase' is a type index indicating the phase in which the expression
+-- exists. For example, this could indicate an expression that:
+-- - Has just been parsed and retains source code positions and comments
+-- - Has been type checked successfully
+-- - Has been reduced to its normal form
+--
+-- For now there is only one phase, the 'DefaultPhase'.
+--
+-- Internally, phases are also associated with:
+-- - The type of abstractions used in Lambdas. In many languages this might be a
+--   new variable name, perhaps with a type annotation.
+--
+-- - The type of bindings which refer to an abstraction.
 --   In many languages, this might be a variable name "foo".
---   Current uses of this AST use De Bruijn indexes, I.E. a natural number which
---   points a number of binders away to an 'abs'traction "0","1", etc.
 --
--- - 'abs' is the type of things a lambda abstracts.
---   In many languages, this might be a new variable name, perhaps with a type
---   annotation.
---   Current uses of this AST use a type signature and use De Bruijn indexes in
---   binders to refer to a variable of the given type.
+-- - The type of bindings used at the type level.
 --
--- - 'tb' is the type of type-level bindings. 'b' - but at the type level.
-type Expr b abs tb = FixExpr b abs tb ExprF
-
--- | A typed lambda calculus with anonymous sums, products, unions,
--- type level functions and case analysis.
---
--- - 'b' is the type of bindings which refer to an 'abs'traction.
---   In many languages, this might be a variable name "foo".
---   Current uses of this AST use De Bruijn indexes, I.E. a natural number which
---   points a number of binders away to an 'abs'traction "0","1", etc.
---
--- - 'abs' is the type of things a lambda abstracts.
---   In many languages, this might be a new variable name, perhaps with a type
---   annotation.
---   Current uses of this AST use a type signature and use De Bruijn indexes in
---   binders to refer to a variable of the given type.
---
--- - 'tb' is the type of type-level bindings. 'b' - but at the type level.
---
--- - 'expr' is the recursive type of subexpressions. This is usually
---   instantiated using FixExpr such that it refers to itself.
---   This allows us to use recursion schemes.
+-- 'expr' is used in recursive positions where an expression contains a
+-- subexpression. By wrapping ExprF with FixExpr we can recursivly pass an
+-- expression type to itself. See 'ExprFor'.
 --
 --   The examples used in constructor comments use completly arbitrary syntax.
-data ExprF b abs tb expr
+data ExprF phase expr
 
     -- | Lambda abstraction
     --
@@ -99,9 +142,10 @@ data ExprF b abs tb expr
     --
     -- E.G.
     -- \(x::Int). x+x
-    = Lam
-      { _take :: abs
-      , _expr :: expr
+    = LamF
+      { _lamExtension :: LamExtension phase
+      , _take         :: AbstractionFor phase
+      , _expr         :: expr
       }
 
     -- | Application
@@ -110,9 +154,10 @@ data ExprF b abs tb expr
     --
     -- E.G.
     -- (\x -> x) 1
-    | App
-      { _f :: expr
-      , _x :: expr
+    | AppF
+      { _appExtension :: AppExtension phase
+      , _f            :: expr
+      , _x            :: expr
       }
 
     -- | Binding
@@ -124,8 +169,9 @@ data ExprF b abs tb expr
     -- varname
     --
     -- where 'varname' should have been bound by some lambda.
-    | Binding
-      { _binding :: b
+    | BindingF
+      { _bindingExtension :: BindingExtension phase
+      , _binding          :: BindingFor phase
       }
 
     -- | Case analysis of an expression.
@@ -141,8 +187,9 @@ data ExprF b abs tb expr
     --   (1,_) -> "matched"
     --   (1,2) -> "Match doesnt continue this far"
     --   _     -> "default case"
-    | CaseAnalysis
-      { _caseAnalysis :: (Case expr (MatchArg b tb))
+    | CaseAnalysisF
+      { _caseAnalysisExtension :: CaseAnalysisExtension phase
+      , _caseAnalysis          :: Case expr (MatchArg (BindingFor phase) (TypeBindingFor phase))
       }
 
     -- | A Sum is an expression indexed within an ordered collection of
@@ -156,10 +203,11 @@ data ExprF b abs tb expr
     -- true :: 1 :: Bool|Int|Char
     --
     -- Is an expression at the first index within Bool,Int and Char (I.E. Bool).
-    | Sum
-      { _sumExpr  :: expr
-      , _sumIndex :: Int
-      , _sumType  :: NonEmpty (Type tb)
+    | SumF
+      { _sumExtension :: SumExtension phase
+      , _sumExpr      :: expr
+      , _sumIndex     :: Int
+      , _sumType      :: NonEmpty (Type (TypeBindingFor phase))
       }
 
     -- | An Product is many ordered expressions.
@@ -169,8 +217,9 @@ data ExprF b abs tb expr
     -- (true, 1, 'a') :: (Bool, Int, Char)
     --
     -- Is a product of Bool, Int and Char.
-    | Product
-      { _prodExprs :: [expr]
+    | ProductF
+      { _productExtension :: ProductExtension phase
+      , _prodExprs        :: [expr]
       }
 
     -- | A Union is an expression indexed within an unordered, unique collection
@@ -180,10 +229,11 @@ data ExprF b abs tb expr
     -- x :: Bool :: {Char, Bool, Int}
     --
     -- Is a variable with type Bool within a Union of Char,Bool and Int.
-    | Union
-      { _unionExpr      :: expr
-      , _unionTypeIndex :: Type tb
-      , _unionType      :: Set.Set (Type tb)
+    | UnionF
+      { _unionExtension :: UnionExtension phase
+      , _unionExpr      :: expr
+      , _unionTypeIndex :: Type (TypeBindingFor phase)
+      , _unionType      :: Set.Set (Type (TypeBindingFor phase))
       }
 
     -- | Big lambda - bind a type in an expression.
@@ -198,9 +248,10 @@ data ExprF b abs tb expr
     --
     -- Should take a type with Kind and produce an expression which takes an
     -- expression of that type, returning it.
-    | BigLam
-      { _takeTy :: Kind -- TODO: Replace with 'tabs' mirroring 'abs'.
-      , _expr   :: expr
+    | BigLamF
+      { _bigLamExtension :: BigLamExtension phase
+      , _takeTy          :: Kind -- TODO: Replace with 'tabs' mirroring 'abs'.
+      , _expr            :: expr
       }
 
     -- | Big application - apply a type to an expression.
@@ -213,63 +264,176 @@ data ExprF b abs tb expr
     --
     -- Should evaluate to a function which accepts a bool expression and returns
     -- it.
-    | BigApp
-      { _f   :: expr
-      , _xTy :: Type tb
+    | BigAppF
+      { _bigAppExtension :: BigAppExtension phase
+      , _f               :: expr
+      , _xTy             :: Type (TypeBindingFor phase)
       }
-      deriving Show
 
-deriving instance (Eq b,Eq abs,Eq tb,Eq expr) => Eq (ExprF b abs tb expr)
+    | ExprExtensionF
+      { _exprExtension :: !(ExprExtension phase)
+      }
+
+deriving instance
+  (Eq (LamExtension phase)
+  ,Eq (AppExtension phase)
+  ,Eq (BindingExtension phase)
+  ,Eq (CaseAnalysisExtension phase)
+  ,Eq (SumExtension phase)
+  ,Eq (ProductExtension phase)
+  ,Eq (UnionExtension phase)
+  ,Eq (BigLamExtension phase)
+  ,Eq (BigAppExtension phase)
+  ,Eq (ExprExtension phase)
+  ,Eq (AbstractionFor phase)
+  ,Eq (BindingFor phase)
+  ,Eq (TypeBindingFor phase)
+  ,Eq expr
+  )
+  => Eq (ExprF phase expr)
+
+deriving instance
+  (Show (LamExtension phase)
+  ,Show (AppExtension phase)
+  ,Show (BindingExtension phase)
+  ,Show (CaseAnalysisExtension phase)
+  ,Show (SumExtension phase)
+  ,Show (ProductExtension phase)
+  ,Show (UnionExtension phase)
+  ,Show (BigLamExtension phase)
+  ,Show (BigAppExtension phase)
+  ,Show (ExprExtension phase)
+  ,Show (AbstractionFor phase)
+  ,Show (BindingFor phase)
+  ,Show (TypeBindingFor phase)
+  ,Show expr
+  )
+  => Show (ExprF phase expr)
+
+-- The type families below allow adding new parameters to each of the
+-- base constructors of an expression which depend upon the phase
+type family LamExtension phase
+type family AppExtension phase
+type family BindingExtension phase
+type family CaseAnalysisExtension phase
+type family SumExtension phase
+type family ProductExtension phase
+type family UnionExtension phase
+type family BigLamExtension phase
+type family BigAppExtension phase
+
+-- The ExprExtension type family allows adding new constructors to the base Expr
+-- type which depend upon the phase
+type family ExprExtension phase
+
+type family BindingFor     phase
+type family AbstractionFor phase
+type family TypeBindingFor phase
+
+-- Some patterns to make working with ExprF nicer
+void :: Void
+void = error "Cannot evaluate Void"
+
+-- TODO: Could these use AbstractionFor, etc to be slightly more general and
+-- still usable or should other phases define their own patterns, perhaps to be
+-- imported qualified like "TypeChecked.Lam ABS EXPR"?
+
+pattern Lam :: Type TyVar -> Expr -> Expr
+pattern Lam abs expr <- FixExpr (LamF _ abs expr)
+  where Lam abs expr =  FixExpr (LamF void abs expr)
+
+pattern App :: Expr -> Expr -> Expr
+pattern App f x <- FixExpr (AppF _ f x)
+  where App f x =  FixExpr (AppF void f x)
+
+pattern Binding :: Var -> Expr
+pattern Binding b <- FixExpr (BindingF _ b)
+  where Binding b = FixExpr (BindingF void b)
+
+pattern CaseAnalysis :: Case Expr (MatchArg Var TyVar) -> Expr
+pattern CaseAnalysis c <- FixExpr (CaseAnalysisF _ c)
+  where CaseAnalysis c =  FixExpr (CaseAnalysisF void c)
+
+pattern Sum :: Expr -> Int -> NonEmpty (Type TyVar) -> Expr
+pattern Sum expr ix types <- FixExpr (SumF _ expr ix types)
+  where Sum expr ix types =  FixExpr (SumF void expr ix types)
+
+pattern Product :: [Expr] -> Expr
+pattern Product exprs <- FixExpr (ProductF _ exprs)
+  where Product exprs =  FixExpr (ProductF void exprs)
+
+pattern Union :: Expr -> Type TyVar -> Set.Set (Type TyVar) -> Expr
+pattern Union expr typeIx types <- FixExpr (UnionF _ expr typeIx types)
+  where Union expr typeIx types =  FixExpr (UnionF void expr typeIx types)
+
+pattern BigLam :: Kind -> Expr -> Expr
+pattern BigLam typeAbs expr <- FixExpr (BigLamF _ typeAbs expr)
+  where BigLam typeAbs expr =  FixExpr (BigLamF void typeAbs expr)
+
+pattern BigApp :: Expr -> Type TyVar -> Expr
+pattern BigApp f xType <- FixExpr (BigAppF _ f xType)
+  where BigApp f xType =  FixExpr (BigAppF void f xType)
+
+pattern ExprExtension :: Expr
+pattern ExprExtension <- FixExpr (ExprExtensionF _)
+  where ExprExtension =  FixExpr (ExprExtensionF void)
+
+-- Phases
+data DefaultPhase
+
+-- The DefaultPhase has no extensions to constructors or the expression itself
+-- Bindings are Var's (indexes without names), abstractions are Types (with no names) and type
+-- bindings are TyVars (indexes without names).
+type instance LamExtension DefaultPhase = Void
+type instance AppExtension DefaultPhase = Void
+type instance BindingExtension DefaultPhase = Void
+type instance CaseAnalysisExtension DefaultPhase = Void
+type instance SumExtension DefaultPhase = Void
+type instance ProductExtension DefaultPhase = Void
+type instance UnionExtension DefaultPhase = Void
+type instance BigLamExtension DefaultPhase = Void
+type instance BigAppExtension DefaultPhase = Void
+
+-- TODO: Should _this_ be unit instead of void?
+type instance ExprExtension DefaultPhase = Void
+
+type instance BindingFor     DefaultPhase = Var
+type instance AbstractionFor DefaultPhase = Type TyVar
+type instance TypeBindingFor DefaultPhase = TyVar
 
 -- TODO: Recursion schemes can probably be used for these instances now.
+-- They're also not as generic as they could be.
 
 -- An Expr abstracts over itself
-instance HasAbs (Expr b abs tb) where
-  applyToAbs f e = FixExpr $ case unfixExpr e of
-    Lam abs e -> Lam abs (f e)
-    e         -> e
+instance HasAbs Expr where
+  applyToAbs f (Lam abs e) = Lam abs (f e)
+  applyToAbs _ e           = e
 
--- An Expr has bindings of type 'b'
-instance HasBinding (Expr b abs tb) b where
-  applyToBinding f e = FixExpr $ case unfixExpr e of
-    Binding b -> Binding $ f b
-    e         -> e
+-- An Expr binds with Vars
+instance HasBinding Expr Var where
+  applyToBinding f (Binding e) = Binding (f e)
+  applyToBinding _ e           = e
 
 -- An Expr contains NON-abstracted sub-expressions
-instance HasNonAbs (Expr b abs tb) where
-  applyToNonAbs f e = FixExpr $ case unfixExpr e of
-    App x y
-      -> App (f x) (f y)
-
-    CaseAnalysis c
-      -> CaseAnalysis $ mapCaseExpr (applyToNonAbs f) c
-
-    Sum expr ix ty
-      -> Sum (f expr) ix ty
-
-    Product prodExprs
-      -> Product (map f prodExprs)
-
-    Union unionExpr tyIx ty
-      -> Union (f unionExpr) tyIx ty
-
-    BigLam takeTy expr
-      -> BigLam takeTy (f expr)
-
-    BigApp fExpr xTy
-      -> BigApp (f fExpr) xTy
-
-    e -> e
+instance HasNonAbs Expr where
+  applyToNonAbs f (App x y)                 = App (f x) (f y)
+  applyToNonAbs f (CaseAnalysis c)          = CaseAnalysis (mapCaseExpr (applyToNonAbs f) c)
+  applyToNonAbs f (Sum expr ix ty)          = Sum (f expr) ix ty
+  applyToNonAbs f (Product prodExprs)       = Product (map f prodExprs)
+  applyToNonAbs f (Union unionExpr tyIx ty) = Union (f unionExpr) tyIx ty
+  applyToNonAbs f (BigLam takeTy expr)      = BigLam takeTy (f expr)
+  applyToNonAbs f (BigApp fExpr xTy)        = BigApp (f fExpr) xTy
+  applyToNonAbs f e                         = e
 
 -- Map a function over all contained subexpressions.
 -- The function should preserve the type of the expression.
 mapSubExpressions
-  :: (Expr b abs tb -> Expr b abs tb)
-  -> Expr b abs tb
-  -> Expr b abs tb
-mapSubExpressions f e = fixExpr $ case unfixExpr e of
+  :: (Expr -> Expr)
+  -> Expr
+  -> Expr
+mapSubExpressions f e = case e of
   Lam ty expr
-    -> Lam ty $ f expr
+    -> Lam ty (f expr)
 
   App fExpr xExpr
     -> App (f fExpr) (f xExpr)
@@ -294,7 +458,7 @@ mapSubExpressions f e = fixExpr $ case unfixExpr e of
 
   BigApp fExpr xTy
     -> BigApp (f fExpr) xTy
-
+  e -> e
 
 -- | Argument pattern in a case statements match.
 -- case ... of
@@ -323,34 +487,20 @@ data MatchArg b tb
 
 -- | A top-level expression is an expression without a bindings context.
 topExprType
-  :: ( BindAbs b abs tb
-     , Binds b (Type tb)
-     , Binds tb Kind
-     , Ord tb
-     )
-  => TypeCtx tb
-  -> Expr b abs tb
-  -> Either (Error tb) (Type tb)
+  :: TypeCtx TyVar
+  -> Expr
+  -> Either (Error TyVar) (Type TyVar)
 topExprType = exprType emptyCtx emptyCtx emptyBindings
-
-type ExprBindCtx b tb = BindCtx b (Type tb)
-type TypeBindCtx tb   = Binds tb Kind => BindCtx tb Kind
-type TypeBindings tb  = Bindings (Type tb)
 
 -- | Under a binding context, type check an expression.
 exprType
-  :: forall b abs tb
-   . ( BindAbs b abs tb
-     , Binds tb Kind
-     , Ord tb
-     )
-  => ExprBindCtx b tb -- Associate expr bindings 'b' to their types
-  -> TypeBindCtx tb   -- Associate type bindings 'tb' to their Kinds
-  -> TypeBindings tb  -- Associate type bindings 'tb' to their bound or unbound types
-  -> TypeCtx tb       -- Associate Named types to their TypeInfo
-  -> Expr b abs tb    -- Expression to type-check
-  -> Either (Error tb) (Type tb)
-exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
+  :: BindCtx Var (Type TyVar) -- Associate expr bindings to their types
+  -> BindCtx TyVar Kind       -- Associate type bindings to their Kinds
+  -> Bindings (Type TyVar)    -- Associate type bindings to their bound or unbound types
+  -> TypeCtx TyVar            -- Associate Named types to their TypeInfo
+  -> Expr                     -- Expression to type-check
+  -> Either (Error TyVar) (Type TyVar)
+exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
   --                 They therefore can never be applied.
@@ -533,20 +683,18 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case unfixExpr e of
 
             _ -> Left $ EMsg $ text "In big application, function must have a big arrow type"
 
+  e -> error "Non-exhaustive pattern in type check"
+
 -- Type check a case branch, requiring it match the expected type
 -- , if so, type checking the result expression which is returned.
 branchType
-  :: ( BindAbs b abs tb
-     , Binds tb Kind
-     , Ord tb
-     )
-  => CaseBranch (Expr b abs tb) (MatchArg b tb)
-  -> Type tb
-  -> ExprBindCtx b tb
-  -> TypeBindCtx tb
-  -> TypeBindings tb
-  -> TypeCtx tb
-  -> Either (Error tb) (Type tb)
+  :: CaseBranch Expr (MatchArg Var TyVar)
+  -> Type TyVar
+  -> BindCtx Var (Type TyVar)
+  -> BindCtx TyVar Kind
+  -> Bindings (Type TyVar)
+  -> TypeCtx TyVar
+  -> Either (Error TyVar) (Type TyVar)
 branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   bindings <- checkMatchWith lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
   exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
@@ -555,14 +703,13 @@ branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings 
 -- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.
 checkMatchWith
-  :: (Binds b (Type tb),Binds tb Kind,Ord tb)
-  => MatchArg b tb
-  -> Type tb
-  -> ExprBindCtx b tb
-  -> TypeBindCtx tb
-  -> TypeBindings tb
-  -> TypeCtx tb
-  -> Either (Error tb) [Type tb]
+  :: MatchArg Var TyVar
+  -> Type TyVar
+  -> BindCtx Var (Type TyVar)
+  -> BindCtx TyVar Kind
+  -> Bindings (Type TyVar)
+  -> TypeCtx TyVar
+  -> Either (Error TyVar) [Type TyVar]
 checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   rExpectTy <- maybe (Left $ EMsg $ text "The expected type in a pattern is a type name with no definition.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
   case match of
@@ -612,14 +759,13 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
 
 
 checkMatchesWith
-  :: (Binds b (Type tb),Binds tb Kind,Ord tb)
-  => [MatchArg b tb]
-  -> [Type tb]
-  -> ExprBindCtx b tb
-  -> TypeBindCtx tb
-  -> TypeBindings tb
-  -> TypeCtx tb
-  -> Either (Error tb) [Type tb]
+  :: [MatchArg Var TyVar]
+  -> [Type TyVar]
+  -> BindCtx Var (Type TyVar)
+  -> BindCtx TyVar Kind
+  -> Bindings (Type TyVar)
+  -> TypeCtx TyVar
+  -> Either (Error TyVar) [Type TyVar]
 checkMatchesWith matches types exprBindCtx typeBindCtx typeBindings typeCtx = case (matches,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg $ text "Expected more patterns in match"
@@ -627,22 +773,12 @@ checkMatchesWith matches types exprBindCtx typeBindCtx typeBindings typeCtx = ca
   (m:ms,t:ts)
     -> checkMatchWith m t exprBindCtx typeBindCtx typeBindings typeCtx >>= \boundTs -> checkMatchesWith ms ts exprBindCtx typeBindCtx typeBindings typeCtx >>= Right . (boundTs ++)
 
--- Bind a list of expression with claimed types within an expression
--- by transforming to an application to lambda abstractions.
--- I.E. each subsequent expression
-{-lets :: [(Expr,Type)] -> Expr -> Expr-}
-{-lets bind exp = foldr (flip App) (foldr Lam exp $ reverse types) exprs-}
-  {-where-}
-    {-exprs = map fst bind-}
-    {-types = map snd bind-}
-
-appise :: [Expr b abs tb] -> Expr b abs tb
+appise :: [Expr] -> Expr
 appise []        = error "Cant appise empty list of expressions"
 appise [e]       = e
-appise (e:e':es) = appise (fixExpr (App e e') : es)
+appise (e:e':es) = appise (App e e' : es)
 
-lamise :: [abs] -> Expr b abs tb -> Expr b abs tb
+lamise :: [Type TyVar] -> Expr -> Expr
 lamise []        _ = error "Cant lamise empty list of abstractions"
-lamise [t]       e = fixExpr $ Lam t e
-lamise (t:t':ts) e = fixExpr $ Lam t (lamise (t':ts) e)
-
+lamise [t]       e = Lam t e
+lamise (t:t':ts) e = Lam t (lamise (t':ts) e)

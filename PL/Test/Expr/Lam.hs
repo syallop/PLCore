@@ -87,7 +87,7 @@ singleLamTestCase src
   }
   where
     ctx = fromJust lamTypeCtx
-    e   = fixExpr $ Lam fooTypeName $ fixExpr $ Binding VZ
+    e   = Lam fooTypeName $ Binding VZ
     ty  = fixType $ Arrow fooType fooType
 
 -- \Foo -> \Bar -> Foo
@@ -105,7 +105,7 @@ nestedLamTestCase src
       }
   where
     ctx = fromJust lamTypeCtx
-    e   = fixExpr $ Lam fooTypeName . fixExpr . Lam barTypeName . fixExpr . Binding . VS $ VZ
+    e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
     ty  = fixType $ Arrow fooType (fixType $ Arrow barType fooType)
 
 -- \Foo Bar -> Foo
@@ -124,13 +124,9 @@ chainedLamTestCase src
       }
   where
     ctx = fromJust lamTypeCtx
-    e   = fixExpr
-        . Lam fooTypeName
-        . fixExpr
+    e   = Lam fooTypeName
         . Lam barTypeName
-        . fixExpr
         . Lam bazTypeName
-        . fixExpr
         . Binding
         . VS
         . VS

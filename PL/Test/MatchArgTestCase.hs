@@ -50,9 +50,9 @@ type TestMatchArg = MatchArg Var TyVar
 
 data MatchArgTestCase = MatchArgTestCase
   {_underTypeCtx         :: TypeCtx TyVar                     -- ^ Under this given typing context
-  ,_underExprBindCtx     :: ExprBindCtx Var TyVar
-  ,_underTypeBindCtx     :: TypeBindCtx TyVar
-  ,_underTypeBindings    :: TypeBindings TyVar
+  ,_underExprBindCtx     :: BindCtx Var (Type TyVar)
+  ,_underTypeBindCtx     :: BindCtx TyVar Kind
+  ,_underTypeBindings    :: Bindings (Type TyVar)
   ,_isMatchArg           :: TestMatchArg                      -- ^ A MatchArg
   ,_typed                :: Type TyVar                        -- ^ Has this type
   ,_checkMatchWithResult :: Either (Error TyVar) [Type TyVar] -- ^ Either produces an error or a list of bound types.
@@ -61,9 +61,9 @@ data MatchArgTestCase = MatchArgTestCase
 
 hasExpectedResultSpec
   :: TypeCtx TyVar
-  -> ExprBindCtx Var TyVar
-  -> TypeBindCtx TyVar
-  -> TypeBindings TyVar
+  -> BindCtx Var (Type TyVar)
+  -> BindCtx TyVar Kind
+  -> Bindings (Type TyVar)
   -> TestMatchArg
   -> Type TyVar
   -> Either (Error TyVar) [Type TyVar]

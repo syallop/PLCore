@@ -67,14 +67,14 @@ productThreeExprTestCase src
       }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = fixExpr $ Lam (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) $ fixExpr $ -- \x : Nat*Bool*Nat ->
-      CaseAnalysis $ Case (fixExpr $ Binding VZ)                                      -- case x of
+    e   = Lam (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
+      CaseAnalysis $ Case (Binding VZ)                                      -- case x of
         $ CaseBranches                                                                --
-          (CaseBranch (MatchProduct [zPat,Bind,zPat]) (fixExpr $ Binding VZ)          -- Z,y,Z -> y
-           :| [CaseBranch (MatchProduct [Bind,Bind,zPat]) (fixExpr $ Binding VZ)]     -- x,y,Z -> y
-          )                                                                           --
-          (Just                                                                       --
-              falseTerm                                                               -- _ -> False
+          (CaseBranch (MatchProduct [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
+           :| [CaseBranch (MatchProduct [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
+          )                                                                 --
+          (Just                                                             --
+              falseTerm                                                     -- _ -> False
           )
     ty = fixType $ Arrow (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
 

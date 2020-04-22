@@ -68,11 +68,11 @@ listSumType  = fmap fixType . NE.fromList $
                  , ProductT $ map fixType $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)]
                  ]
 
-emptyTerm :: Expr Var (Type TyVar) TyVar
-emptyTerm = fixExpr $ BigLam Kind $ fixExpr $ Sum (fixExpr $ Product []) 0 listSumType
+emptyTerm :: Expr
+emptyTerm = BigLam Kind $ Sum (Product []) 0 listSumType
 
-consTerm :: Expr Var (Type TyVar) TyVar
-consTerm = fixExpr $ BigLam Kind $ fixExpr $ Lam (fixType $ TypeBinding $ TyVar VZ) $ fixExpr $ Lam (fixType $ TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)) $ fixExpr $ Sum (fixExpr $ Product [fixExpr $ Binding $ VS VZ, fixExpr $ Binding VZ]) 1 listSumType
+consTerm :: Expr
+consTerm = BigLam Kind $ Lam (fixType $ TypeBinding $ TyVar VZ) $ Lam (fixType $ TypeApp listTypeName (fixType $ TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ, Binding VZ]) 1 listSumType
 
 -- [0]
 listNatExprTestCase
@@ -87,7 +87,7 @@ listNatExprTestCase src
       }
   where
     ctx = fromJust $ listTypeCtx <> natTypeCtx
-    e   = fixExpr $ App (fixExpr $ App (fixExpr $ BigApp consTerm natTypeName) zero) (fixExpr $ BigApp emptyTerm natTypeName)
+    e   = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
     ty  = fixType $ TypeApp listTypeName natType
     src = undefined
 

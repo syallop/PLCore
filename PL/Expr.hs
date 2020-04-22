@@ -65,6 +65,21 @@ module PL.Expr
 
   , appise
   , lamise
+
+  , LamExtension
+  , AppExtension
+  , BindingExtension
+  , CaseAnalysisExtension
+  , SumExtension
+  , ProductExtension
+  , UnionExtension
+  , BigLamExtension
+  , BigAppExtension
+  , ExprExtension
+  , BindingFor
+  , AbstractionFor
+  , TypeBindingFor
+
   )
   where
 

@@ -55,6 +55,12 @@ module PL.Expr
   , DefaultPhase
 
   , MatchArg (..)
+  , pattern MatchSum
+  , pattern MatchProduct
+  , pattern MatchUnion
+  , pattern MatchBinding
+  , pattern Bind
+  , pattern MatchArgExtension
 
   , mapSubExpressions
   , topExprType
@@ -80,23 +86,27 @@ module PL.Expr
   , AbstractionFor
   , TypeBindingFor
 
+  , MatchSumExtension
+  , MatchProductExtension
+  , MatchUnionExtension
+  , MatchBindingExtension
+  , BindExtension
+  , MatchArgExtension
   )
   where
 
-import PL.Abstracts
 import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
 import PL.ExprLike
-import PL.FixExpr
+import PL.FixPhase
 import PL.Kind
 import PL.Name
 import PLPrinter
 import PLPrinter.Doc
 import PL.Type hiding (parens)
 import PL.Type.Eq
-import PL.FixType
 import PL.TypeCtx
 
 import PL.Var
@@ -121,7 +131,7 @@ import qualified Data.Text as Text
 type Expr = ExprFor DefaultPhase
 
 -- | ExprFor is an 'ExprF' expression that uses itself as subexpressions.
-type ExprFor phase = FixExpr phase ExprF
+type ExprFor phase = FixPhase phase ExprF
 
 -- | A typed lambda calculus with anonymous sums, products, unions,
 -- type level functions and case analysis.
@@ -144,7 +154,7 @@ type ExprFor phase = FixExpr phase ExprF
 -- - The type of bindings used at the type level.
 --
 -- 'expr' is used in recursive positions where an expression contains a
--- subexpression. By wrapping ExprF with FixExpr we can recursivly pass an
+-- subexpression. By wrapping ExprF with FixPhase we can recursivly pass an
 -- expression type to itself. See 'ExprFor'.
 --
 --   The examples used in constructor comments use completly arbitrary syntax.
@@ -204,7 +214,7 @@ data ExprF phase expr
     --   _     -> "default case"
     | CaseAnalysisF
       { _caseAnalysisExtension :: CaseAnalysisExtension phase
-      , _caseAnalysis          :: Case expr (MatchArg (BindingFor phase) (TypeBindingFor phase))
+      , _caseAnalysis          :: Case expr (MatchArgFor phase)
       }
 
     -- | A Sum is an expression indexed within an ordered collection of
@@ -222,7 +232,7 @@ data ExprF phase expr
       { _sumExtension :: SumExtension phase
       , _sumExpr      :: expr
       , _sumIndex     :: Int
-      , _sumType      :: NonEmpty (Type (TypeBindingFor phase))
+      , _sumType      :: NonEmpty (TypeFor phase)
       }
 
     -- | An Product is many ordered expressions.
@@ -247,8 +257,8 @@ data ExprF phase expr
     | UnionF
       { _unionExtension :: UnionExtension phase
       , _unionExpr      :: expr
-      , _unionTypeIndex :: Type (TypeBindingFor phase)
-      , _unionType      :: Set.Set (Type (TypeBindingFor phase))
+      , _unionTypeIndex :: TypeFor phase
+      , _unionType      :: Set.Set (TypeFor phase)
       }
 
     -- | Big lambda - bind a type in an expression.
@@ -282,7 +292,7 @@ data ExprF phase expr
     | BigAppF
       { _bigAppExtension :: BigAppExtension phase
       , _f               :: expr
-      , _xTy             :: Type (TypeBindingFor phase)
+      , _xTy             :: TypeFor phase
       }
 
     | ExprExtensionF
@@ -303,6 +313,8 @@ deriving instance
   ,Eq (AbstractionFor phase)
   ,Eq (BindingFor phase)
   ,Eq (TypeBindingFor phase)
+  ,Eq (TypeFor phase)
+  ,Eq (MatchArgFor phase)
   ,Eq expr
   )
   => Eq (ExprF phase expr)
@@ -321,6 +333,8 @@ deriving instance
   ,Show (AbstractionFor phase)
   ,Show (BindingFor phase)
   ,Show (TypeBindingFor phase)
+  ,Show (TypeFor phase)
+  ,Show (MatchArgFor phase)
   ,Show expr
   )
   => Show (ExprF phase expr)
@@ -343,58 +357,50 @@ type family ExprExtension phase
 
 type family BindingFor     phase
 type family AbstractionFor phase
-type family TypeBindingFor phase
-
--- Some patterns to make working with ExprF nicer
-void :: Void
-void = error "Cannot evaluate Void"
 
 -- TODO: Could these use AbstractionFor, etc to be slightly more general and
 -- still usable or should other phases define their own patterns, perhaps to be
 -- imported qualified like "TypeChecked.Lam ABS EXPR"?
 
-pattern Lam :: Type TyVar -> Expr -> Expr
-pattern Lam abs expr <- FixExpr (LamF _ abs expr)
-  where Lam abs expr =  FixExpr (LamF void abs expr)
+pattern Lam :: Type -> Expr -> Expr
+pattern Lam abs expr <- FixPhase (LamF _ abs expr)
+  where Lam abs expr =  FixPhase (LamF void abs expr)
 
 pattern App :: Expr -> Expr -> Expr
-pattern App f x <- FixExpr (AppF _ f x)
-  where App f x =  FixExpr (AppF void f x)
+pattern App f x <- FixPhase (AppF _ f x)
+  where App f x =  FixPhase (AppF void f x)
 
 pattern Binding :: Var -> Expr
-pattern Binding b <- FixExpr (BindingF _ b)
-  where Binding b = FixExpr (BindingF void b)
+pattern Binding b <- FixPhase (BindingF _ b)
+  where Binding b = FixPhase (BindingF void b)
 
-pattern CaseAnalysis :: Case Expr (MatchArg Var TyVar) -> Expr
-pattern CaseAnalysis c <- FixExpr (CaseAnalysisF _ c)
-  where CaseAnalysis c =  FixExpr (CaseAnalysisF void c)
+pattern CaseAnalysis :: Case Expr MatchArg -> Expr
+pattern CaseAnalysis c <- FixPhase (CaseAnalysisF _ c)
+  where CaseAnalysis c =  FixPhase (CaseAnalysisF void c)
 
-pattern Sum :: Expr -> Int -> NonEmpty (Type TyVar) -> Expr
-pattern Sum expr ix types <- FixExpr (SumF _ expr ix types)
-  where Sum expr ix types =  FixExpr (SumF void expr ix types)
+pattern Sum :: Expr -> Int -> NonEmpty Type -> Expr
+pattern Sum expr ix types <- FixPhase (SumF _ expr ix types)
+  where Sum expr ix types =  FixPhase (SumF void expr ix types)
 
 pattern Product :: [Expr] -> Expr
-pattern Product exprs <- FixExpr (ProductF _ exprs)
-  where Product exprs =  FixExpr (ProductF void exprs)
+pattern Product exprs <- FixPhase (ProductF _ exprs)
+  where Product exprs =  FixPhase (ProductF void exprs)
 
-pattern Union :: Expr -> Type TyVar -> Set.Set (Type TyVar) -> Expr
-pattern Union expr typeIx types <- FixExpr (UnionF _ expr typeIx types)
-  where Union expr typeIx types =  FixExpr (UnionF void expr typeIx types)
+pattern Union :: Expr -> Type -> Set.Set Type -> Expr
+pattern Union expr typeIx types <- FixPhase (UnionF _ expr typeIx types)
+  where Union expr typeIx types =  FixPhase (UnionF void expr typeIx types)
 
 pattern BigLam :: Kind -> Expr -> Expr
-pattern BigLam typeAbs expr <- FixExpr (BigLamF _ typeAbs expr)
-  where BigLam typeAbs expr =  FixExpr (BigLamF void typeAbs expr)
+pattern BigLam typeAbs expr <- FixPhase (BigLamF _ typeAbs expr)
+  where BigLam typeAbs expr =  FixPhase (BigLamF void typeAbs expr)
 
-pattern BigApp :: Expr -> Type TyVar -> Expr
-pattern BigApp f xType <- FixExpr (BigAppF _ f xType)
-  where BigApp f xType =  FixExpr (BigAppF void f xType)
+pattern BigApp :: Expr -> Type -> Expr
+pattern BigApp f xType <- FixPhase (BigAppF _ f xType)
+  where BigApp f xType =  FixPhase (BigAppF void f xType)
 
 pattern ExprExtension :: Expr
-pattern ExprExtension <- FixExpr (ExprExtensionF _)
-  where ExprExtension =  FixExpr (ExprExtensionF void)
-
--- Phases
-data DefaultPhase
+pattern ExprExtension <- FixPhase (ExprExtensionF _)
+  where ExprExtension =  FixPhase (ExprExtensionF void)
 
 -- The DefaultPhase has no extensions to constructors or the expression itself
 -- Bindings are Var's (indexes without names), abstractions are Types (with no names) and type
@@ -413,8 +419,7 @@ type instance BigAppExtension DefaultPhase = Void
 type instance ExprExtension DefaultPhase = Void
 
 type instance BindingFor     DefaultPhase = Var
-type instance AbstractionFor DefaultPhase = Type TyVar
-type instance TypeBindingFor DefaultPhase = TyVar
+type instance AbstractionFor DefaultPhase = Type
 
 -- TODO: Recursion schemes can probably be used for these instances now.
 -- They're also not as generic as they could be.
@@ -475,46 +480,136 @@ mapSubExpressions f e = case e of
     -> BigApp (f fExpr) xTy
   e -> e
 
+
+type MatchArg = MatchArgFor DefaultPhase
+
+-- TODO: Merge Fix types?
+type MatchArgFor phase = FixPhase phase MatchArgF
+
 -- | Argument pattern in a case statements match.
 -- case ... of
 --  T {A b (C d E)} -> ...
-data MatchArg b tb
-  = MatchSum
-      { _index :: Int           -- ^ The index of the type within the sum we wish to match
-      , _match :: MatchArg b tb -- ^ Match within the sum
+data MatchArgF phase match
+  = MatchSumF
+      { _matchSumExtension :: MatchSumExtension phase
+      , _index             :: Int   -- ^ The index of the type within the sum we wish to match
+      , _match             :: match -- ^ Match within the sum
       }
 
-  | MatchProduct
-      { _matches :: [MatchArg b tb] -- ^ Match against each of the products values
+  | MatchProductF
+      { _matchProductExtension :: MatchProductExtension phase
+      , _matches               :: [match] -- ^ Match against each of the products values
       }
 
-  | MatchUnion
-      { _typeIndex :: Type tb       -- ^ The index of the type within the union we weish to match
-      , _match     :: MatchArg b tb -- ^ Match within the union
+  | MatchUnionF
+      { _matchUnionExtension :: MatchUnionExtension phase
+      , _typeIndex           :: TypeFor phase  -- ^ The index of the type within the union we weish to match
+      , _match               :: match          -- ^ Match within the union
       }
 
-  | MatchBinding
-      { _equalTo :: b -- ^ The value should match the value of the binding
+  | MatchBindingF
+      { _matchBinding :: MatchBindingExtension phase
+      , _equalTo      :: BindingFor phase -- ^ The value should match the value of the binding
       }
 
-  | Bind -- ^ Match anything and bind it
-  deriving (Show,Eq)
+  | BindF
+      { _bindExtension :: BindExtension phase
+      }
+    -- ^ Match anything and bind it
+
+  | MatchArgExtensionF
+      { _matchArgExtension :: !(MatchArgExtension phase)
+      }
+
+deriving instance
+  (Show (MatchSumExtension phase)
+  ,Show (MatchProductExtension phase)
+  ,Show (MatchUnionExtension phase)
+  ,Show (MatchBindingExtension phase)
+  ,Show (BindExtension phase)
+  ,Show (MatchArgExtension phase)
+  ,Show (TypeFor phase)
+  ,Show (BindingFor phase)
+  ,Show match
+  )
+  => Show (MatchArgF phase match)
+
+deriving instance
+  (Eq (MatchSumExtension phase)
+  ,Eq (MatchProductExtension phase)
+  ,Eq (MatchUnionExtension phase)
+  ,Eq (MatchBindingExtension phase)
+  ,Eq (BindExtension phase)
+  ,Eq (MatchArgExtension phase)
+  ,Eq (TypeFor phase)
+  ,Eq (BindingFor phase)
+  ,Eq match
+  )
+  => Eq (MatchArgF phase match)
+
+-- The type families below allow adding new parameters to each of the
+-- base constructors of an expression which depend upon the phase
+type family MatchSumExtension phase
+type family MatchProductExtension phase
+type family MatchUnionExtension phase
+type family MatchBindingExtension phase
+type family BindExtension phase
+
+-- The MatchArgExtension type family allows adding new constructors to the base
+-- MatchArg type which depend upon the phase
+type family MatchArgExtension phase
+
+-- TODO: Should these patterns be more general?
+
+pattern MatchSum :: Int -> MatchArg -> MatchArg
+pattern MatchSum ix match <- FixPhase (MatchSumF _ ix match)
+  where MatchSum ix match =  FixPhase (MatchSumF void ix match)
+
+pattern MatchProduct :: [MatchArg] -> MatchArg
+pattern MatchProduct matches <- FixPhase (MatchProductF _ matches)
+  where MatchProduct matches =  FixPhase (MatchProductF void matches)
+
+pattern MatchUnion :: Type -> MatchArg -> MatchArg
+pattern MatchUnion typeIx match <- FixPhase (MatchUnionF _ typeIx match)
+  where MatchUnion typeIx match =  FixPhase (MatchUnionF void typeIx match)
+
+pattern MatchBinding :: Var -> MatchArg
+pattern MatchBinding equalTo <- FixPhase (MatchBindingF _ equalTo)
+  where MatchBinding equalTo =  FixPhase (MatchBindingF void equalTo)
+
+pattern Bind :: MatchArg
+pattern Bind <- FixPhase (BindF _)
+  where Bind =  FixPhase (BindF void)
+
+pattern MatchArgExtension :: MatchArg
+pattern MatchArgExtension <- FixPhase (MatchArgExtensionF _)
+  where MatchArgExtension =  FixPhase (MatchArgExtensionF void)
+
+-- The DefaultPhase has no extensions to constructors or the MatchArg itself
+type instance MatchSumExtension DefaultPhase = Void
+type instance MatchProductExtension DefaultPhase = Void
+type instance MatchUnionExtension DefaultPhase = Void
+type instance MatchBindingExtension DefaultPhase = Void
+type instance BindExtension DefaultPhase = Void
+
+-- TODO: Should _this_ be unit instead of void?
+type instance MatchArgExtension DefaultPhase = Void
 
 -- | A top-level expression is an expression without a bindings context.
 topExprType
-  :: TypeCtx TyVar
+  :: TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error TyVar) (Type TyVar)
+  -> Either (Error DefaultPhase) Type
 topExprType = exprType emptyCtx emptyCtx emptyBindings
 
 -- | Under a binding context, type check an expression.
 exprType
-  :: BindCtx Var (Type TyVar) -- Associate expr bindings to their types
+  :: BindCtx Var Type         -- Associate expr bindings to their types
   -> BindCtx TyVar Kind       -- Associate type bindings to their Kinds
-  -> Bindings (Type TyVar)    -- Associate type bindings to their bound or unbound types
-  -> TypeCtx TyVar            -- Associate Named types to their TypeInfo
+  -> Bindings Type            -- Associate type bindings to their bound or unbound types
+  -> TypeCtx DefaultPhase -- Associate Named types to their TypeInfo
   -> Expr                     -- Expression to type-check
-  -> Either (Error TyVar) (Type TyVar)
+  -> Either (Error DefaultPhase) Type
 exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
@@ -524,9 +619,9 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- ----------------------------------
   --   Lam absTy expr : absTy -> exprTy
   Lam abs expr
-    -> do let newExprBindCtx = addBinding (absTy abs) exprBindCtx
+    -> do let newExprBindCtx = addBinding abs exprBindCtx
           exprTy <- exprType newExprBindCtx typeBindCtx typeBindings typeCtx expr
-          Right $ fixType $ Arrow (absTy abs) exprTy
+          Right $ Arrow abs exprTy
 
   --
   --   f : a -> b    x : a
@@ -539,7 +634,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
           resFTy <- maybe (Left $ EMsg $ text "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           let errAppMismatch = Left $ EAppMismatch resFTy xTy
-          case unfixType resFTy of
+          case resFTy of
             -- Regular function application attempt
             Arrow aTy bTy -> case typeEq typeBindCtx typeBindings typeCtx aTy xTy of
                                  Left err -> Left err
@@ -569,7 +664,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
           _ <- Right ()
 
           -- Type is the claimed sum
-          Right $ fixType $ SumT inTypr
+          Right $ SumT inTypr
 
   -- A product is typed by the order of each expression it contains
   Product prodExprs
@@ -577,7 +672,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
           prodExprTys <- mapM (exprType exprBindCtx typeBindCtx typeBindings typeCtx) prodExprs
 
           -- the type is the product of those types
-          Right $ fixType $ ProductT prodExprTys
+          Right $ ProductT prodExprTys
 
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
   -- TODO: Unused types in the union are not themselves checked for consistency
@@ -598,7 +693,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
                  else Left $ EMsg $ text "Expressions type is not within the union"
 
           -- the type is the claimed union
-          Right $ fixType $ UnionT unionTypes
+          Right $ UnionT unionTypes
 
   -- A binding is typed by the context
   -- It is assumed the exprBindCtx has been type checked
@@ -673,7 +768,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
     -> do let newTypeBindCtx  = addBinding abs typeBindCtx
               newTypeBindings = unbound $ bury typeBindings
           exprTy <- exprType exprBindCtx newTypeBindCtx newTypeBindings typeCtx expr
-          Right $ fixType $ BigArrow abs exprTy
+          Right $ BigArrow abs exprTy
 
   --    f : aKind BigLamArrow bTy      xTy :: aKind
   -- ---------------------------------------------------
@@ -690,7 +785,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
           resFTy <- maybe (Left $ EMsg $ text "Unknown named type in Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
-          case unfixType resFTy of
+          case resFTy of
             -- Regular big application attempt
             BigArrow aKy bTy
               | aKy == xKy -> Right $ instantiate x bTy -- TODO: all bindings need to be instantiated
@@ -703,13 +798,13 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 -- Type check a case branch, requiring it match the expected type
 -- , if so, type checking the result expression which is returned.
 branchType
-  :: CaseBranch Expr (MatchArg Var TyVar)
-  -> Type TyVar
-  -> BindCtx Var (Type TyVar)
+  :: CaseBranch Expr MatchArg
+  -> Type
+  -> BindCtx Var Type
   -> BindCtx TyVar Kind
-  -> Bindings (Type TyVar)
-  -> TypeCtx TyVar
-  -> Either (Error TyVar) (Type TyVar)
+  -> Bindings Type
+  -> TypeCtx DefaultPhase
+  -> Either (Error DefaultPhase) Type
 branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   bindings <- checkMatchWith lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
   exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
@@ -718,13 +813,13 @@ branchType (CaseBranch lhs rhs) expectedTy exprBindCtx typeBindCtx typeBindings 
 -- | Check that a MatchArg matches the expected Type
 -- If so, return a list of types of any bound bindings.
 checkMatchWith
-  :: MatchArg Var TyVar
-  -> Type TyVar
-  -> BindCtx Var (Type TyVar)
+  :: MatchArg
+  -> Type
+  -> BindCtx Var Type
   -> BindCtx TyVar Kind
-  -> Bindings (Type TyVar)
-  -> TypeCtx TyVar
-  -> Either (Error TyVar) [Type TyVar]
+  -> Bindings Type
+  -> TypeCtx DefaultPhase
+  -> Either (Error DefaultPhase) [Type]
 checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   rExpectTy <- maybe (Left $ EMsg $ text "The expected type in a pattern is a type name with no definition.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
   case match of
@@ -741,7 +836,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                 Right isSameType -> if isSameType then pure [] else Left $ EMsg $ text "pattern match on a binding from a different type"
 
     MatchSum sumIndex nestedMatchArg
-      -> do sumTypes <- case unfixType rExpectTy of
+      -> do sumTypes <- case rExpectTy of
                       SumT sumTypes -> Right sumTypes
                       _             -> Left . EMsg . text $ "Expected sum type in pattern match"
 
@@ -754,7 +849,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
             checkMatchWith nestedMatchArg matchedTy exprBindCtx typeBindCtx typeBindings typeCtx
 
     MatchProduct nestedMatchArgs
-      -> do prodTypes <- case unfixType rExpectTy of
+      -> do prodTypes <- case rExpectTy of
                              ProductT prodTypes
                                -> Right prodTypes
                              _ -> Left $ EMsg $ text "Expected product type in pattern match"
@@ -762,7 +857,7 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
             checkMatchesWith nestedMatchArgs prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
 
     MatchUnion unionIndexTy nestedMatchArg
-      -> do unionTypes <- case unfixType rExpectTy of
+      -> do unionTypes <- case rExpectTy of
                         UnionT unionTypes -> Right unionTypes
                         _                 -> Left $ EMsg $ text "Expected union type in pattern match"
 
@@ -772,15 +867,16 @@ checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
             -- must actually match on the expected type
             checkMatchWith nestedMatchArg unionIndexTy exprBindCtx typeBindCtx typeBindings typeCtx
 
+    _ -> error "Non-exhaustive pattern match when checking match statement"
 
 checkMatchesWith
-  :: [MatchArg Var TyVar]
-  -> [Type TyVar]
-  -> BindCtx Var (Type TyVar)
+  :: [MatchArg]
+  -> [Type]
+  -> BindCtx Var Type
   -> BindCtx TyVar Kind
-  -> Bindings (Type TyVar)
-  -> TypeCtx TyVar
-  -> Either (Error TyVar) [Type TyVar]
+  -> Bindings Type
+  -> TypeCtx DefaultPhase
+  -> Either (Error DefaultPhase) [Type]
 checkMatchesWith matches types exprBindCtx typeBindCtx typeBindings typeCtx = case (matches,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg $ text "Expected more patterns in match"
@@ -793,7 +889,7 @@ appise []        = error "Cant appise empty list of expressions"
 appise [e]       = e
 appise (e:e':es) = appise (App e e' : es)
 
-lamise :: [Type TyVar] -> Expr -> Expr
+lamise :: [Type] -> Expr -> Expr
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise [t]       e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)

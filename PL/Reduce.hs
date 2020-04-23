@@ -23,7 +23,6 @@ import PL.Binds.Ix
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Name
 import PL.Type
 import PL.Var
@@ -43,16 +42,16 @@ import PLPrinter
 -- | Reduce an 'Expr'.
 reduce
   :: Expr
-  -> Either (Error TyVar) Expr
+  -> Either (Error DefaultPhase) Expr
 reduce = reduceRec emptyBindings
   where
   -- Recursively reduce an expression until it no longer reduces
-  reduceRec :: Bindings Expr -> Expr -> Either (Error TyVar) Expr
+  reduceRec :: Bindings Expr -> Expr -> Either (Error DefaultPhase) Expr
   reduceRec bindings expr = do
     redExpr <- reduceStep bindings expr
     if redExpr == expr then pure expr else reduceRec bindings redExpr
 
-  reduceStep :: Bindings Expr -> Expr -> Either (Error TyVar) Expr
+  reduceStep :: Bindings Expr -> Expr -> Either (Error DefaultPhase) Expr
   reduceStep bindings expr = case expr of
 
       -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
@@ -114,7 +113,7 @@ reduce = reduceRec emptyBindings
 
 
   -- The case scrutinee is not an unbound variable and so we can reduce the case expression, finding the matching branch and returning the reduced RHS.
-  reducePossibleCaseBranches :: Bindings Expr -> Expr -> CaseBranches Expr (MatchArg Var TyVar) -> Either (Error TyVar) Expr
+  reducePossibleCaseBranches :: Bindings Expr -> Expr -> CaseBranches Expr MatchArg -> Either (Error DefaultPhase) Expr
   reducePossibleCaseBranches bindings caseExpr = \case
     DefaultOnly defaultExpr
       -> reduceStep bindings defaultExpr
@@ -132,7 +131,7 @@ reduce = reduceRec emptyBindings
            Just (bindExprs,rhsExpr)
              -> reduceStep (bindAll (reverse bindExprs) bindings) rhsExpr
 
-  tryBranches :: Bindings Expr -> Expr -> NonEmpty (CaseBranch Expr (MatchArg Var TyVar)) -> Maybe ([Expr],Expr)
+  tryBranches :: Bindings Expr -> Expr -> NonEmpty (CaseBranch Expr MatchArg) -> Maybe ([Expr],Expr)
   tryBranches bindings caseScrutinee branches = firstMatch $ tryBranch bindings caseScrutinee <$> branches
     where
       -- The first 'Just'
@@ -147,11 +146,11 @@ reduce = reduceRec emptyBindings
   --
   -- We assume the input is type-checked which ensures patterns have the same type as the casescrutinee matched
   -- upon, and that all patterns are completly valid.
-  tryBranch :: Bindings Expr -> Expr -> CaseBranch Expr (MatchArg Var TyVar) -> Maybe ([Expr],Expr)
+  tryBranch :: Bindings Expr -> Expr -> CaseBranch Expr MatchArg -> Maybe ([Expr],Expr)
   tryBranch bindings caseScrutinee (CaseBranch matchArg rhsExpr) = (,rhsExpr) <$> patternBinding bindings caseScrutinee matchArg
 
   -- Nothing on non match or a list of exprs to bind under the rhs.
-  patternBinding :: Bindings Expr -> Expr -> MatchArg Var TyVar -> Maybe [Expr]
+  patternBinding :: Bindings Expr -> Expr -> MatchArg -> Maybe [Expr]
   patternBinding bindings caseScrutinee matchArg = case (caseScrutinee,matchArg) of
 
     (expr,MatchBinding b)
@@ -200,11 +199,11 @@ reduce = reduceRec emptyBindings
   -- Try matching all of these expressions against these patterns, return the list of bindings if successful.
   --
   -- (Type checking ensures same length lists and valid patterns)
-  patternBindings :: Bindings Expr -> [Expr] -> [MatchArg Var TyVar] -> Maybe [Expr]
+  patternBindings :: Bindings Expr -> [Expr] -> [MatchArg] -> Maybe [Expr]
   patternBindings bindings exprs matchArgs = concat <$> zipWithM (patternBinding bindings) exprs matchArgs
 
   -- | Are two expressions identical under the same bindings?
-  exprEq :: Bindings Expr -> Expr -> Expr -> Either (Error TyVar) Bool
+  exprEq :: Bindings Expr -> Expr -> Expr -> Either (Error DefaultPhase) Bool
   exprEq bindings e0 e1 = do
     redE0 <- reduceRec bindings e0
     redE1 <- reduceRec bindings e1
@@ -213,7 +212,7 @@ reduce = reduceRec emptyBindings
 
   -- We've decided we cant evaluate the case expression yet, so we just reduce all the possible RHSs as much as possible
   reducePossibleCaseRHSs :: Bindings Expr
-                         -> CaseBranches Expr (MatchArg Var TyVar)
-                         -> Either (Error TyVar) (CaseBranches Expr (MatchArg Var TyVar))
+                         -> CaseBranches Expr MatchArg
+                         -> Either (Error DefaultPhase) (CaseBranches Expr MatchArg)
   reducePossibleCaseRHSs bindings = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings)
 

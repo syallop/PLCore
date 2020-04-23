@@ -29,14 +29,12 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
-import PL.FixType
 import PL.Var
 
 import PLParser
@@ -63,9 +61,9 @@ booleanTestCases t =
   ]
 
 boolTypeCtx = insertType "Bool" boolType emptyTypeCtx
-boolTypeName = fixType $ Named "Bool"
-boolType = fixType $ SumT boolSumType
-boolSumType = fmap fixType . NE.fromList $
+boolTypeName = Named "Bool"
+boolType = SumT boolSumType
+boolSumType = NE.fromList $
                 [ProductT []
                 ,ProductT []
                 ]
@@ -102,6 +100,6 @@ andExprTestCase src
                     )
                 )
             )
-    ty  = fixType $ Arrow boolType (fixType $ Arrow boolType boolType)
+    ty  = Arrow boolType (Arrow boolType boolType)
 
 

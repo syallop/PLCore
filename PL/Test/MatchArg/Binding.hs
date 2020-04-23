@@ -21,7 +21,6 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -66,11 +65,11 @@ defaultBindingMatchArgTestCase src
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = addBinding (fixType $ ProductT []) $ emptyCtx
+    exprBindCtx          = addBinding (ProductT []) $ emptyCtx
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
     isMatchArg           = MatchBinding VZ
-    typed                = fixType $ ProductT []
+    typed                = ProductT []
     checkMatchWithResult = Right []
     parsesFrom           = src
 

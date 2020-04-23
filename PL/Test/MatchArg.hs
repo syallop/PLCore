@@ -55,7 +55,7 @@ import Test.Hspec
 import PL.Test.Source
 
 -- type context of bools and nats
-typeCtx :: TypeCtx TyVar
+typeCtx :: TypeCtx DefaultPhase
 typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
   [ boolTypeCtx
   , natTypeCtx

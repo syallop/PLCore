@@ -52,12 +52,11 @@ Some other related components:
 
 | Module        | Description |
 | ------------- | ----------- |
-| PL.Abstracts  | Abstracts over abstraction. The default instance adds no additional imformation to an abstracted type, meaning de-bruijn indices are used to reference variables |
 | PL.Bindings   | When reducing expressions, variables are either unbound (yet) or bound to some applied expression. Variables are referenced by the number of bindings away they appear and so when evaluating under an abstraction indices need to be adjusted carefully. If names were used instead of indices we would need to perform a more complex renaming proceedure. As it is, the API exposes a `bound` `unbound` for adding bindings and `bury` whenever bindings get burried under an abstraction. | 
 | PL.Case       | Abstracts case analysis. Case analysis is performed on an expression-like thing using matching-like things. Case analysis must always have a match or a default and should be exhaustive. |
 | PL.Error      | Errors that can result from static analysis are captured in a single sum-type and contain typed AST fragments/ references where necessary. A catch-all string like error is provided however most uses should eventually become strongly typed alternatives. |
 | PL.Expr       | The core type of expressions is defined to recursively contain itself via FixExpr fixed points. Expressions are abstracted over the choice of binding types, abstraction types and type bindings. Expressions contain lambdas, application, bindings, case analysis, sums, products, unions, type-lambdas and type application. This module can also perform type checking and declares pattern matching constructs. | 
-| PL.FixExpr    | A Fixed point over Expr like types which allows expressions to be recursively nested within themselves, exposing recursion-scheme-like functions for manipulating these nested expressions. |
+| PL.FixPhase   | A Fixed point over types indexed on their phase in the compilation pipeline. This allows expressions to be recursively nested within themselves, exposing recursion-scheme-like functions for manipulating these nested expressions. |
 | PL.Kind       | The type of types is currently either a simple Kind or Type that can be applied to another |
 | PL.Name       | Assign distinct Name types to things we wouldn't want to accidentally confuse. |
 | PL.Reduce     | Reduce expressions by maintaining a binding ctx and performing substitution and recursive reduction when necessary. |

@@ -22,12 +22,10 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -71,8 +69,8 @@ idExprTestCase src
     ctx = emptyTypeCtx
 
     -- forall a::k. a -> a
-    e   = BigLam Kind $ Lam (fixType $ TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
-    ty  = fixType $ BigArrow Kind $ fixType $ Arrow (fixType $ TypeBinding $ TyVar VZ) (fixType $ TypeBinding $ TyVar VZ)
+    e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
+    ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
 
 constExprTestCase
   :: Source
@@ -91,15 +89,15 @@ constExprTestCase src
     -- const a b = a
     e   = BigLam Kind -- k0
         $ BigLam Kind -- k1
-        $ Lam (fixType . TypeBinding . TyVar . VS $ VZ) -- a :: k0
-        $ Lam (fixType . TypeBinding . TyVar $ VZ)      -- b :: k1
+        $ Lam (TypeBinding . TyVar . VS $ VZ) -- a :: k0
+        $ Lam (TypeBinding . TyVar $ VZ)      -- b :: k1
         $ Binding $ VS VZ                               -- a
 
-    ty  = fixType $ BigArrow Kind -- k0
-        $ fixType $ BigArrow Kind -- k1
-        $ fixType $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) -- a
-        $ fixType $ Arrow (fixType $ TypeBinding $ TyVar VZ)        -- b
-        $ fixType $ TypeBinding . TyVar $ VS VZ                     -- a
+    ty  = BigArrow Kind -- k0
+        $ BigArrow Kind -- k1
+        $ Arrow (TypeBinding . TyVar . VS $ VZ) -- a
+        $ Arrow (TypeBinding $ TyVar VZ)        -- b
+        $ TypeBinding . TyVar $ VS VZ                     -- a
 
 applyExprTestCase
   :: Source
@@ -115,14 +113,13 @@ applyExprTestCase src
     ctx = emptyTypeCtx
 
     e   = BigLam Kind $ BigLam Kind
-        $ Lam (fixType $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) (fixType . TypeBinding . TyVar $ VZ))
-        $ Lam (fixType . TypeBinding . TyVar . VS $ VZ)
+        $ Lam (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+        $ Lam (TypeBinding . TyVar . VS $ VZ)
         $ App (Binding . VS $ VZ) (Binding VZ)
 
     -- forall k0 k1. \(f::k0 -> k1) (a::k0) -> f a:: k1
-    ty  = fixType $ BigArrow Kind $ fixType $ BigArrow Kind
-        $ fixType $ Arrow (fixType $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) (fixType . TypeBinding . TyVar $ VZ))
-        $ fixType
-        $ Arrow (fixType . TypeBinding . TyVar . VS $ VZ) (fixType . TypeBinding . TyVar $ VZ)
+    ty  = BigArrow Kind $ BigArrow Kind
+        $ Arrow (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+        $ Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ)
 
 

@@ -19,12 +19,10 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -64,12 +62,12 @@ lamTypeCtx
   . fromJust
   . insertType "Baz" bazType
   $ emptyTypeCtx
-fooTypeName = fixType $ Named "Foo"
-fooType     = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
-barTypeName = fixType $ Named "Bar"
-barType     = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
-bazTypeName = fixType $ Named "Baz"
-bazType     = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
+fooTypeName = Named "Foo"
+fooType     = SumT $ NE.fromList [ProductT []]
+barTypeName = Named "Bar"
+barType     = SumT $ NE.fromList [ProductT []]
+bazTypeName = Named "Baz"
+bazType     = SumT $ NE.fromList [ProductT []]
 
 
 -- \() -> ()
@@ -88,7 +86,7 @@ singleLamTestCase src
   where
     ctx = fromJust lamTypeCtx
     e   = Lam fooTypeName $ Binding VZ
-    ty  = fixType $ Arrow fooType fooType
+    ty  = Arrow fooType fooType
 
 -- \Foo -> \Bar -> Foo
 -- Test a nested lambda that takes two different named types and returns the first.
@@ -106,7 +104,7 @@ nestedLamTestCase src
   where
     ctx = fromJust lamTypeCtx
     e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
-    ty  = fixType $ Arrow fooType (fixType $ Arrow barType fooType)
+    ty  = Arrow fooType (Arrow barType fooType)
 
 -- \Foo Bar -> Foo
 -- Test a chained lambda that takes two different named types in succession and
@@ -131,11 +129,8 @@ chainedLamTestCase src
         . VS
         . VS
         $ VZ
-    ty  = fixType
-        . Arrow fooType
-        . fixType
+    ty  = Arrow fooType
         . Arrow barType
-        . fixType
         . Arrow bazType
         $ fooType
 

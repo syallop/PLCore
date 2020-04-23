@@ -22,7 +22,6 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -73,8 +72,8 @@ defaultBindMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
     isMatchArg           = Bind
-    typed                = fixType $ SumT $ NE.fromList [FixType $ ProductT []]
-    checkMatchWithResult = Right [fixType $ SumT $ NE.fromList [FixType $ ProductT []]]
+    typed                = SumT $ NE.fromList [ProductT []]
+    checkMatchWithResult = Right [SumT $ NE.fromList [ProductT []]]
     parsesFrom           = src
 
 -- Test binding an empty sum.
@@ -88,8 +87,8 @@ bindProdMatchArgTestCase
   :: Source
   -> MatchArgTestCase
 bindProdMatchArgTestCase src = (defaultBindMatchArgTestCase src)
-  { _typed = fixType $ ProductT []
-  , _checkMatchWithResult = Right [fixType $ ProductT []]
+  { _typed = ProductT []
+  , _checkMatchWithResult = Right [ProductT []]
   }
 
 bindBoolMatchArgTestCase

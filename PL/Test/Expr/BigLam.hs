@@ -19,12 +19,10 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -69,14 +67,14 @@ singleBigLamTestCase src
   where
     ctx = bigLamTypeCtx
     e   = BigLam Kind
-            (Lam (fixType . TypeBinding . TyVar $ VZ)
+            (Lam (TypeBinding . TyVar $ VZ)
                            (Binding VZ)
             )
 
     -- forall k. (a :: k) -> (a :: k)
-    ty  = fixType $ BigArrow
+    ty  = BigArrow
             Kind
-            (fixType $ Arrow (fixType . TypeBinding . TyVar $ VZ)
-                             (fixType . TypeBinding . TyVar $ VZ)
+            (Arrow (TypeBinding . TyVar $ VZ)
+                             (TypeBinding . TyVar $ VZ)
             )
 

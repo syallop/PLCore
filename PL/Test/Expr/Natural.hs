@@ -35,13 +35,11 @@ import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
-import PL.FixExpr
 import PL.Expr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -71,21 +69,21 @@ naturalTestCases t =
   ]
 
 natTypeCtx = insertRecType "Nat" natType emptyTypeCtx
-natTypeName = fixType $ Named "Nat"
-natType    = fixType $ SumT natSumType
-natSumType = fmap fixType . NE.fromList $
+natTypeName = Named "Nat"
+natType    = SumT natSumType
+natSumType = NE.fromList $
                [ProductT []
                ,Named "Nat"
                ]
 
 zTerm, sTerm :: Expr
 zTerm = Sum (Product []) 0 natSumType
-sTerm = Lam (fixType $ Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
+sTerm = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
 
-zPat :: MatchArg Var tb
+zPat :: MatchArg
 zPat = MatchSum 0 (MatchProduct [])
 
-sPat :: MatchArg Var tb -> MatchArg Var tb
+sPat :: MatchArg -> MatchArg
 sPat = MatchSum 1
 
 suc :: Expr -> Expr
@@ -124,5 +122,5 @@ subTwoExprTestCase src
             (Just                                             --
                   zTerm                                       --   _     -> Z
             )
-    ty = fixType $ Arrow natType natType
+    ty = Arrow natType natType
 

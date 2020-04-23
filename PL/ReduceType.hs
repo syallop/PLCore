@@ -1,6 +1,8 @@
 {-# LANGUAGE
     OverloadedStrings
   , ScopedTypeVariables
+  , FlexibleContexts
+  , GADTs
   #-}
 {-|
 Module      : PL.ReduceType
@@ -21,10 +23,10 @@ import PL.Bindings
 import PL.Binds
 import PL.Binds.Ix
 import PL.Error
+import PL.ExprLike
 import PL.Name
 import PL.Type
 import PL.TypeCtx
-import PL.FixType
 import PLPrinter
 
 import Control.Applicative
@@ -37,44 +39,53 @@ import qualified Data.Text as Text
 -- | Reduce a top-level type - A type under no outer abstractions
 -- Assume kind checked?
 reduceType
-  :: forall tb
-   . ( Ord tb
-     , BindingIx tb
+  :: forall phase
+   . (Eq (NamedExtension phase)
+     ,Eq (ArrowExtension phase)
+     ,Eq (SumTExtension phase)
+     ,Eq (ProductTExtension phase)
+     ,Eq (UnionTExtension phase)
+     ,Eq (BigArrowExtension phase)
+     ,Eq (TypeLamExtension phase)
+     ,Eq (TypeAppExtension phase)
+     ,Eq (TypeBindingExtension phase)
+     ,Eq (TypeExtension phase)
+     ,Eq (TypeBindingFor phase)
+     , phase ~ DefaultPhase
+     , HasBinding (TypeFor phase) (TypeBindingFor phase)
      )
-  => TypeCtx tb
-  -> Type tb
-  -> Either (Error tb) (Type tb)
+  => TypeCtx phase
+  -> TypeFor phase
+  -> Either (Error phase) (TypeFor phase)
 reduceType = reduceTypeRec emptyBindings
   where
 
   -- Recursively reduce a type until it no longer reduces.
-  reduceTypeRec :: Bindings (Type tb) -> TypeCtx tb -> Type tb -> Either (Error tb) (Type tb)
+  reduceTypeRec :: Bindings (TypeFor phase) -> TypeCtx phase -> TypeFor phase -> Either (Error phase) (TypeFor phase)
   reduceTypeRec bindings typeNameCtx ty = do
     reducedTy <- reduceTypeStep bindings typeNameCtx ty
     if reducedTy == ty then pure ty else reduceTypeRec bindings typeNameCtx reducedTy
 
 -- Reduce a type by a single reduction step.
 reduceTypeStep
-  :: forall tb
-   . ( Ord tb
-     , BindingIx tb
-     )
-  => Bindings (Type tb)
-  -> TypeCtx tb
-  -> Type tb
-  -> Either (Error tb) (Type tb)
-reduceTypeStep bindings typeNameCtx ty = case unfixType ty of
+  :: forall phase
+   . phase ~ DefaultPhase
+  => Bindings (TypeFor phase)
+  -> TypeCtx phase
+  -> TypeFor phase
+  -> Either (Error phase) (TypeFor phase)
+reduceTypeStep bindings typeNameCtx ty = case ty of
 
   -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
   TypeBinding b
-    -> pure $ case index (Proxy :: Proxy tb) bindings (bindDepth b) of
-         Unbound   -> fixType $ TypeBinding b
+    -> pure $ case index (Proxy :: Proxy (TypeBindingFor phase)) bindings (bindDepth b) of
+         Unbound   -> TypeBinding b
          Bound ty' -> ty' -- maybe should reduce again?
 
   TypeApp f x
     -> do x' <- reduceTypeStep bindings typeNameCtx x
           f' <- reduceTypeStep bindings typeNameCtx f
-          case unfixType f' of
+          case f' of
             TypeLam _ fTy
               -> reduceTypeStep (bind x' bindings) typeNameCtx fTy
 
@@ -86,19 +97,19 @@ reduceTypeStep bindings typeNameCtx ty = case unfixType ty of
                    -- we've assumed everything has been kind-checked so we're
                    -- not gonna reduce further for reasons. Mainly we would
                    -- like to terminate...
-                   Just ti -> Right $ fixType $ TypeApp f' x'
+                   Just ti -> Right $ TypeApp f' x'
 
             _ -> Left $ ETypeAppLambda f
 
   -- Reduce under a lambda by noting the abstraction is buried and Unbound
   -- TODO: Maybe dont reduce under
   TypeLam takeKind ty
-    -> (fixType . TypeLam takeKind) <$> reduceTypeStep (unbound $ bury bindings) typeNameCtx ty
+    -> (TypeLam takeKind) <$> reduceTypeStep (unbound $ bury bindings) typeNameCtx ty
 
   -- TODO: Remain unconvinced by this definition.
   -- Reduce the rhs by noting the abstraction is Unbound
   BigArrow from to
-    -> (fixType . BigArrow from) <$> reduceTypeStep (unbound bindings) typeNameCtx to
+    -> (BigArrow from) <$> reduceTypeStep (unbound bindings) typeNameCtx to
 
   -- Dont reduce names
   Named n
@@ -116,14 +127,15 @@ reduceTypeStep bindings typeNameCtx ty = case unfixType ty of
            -> Right ty
 
   Arrow from to
-    -> (\a b -> fixType $ Arrow a b) <$> reduceTypeStep bindings typeNameCtx from <*> reduceTypeStep bindings typeNameCtx to
+    -> Arrow <$> reduceTypeStep bindings typeNameCtx from <*> reduceTypeStep bindings typeNameCtx to
 
   SumT types
-    -> (fixType . SumT) <$> mapM (reduceTypeStep bindings typeNameCtx) types
+    -> SumT <$> mapM (reduceTypeStep bindings typeNameCtx) types
 
   ProductT types
-    -> (fixType . ProductT) <$> mapM (reduceTypeStep bindings typeNameCtx) types
+    -> ProductT <$> mapM (reduceTypeStep bindings typeNameCtx) types
 
   UnionT types
-    -> (fixType . UnionT . Set.fromList) <$> mapM (reduceTypeStep bindings typeNameCtx) (Set.toList types)
+    -> (UnionT . Set.fromList) <$> mapM (reduceTypeStep bindings typeNameCtx) (Set.toList types)
 
+  _ -> error "Non-exhaustive pattern in type reduction"

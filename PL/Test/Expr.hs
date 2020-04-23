@@ -31,7 +31,6 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -57,7 +56,7 @@ import Test.Hspec
 import PL.Test.Source
 
 -- type context of bools and nats
-typeCtx :: TypeCtx TyVar
+typeCtx :: TypeCtx DefaultPhase
 typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
   [ boolTypeCtx
   , natTypeCtx
@@ -104,7 +103,7 @@ parserSpec
   :: TestExprSources
   -> Parser Expr
   -> (Expr -> Doc)
-  -> (Type TyVar -> Doc)
+  -> (Type -> Doc)
   -> Spec
 parserSpec testSources testExprP ppExpr ppType
   = describe "Expressions using Var for binding and Type for abstraction" $ sequence_
@@ -116,7 +115,7 @@ parserSpec testSources testExprP ppExpr ppType
 -- Check that expressions type check and type check to a specific type
 typeChecksSpec
   :: TestExprSources
-  -> (Type TyVar -> Doc)
+  -> (Type -> Doc)
   -> Spec
 typeChecksSpec testSources ppType
   = describe "fully typecheck AND typechecks to the correct type"
@@ -132,7 +131,7 @@ typeChecksSpec testSources ppType
 reducesToSpec
   :: TestExprSources
   -> (Expr -> Doc)
-  -> (Type TyVar -> Doc)
+  -> (Type -> Doc)
   -> Spec
 reducesToSpec testSources ppExpr ppType
   = describe "when applied to a list of arguments must reduce to an expected expression"

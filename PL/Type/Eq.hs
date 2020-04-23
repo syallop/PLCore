@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , ScopedTypeVariables
+  , GADTs
   #-}
 module PL.Type.Eq
   ( typeEq
@@ -19,7 +20,6 @@ import PL.Kind
 import PLPrinter
 import PL.ReduceType
 import PL.Type
-import PL.FixType
 import PL.TypeCtx
 
 import Control.Applicative
@@ -36,19 +36,19 @@ import Debug.Trace
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
 typeEq
-  :: forall tb
-   . ( Eq tb
-     , Ord tb
-     , Binds tb Kind
-     , HasBinding (Type tb) tb
+  :: forall phase
+   . (
+     --, Binds (TypeBindingFor phase) Kind
+       HasBinding (TypeFor phase) (TypeBindingFor phase)
+     , phase ~ DefaultPhase
      )
-  => BindCtx tb Kind
-  -> Bindings (Type tb)
-  -> TypeCtx tb
-  -> Type tb
-  -> Type tb
-  -> Either (Error tb) Bool
-typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixType t1) of
+  => BindCtx (TypeBindingFor phase) Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtx phase
+  -> TypeFor phase
+  -> TypeFor phase
+  -> Either (Error phase) Bool
+typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (t0, t1) of
 
   -- Named Types are ONLY equal if they have the same name.
   (Named n0, Named n1)
@@ -71,8 +71,8 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixTyp
   -- propogating this unification? If so, the current data structures and
   -- algorithm is not appropriate.
   (TypeBinding b0, TypeBinding b1)
-    -> let binding0 = fromMaybe (error "") $ safeIndex (Proxy :: Proxy tb) typeBindings (bindDepth b0)
-           binding1 = index (Proxy :: Proxy tb) typeBindings (bindDepth b1)
+    -> let binding0 = fromMaybe (error "") $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
+           binding1 = index (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b1)
           in case (binding0,binding1) of
                -- Two unbound are unified
                (Unbound, Unbound)
@@ -90,15 +90,15 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixTyp
 
   -- To compare a binding to a non-binding
   (ty0, TypeBinding _)
-    -> typeEq typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
+    -> typeEq typeBindCtx typeBindings typeNameCtx t1 ty0
   (TypeBinding b0, ty1)
-    -> let binding0 = index (Proxy :: Proxy tb) typeBindings (bindDepth b0)
+    -> let binding0 = index (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
           in case binding0 of
                Unbound
                  -> Right True
 
                Bound ty0
-                 -> typeEq typeBindCtx typeBindings typeNameCtx ty0 (fixType ty1)
+                 -> typeEq typeBindCtx typeBindings typeNameCtx ty0 ty1
 
 
   -- Two type applications are equal if both of their corresponding parts are
@@ -109,19 +109,19 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixTyp
   -- A TypeApp is equal to something else when, after reducing it, it is equal
   -- to that other thing.
   (ty0, TypeApp _ _)
-    -> typeEq typeBindCtx typeBindings typeNameCtx t1 (fixType ty0)
+    -> typeEq typeBindCtx typeBindings typeNameCtx t1 ty0
   (TypeApp f0 x0, ty1)
     -> case reduceTypeStep typeBindings typeNameCtx f0 of
          Left e
            -> Left e
 
          Right redF0
-           -> case unfixType redF0 of
+           -> case redF0 of
                 -- TODO: we're assuming kindchecking has already been performed. Otherwise, aKy must equal xKy
                 -- The resulting type is then the rhs of the typelam under the
                 -- context of what it was applied to
                 TypeLam aKy bTy
-                  -> typeEq (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy (fixType ty1)
+                  -> typeEq (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy ty1
 
                 _ -> Left $ EMsg $ text "In typeEq: Cant type apply a non-lambda type to a type"
 
@@ -161,18 +161,14 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (unfixType t0, unfixTyp
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs
-  :: forall tb
-   . ( Eq tb
-     , Ord tb
-     , Binds tb Kind
-     , HasBinding (Type tb) tb
-     )
-  => BindCtx tb Kind
-  -> Bindings (Type tb)
-  -> TypeCtx tb
-  -> [Type tb]
-  -> [Type tb]
-  -> Either (Error tb) Bool
+  :: forall phase
+   . phase ~ DefaultPhase
+  => BindCtx (TypeBindingFor phase) Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtx phase
+  -> [TypeFor phase]
+  -> [TypeFor phase]
+  -> Either (Error phase) Bool
 typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
   | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEq typeBindCtx typeBindings typeNameCtx) ts0 ts1
                                   in case mEq of
@@ -185,14 +181,12 @@ typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
 -- | Under a given bindings context, kind-check a type.
 -- TODO: Break move to more appropriate location.
 typeKind
-  :: ( Show tb
-     , Binds tb Kind
-     )
-  => BindCtx tb Kind
-  -> TypeCtx tb
-  -> Type tb
-  -> Either (Error tb) Kind
-typeKind typeBindCtx typeCtx ty = case unfixType ty of
+  :: phase ~ DefaultPhase
+  => BindCtx (TypeBindingFor phase) Kind
+  -> TypeCtx phase
+  -> TypeFor phase
+  -> Either (Error phase) Kind
+typeKind typeBindCtx typeCtx ty = case ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.
   -- Either:
@@ -282,4 +276,5 @@ typeKind typeBindCtx typeCtx ty = case unfixType ty of
               | kindEq aKy xKy -> Right bKy
               | otherwise      -> Left $ ETypeAppMismatch fKy xKy
 
+  _ -> error "Non-exhaustive pattern when checking types kind"
 

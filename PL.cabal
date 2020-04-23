@@ -13,14 +13,13 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     PL
-                     , PL.Abstracts
                      , PL.Bindings
                      , PL.Binds
                      , PL.Binds.Ix
                      , PL.Case
                      , PL.Error
                      , PL.Expr
-                     , PL.FixExpr
+                     , PL.FixPhase
                      , PL.ExprLike
                      , PL.Kind
                      , PL.Name
@@ -28,7 +27,6 @@ library
                      , PL.ReduceType
                      , PL.TyVar
                      , PL.Type
-                     , PL.FixType
                      , PL.Type.Eq
                      , PL.TypeCtx
                      , PL.Var

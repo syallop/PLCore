@@ -15,7 +15,6 @@ module PL.Binds where
 import PL.Binds.Ix
 import PLPrinter hiding (parens,between)
 import PLPrinter.Doc
-import PL.Type
 
 import Data.Monoid
 

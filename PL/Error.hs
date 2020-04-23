@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , UndecidableInstances
+  , StandaloneDeriving
   #-}
 {-|
 Module      : PL.Error
@@ -25,7 +26,7 @@ import Data.Text
 import Data.List.NonEmpty
 import qualified Data.List.NonEmpty as NE
 
-data Error tb
+data Error phase
 
   -- | Generic error
   = EMsg Doc
@@ -35,27 +36,72 @@ data Error tb
   | ETermNotDefined TermName -- ^ No such term
 
   -- | Two typed things cannot be applied to each other
-  | EAppMismatch (Type tb) (Type tb) --
+  | EAppMismatch (TypeFor phase) (TypeFor phase) --
 
   -- | Something with type cannot be big-applied to something with kind
-  | EBigAppMismatch (Type tb) Kind
+  | EBigAppMismatch (TypeFor phase) Kind
 
   -- | Something with kind cannot be type-applied to something with kind
   | ETypeAppMismatch !Kind !Kind
 
   -- | A Type app must apply a type lambda.
-  | ETypeAppLambda (Type tb)
+  | ETypeAppLambda (TypeFor phase)
 
   -- | An expression had a type, and claimed to have the type indexed within a
   -- sum type but doesnt.
-  | ESumMismatch (Type tb) Int (NonEmpty (Type tb))
+  | ESumMismatch (TypeFor phase) Int (NonEmpty (TypeFor phase))
 
   -- | The default branch and the first branch of a case statement have
   -- different types.
-  | ECaseDefaultMismatch (Type tb) (Type tb)
-  deriving (Ord,Eq,Show)
+  | ECaseDefaultMismatch (TypeFor phase) (TypeFor phase)
 
-instance (Document (Type tb)) => Document (Error tb) where
+deriving instance
+  (Eq (NamedExtension phase)
+  ,Eq (ArrowExtension phase)
+  ,Eq (SumTExtension phase)
+  ,Eq (ProductTExtension phase)
+  ,Eq (UnionTExtension phase)
+  ,Eq (BigArrowExtension phase)
+  ,Eq (TypeLamExtension phase)
+  ,Eq (TypeAppExtension phase)
+  ,Eq (TypeBindingExtension phase)
+  ,Eq (TypeExtension phase)
+  ,Eq (TypeBindingFor phase)
+  )
+  => Eq (Error phase)
+
+deriving instance
+  (Ord (NamedExtension phase)
+  ,Ord (ArrowExtension phase)
+  ,Ord (SumTExtension phase)
+  ,Ord (ProductTExtension phase)
+  ,Ord (UnionTExtension phase)
+  ,Ord (BigArrowExtension phase)
+  ,Ord (TypeLamExtension phase)
+  ,Ord (TypeAppExtension phase)
+  ,Ord (TypeBindingExtension phase)
+  ,Ord (TypeExtension phase)
+  ,Ord (TypeBindingFor phase)
+  )
+  => Ord (Error phase)
+
+deriving instance
+  (Show (NamedExtension phase)
+  ,Show (ArrowExtension phase)
+  ,Show (SumTExtension phase)
+  ,Show (ProductTExtension phase)
+  ,Show (UnionTExtension phase)
+  ,Show (BigArrowExtension phase)
+  ,Show (TypeLamExtension phase)
+  ,Show (TypeAppExtension phase)
+  ,Show (TypeBindingExtension phase)
+  ,Show (TypeExtension phase)
+  ,Show (TypeBindingFor phase)
+  )
+  => Show (Error phase)
+
+
+instance (Document (TypeFor phase)) => Document (Error phase) where
   document e = text "ERROR: " <> case e of
     EMsg doc
       -> doc

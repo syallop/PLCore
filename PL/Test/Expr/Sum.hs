@@ -20,12 +20,10 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -69,7 +67,7 @@ sumThreeExprTestCase src =
     }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = Lam (fixType $ SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat|Bool|Nat ->
+    e   = Lam (SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat|Bool|Nat ->
             CaseAnalysis $ Case (Binding VZ)                                          -- case x of
               $ CaseBranches                                                          --
                 (CaseBranch (MatchSum 0 $ sPat Bind) (Binding VZ)                     --  0| S n   -> n
@@ -81,5 +79,5 @@ sumThreeExprTestCase src =
                     ]
                 )
                 Nothing
-    ty  = fixType $ Arrow (fixType $ SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) natTypeName
+    ty  = Arrow (SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) natTypeName
 

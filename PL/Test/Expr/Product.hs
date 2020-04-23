@@ -20,12 +20,10 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -67,7 +65,7 @@ productThreeExprTestCase src
       }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
-    e   = Lam (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
+    e   = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
       CaseAnalysis $ Case (Binding VZ)                                      -- case x of
         $ CaseBranches                                                                --
           (CaseBranch (MatchProduct [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
@@ -76,5 +74,5 @@ productThreeExprTestCase src
           (Just                                                             --
               falseTerm                                                     -- _ -> False
           )
-    ty = fixType $ Arrow (fixType $ ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
+    ty = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
 

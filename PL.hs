@@ -10,9 +10,6 @@ whimsically.
 -}
 module PL where
 
--- Things which can be used like the abstraction in a lambda. I.E. \ABS -> ...
-import PL.Abstracts          as X
-
 import PL.Bindings           as X
 import PL.Binds              as X
 import PL.Binds.Ix           as X

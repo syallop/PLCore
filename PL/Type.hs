@@ -1,10 +1,22 @@
 {-# LANGUAGE
-    FlexibleInstances
+    ConstraintKinds
+  , DataKinds
   , DeriveAnyClass
+  , EmptyCase
+
+  , FlexibleContexts
+  , FlexibleInstances
+  , GADTs
+  , LambdaCase
   , MultiParamTypeClasses
+  , OverloadedStrings
+  , PatternSynonyms
+  , RankNTypes
   , ScopedTypeVariables
   , StandaloneDeriving
-  , OverloadedStrings
+  , TypeFamilies
+  , TypeOperators
+  , UndecidableInstances
   #-}
 {-|
 Module      : PL.Type
@@ -21,7 +33,8 @@ import PL.Binds.Ix
 import PL.Name
 import PL.Kind
 import PL.ExprLike
-import PL.FixType
+import PL.FixPhase
+import PL.TyVar
 
 import PLGrammar
 
@@ -33,6 +46,9 @@ import qualified Data.Set as Set
 import Data.Proxy
 import Data.Monoid
 import Data.List.NonEmpty (NonEmpty)
+import Data.Void
+
+type Type = TypeFor DefaultPhase
 
 -- | Types classify 'Expr'essions.
 --
@@ -40,7 +56,7 @@ import Data.List.NonEmpty (NonEmpty)
 --   This could be a variable name "sometype".
 --   Current uses of this AST use De Bruijn indexes, I.E. a natural number which
 --   points a number of binders away to a type abstraction "0","1", etc.
-type Type tb = FixType tb TypeF
+type TypeFor phase = FixPhase phase TypeF
 
 -- | Types classify 'Expr'essions.
 --
@@ -50,17 +66,18 @@ type Type tb = FixType tb TypeF
 --   points a number of binders away to a type abstraction "0","1", etc.
 --
 -- - 'typ' is the recursive type of subexpressions. This is usually instantiated
---   using FixType such that it refers to itself.
+--   using FixPhase such that it refers to itself.
 --   This allows us to use recursion schemes.
 --
 --   Any examples used in constructor comments use completly arbitrary syntax.
-data TypeF tb typ
+data TypeF phase typ
 
   -- | Named type.
   --
   -- A name which refers to a type definition tracked in some external type context.
-  = Named
-    { _hasType :: TypeName
+  = NamedF
+    { _namedExtension :: NamedExtension phase
+    , _hasType        :: TypeName
     }
 
   -- | Arrow is the type of expression functions.
@@ -72,9 +89,10 @@ data TypeF tb typ
   -- Might have type:
   --
   -- `Arrow Bool Bool`
-  | Arrow
-    { _from :: typ
-    , _to   :: typ
+  | ArrowF
+    { _arrowExtension :: ArrowExtension phase
+    , _from           :: typ
+    , _to             :: typ
     }
 
   -- | SumT is the type of expressions which are an ordered alternative of
@@ -87,8 +105,9 @@ data TypeF tb typ
   -- Might have type:
   --
   -- `SumT [Bool,Int,Char]`
-  | SumT
-    { _sumTypes :: NonEmpty typ
+  | SumTF
+    { _sumExtension :: SumTExtension phase
+    , _sumTypes     :: NonEmpty typ
     }
 
   -- | ProductT is the type of expressions which are an ordered product of each
@@ -101,8 +120,9 @@ data TypeF tb typ
   -- Might have type:
   --
   -- `ProductT [Bool,Int,Char]`
-  | ProductT
-    { _productTypes :: [typ]
+  | ProductTF
+    { _productExtension :: ProductTExtension phase
+    , _productTypes     :: [typ]
     }
 
   -- | UnionT is the type of expressions which are part of a set types.
@@ -114,8 +134,9 @@ data TypeF tb typ
   -- Might have type:
   --
   -- `UnionT $ set.FromList [Int,Char,Bool]`
-  | UnionT
-    { _unionTypes :: Set.Set typ
+  | UnionTF
+    { _unionExtension :: UnionTExtension phase
+    , _unionTypes     :: Set.Set typ
     }
 
   -- | BigArrow is the type of expressions which abstract a _Type_ into an
@@ -130,9 +151,10 @@ data TypeF tb typ
   -- `BigArrow KIND Int`
   --
   -- TODO: How is this distinct from TypeLam??
-  | BigArrow
-    { _takeType :: Kind
-    , _type     :: typ
+  | BigArrowF
+    { _bigArrowExtension :: BigArrowExtension phase
+    , _takeType          :: Kind
+    , _type              :: typ
     }
 
   -- | TypeLam is a lambda abstraction performed at the type level.
@@ -143,9 +165,10 @@ data TypeF tb typ
   --
   -- TODO: Is being able to bind types at the expression and type level
   -- problematic?
-  | TypeLam
-    { _takeType :: Kind
-    , _type     :: typ
+  | TypeLamF
+    { _typeLamExtension :: TypeLamExtension phase
+    , _takeType         :: Kind
+    , _type             :: typ
     }
 
   -- | Type application.
@@ -154,9 +177,10 @@ data TypeF tb typ
   --
   -- E.G.
   -- (\t::Kind -> t) Bool
-  | TypeApp
-    { _f :: typ
-    , _x :: typ
+  | TypeAppF
+    { _typeAppExtension :: TypeAppExtension phase
+    , _f                :: typ
+    , _x                :: typ
     }
 
   -- | Type bindings.
@@ -168,30 +192,165 @@ data TypeF tb typ
   -- 0
   --
   -- where 0 counts the number of `TypeLam`s away a type was abstracted.
-  | TypeBinding
-    { _binding :: tb
+  | TypeBindingF
+    { _bindingExtension :: TypeBindingExtension phase
+    , _binding          :: TypeBindingFor phase
     }
-  deriving (Eq,Ord,Show)
+
+  | TypeExtensionF
+    { _typeExtension :: !(TypeExtension phase)
+    }
+
+deriving instance
+  (Eq (NamedExtension phase)
+  ,Eq (ArrowExtension phase)
+  ,Eq (SumTExtension phase)
+  ,Eq (ProductTExtension phase)
+  ,Eq (UnionTExtension phase)
+  ,Eq (BigArrowExtension phase)
+  ,Eq (TypeLamExtension phase)
+  ,Eq (TypeAppExtension phase)
+  ,Eq (TypeBindingExtension phase)
+  ,Eq (TypeExtension phase)
+  ,Eq (TypeBindingFor phase)
+  ,Eq typ
+  )
+  => Eq (TypeF phase typ)
+
+deriving instance
+  (Ord (NamedExtension phase)
+  ,Ord (ArrowExtension phase)
+  ,Ord (SumTExtension phase)
+  ,Ord (ProductTExtension phase)
+  ,Ord (UnionTExtension phase)
+  ,Ord (BigArrowExtension phase)
+  ,Ord (TypeLamExtension phase)
+  ,Ord (TypeAppExtension phase)
+  ,Ord (TypeBindingExtension phase)
+  ,Ord (TypeExtension phase)
+  ,Ord (TypeBindingFor phase)
+  ,Ord typ
+  )
+  => Ord (TypeF phase typ)
+
+deriving instance
+  (Show (NamedExtension phase)
+  ,Show (ArrowExtension phase)
+  ,Show (SumTExtension phase)
+  ,Show (ProductTExtension phase)
+  ,Show (UnionTExtension phase)
+  ,Show (BigArrowExtension phase)
+  ,Show (TypeLamExtension phase)
+  ,Show (TypeAppExtension phase)
+  ,Show (TypeBindingExtension phase)
+  ,Show (TypeExtension phase)
+  ,Show (TypeBindingFor phase)
+  ,Show typ
+  )
+  => Show (TypeF phase typ)
+
+
+-- The type families below allow adding new parameters to each of the base
+-- constructors of a type which depend upon the phase
+type family NamedExtension phase
+type family ArrowExtension phase
+type family SumTExtension phase
+type family ProductTExtension phase
+type family UnionTExtension phase
+type family BigArrowExtension phase
+type family TypeLamExtension phase
+type family TypeAppExtension phase
+type family TypeBindingExtension phase
+
+-- The TypeExtension type family allows adding new constructors to the base Type
+-- which depend upon the phase
+type family TypeExtension phase
+
+type family TypeBindingFor phase
+
+-- Some patterns to make working with ExprF nicer
+void :: Void
+void = error "Cannot evaluate Void"
+
+-- TODO: These could be more abstract
+
+pattern Named :: TypeName -> Type
+pattern Named name <- FixPhase (NamedF _ name)
+  where Named name =  FixPhase (NamedF void name)
+
+pattern Arrow :: Type -> Type -> Type
+pattern Arrow fromTy toTy <- FixPhase (ArrowF _ fromTy toTy)
+  where Arrow fromTy toTy =  FixPhase (ArrowF void fromTy toTy)
+
+pattern SumT :: NonEmpty Type -> Type
+pattern SumT types <- FixPhase (SumTF _ types)
+  where SumT types =  FixPhase (SumTF void types)
+
+pattern ProductT :: [Type] -> Type
+pattern ProductT types <- FixPhase (ProductTF _ types)
+  where ProductT types =  FixPhase (ProductTF void types)
+
+pattern UnionT :: Set.Set Type -> Type
+pattern UnionT types <- FixPhase (UnionTF _ types)
+  where UnionT types =  FixPhase (UnionTF void types)
+
+pattern BigArrow :: Kind -> Type -> Type
+pattern BigArrow kind ty <- FixPhase (BigArrowF _ kind ty)
+  where BigArrow kind ty =  FixPhase (BigArrowF void kind ty)
+
+pattern TypeLam :: Kind -> Type -> Type
+pattern TypeLam absTy ty <- FixPhase (TypeLamF _ absTy ty)
+  where TypeLam absTy ty =  FixPhase (TypeLamF void absTy ty)
+
+pattern TypeApp :: Type -> Type -> Type
+pattern TypeApp fTy xTy <- FixPhase (TypeAppF _ fTy xTy)
+  where TypeApp fTy xTy =  FixPhase (TypeAppF void fTy xTy)
+
+pattern TypeBinding :: TyVar -> Type
+pattern TypeBinding tyVar <- FixPhase (TypeBindingF _ tyVar)
+  where TypeBinding tyVar =  FixPhase (TypeBindingF void tyVar)
+
+pattern TypeExtension :: Type
+pattern TypeExtension <- FixPhase (TypeExtensionF _)
+  where TypeExtension = FixPhase (TypeExtensionF void)
+
+-- Phases
+data DefaultPhase
+
+type instance NamedExtension DefaultPhase = Void
+type instance ArrowExtension DefaultPhase = Void
+type instance SumTExtension DefaultPhase = Void
+type instance ProductTExtension DefaultPhase = Void
+type instance UnionTExtension DefaultPhase = Void
+type instance BigArrowExtension DefaultPhase = Void
+type instance TypeLamExtension DefaultPhase = Void
+type instance TypeAppExtension DefaultPhase = Void
+type instance TypeBindingExtension DefaultPhase = Void
+
+-- TODO: Should _this_ be unit instead of void?
+type instance TypeExtension DefaultPhase = Void
+
+type instance TypeBindingFor DefaultPhase = TyVar
 
 -- | Is a Type a simple named type
-isType :: Type tb -> Bool
-isType t = case unfixType t of
+isType :: Type -> Bool
+isType t = case t of
   Named _ -> True
   _       -> False
 
 -- | Infix Arrow
-(-->) :: Type tb -> Type tb -> Type tb
-a --> b = fixType $ Arrow a b
+(-->) :: Type -> Type -> Type
+a --> b = Arrow a b
 
 -- | Construct a simple named type
-ty :: TypeName -> Type tb
-ty = fixType . Named
+ty :: TypeName -> Type
+ty = Named
 
 -- PARTIAL
 -- [a]   ~> Type a
 -- [a,b,c] ~> Arrow a (Arrow b c)
 -- etc
-arrowise :: [Type tb] -> Type tb
+arrowise :: [Type] -> Type
 arrowise []        = error "Can't arrowise empty list of Types"
 arrowise [t]       = t
 arrowise (t:t':ts) = t --> arrowise (t':ts)
@@ -199,28 +358,28 @@ arrowise (t:t':ts) = t --> arrowise (t':ts)
 -- a           ~> [a]
 -- a -> b -> c ~> [a,b,c]
 -- etc
-unarrowise :: Type tb -> [Type tb]
-unarrowise t = case unfixType t of
+unarrowise :: Type -> [Type]
+unarrowise t = case t of
   Arrow a b
     -> a : unarrowise b
-  t -> [fixType t]
+  t -> [t]
 
 -- TODO: Can likely use recursion schemes.
 
-instance HasAbs (Type tb) where
-  applyToAbs f ty = fixType $ case unfixType ty of
+instance HasAbs Type where
+  applyToAbs f ty = case ty of
     TypeLam ky ty -> TypeLam ky (f ty)
 --  Nope(?)
 --  BigArrow ky ty -> BigArrow ky (f ty)
     ty            -> ty
 
-instance HasBinding (Type tb) tb where
-  applyToBinding f ty = fixType $ case unfixType ty of
+instance HasBinding Type TyVar where
+  applyToBinding f ty = case ty of
     TypeBinding tb -> TypeBinding (f tb)
     ty             -> ty
 
-instance Ord tb => HasNonAbs (Type tb) where
-  applyToNonAbs f ty = fixType $ case unfixType ty of
+instance HasNonAbs Type where
+  applyToNonAbs f ty = case ty of
     Arrow from to
       -> Arrow (f from) (f to)
 
@@ -243,42 +402,40 @@ instance Ord tb => HasNonAbs (Type tb) where
 
 -- instantiate a type within some other.
 instantiate
-  :: forall tb
-   . ( Ord tb
-     , BindingIx tb
-     )
-  => Type tb
-  -> Type tb
-  -> Type tb
+  :: Type
+  -> Type
+  -> Type
 instantiate = instantiate' 0
   where
-    instantiate' :: BindingIx tb => Int -> Type tb -> Type tb -> Type tb
-    instantiate' i instType inType = case unfixType inType of
+    instantiate' :: Int -> Type -> Type -> Type
+    instantiate' i instType inType = case inType of
       Arrow from to
-        -> fixType $ Arrow (instantiate' i instType from) (instantiate' i instType to)
+        -> Arrow (instantiate' i instType from) (instantiate' i instType to)
 
       SumT ts
-        -> fixType $ SumT $ fmap (instantiate' i instType) ts
+        -> SumT $ fmap (instantiate' i instType) ts
 
       ProductT ts
-        -> fixType $ ProductT $ map (instantiate' i instType) ts
+        -> ProductT $ map (instantiate' i instType) ts
 
       UnionT ts
-        -> fixType $ UnionT $ Set.map (instantiate' i instType) ts
+        -> UnionT $ Set.map (instantiate' i instType) ts
 
       BigArrow from to
-        -> fixType $ BigArrow from (instantiate' i instType to)
+        -> BigArrow from (instantiate' i instType to)
 
       TypeLam from to
-        -> fixType $ TypeLam from (instantiate' (i+1) instType to)
+        -> TypeLam from (instantiate' (i+1) instType to)
 
       TypeApp f x
-        -> fixType $ TypeApp (instantiate' i instType f) (instantiate' i instType x)
+        -> TypeApp (instantiate' i instType f) (instantiate' i instType x)
 
       TypeBinding tb
-        | bindDepth tb == i -> buryBy (Proxy :: Proxy tb) instType (BuryDepth i)
-        | otherwise         -> fixType $ TypeBinding tb
+        | bindDepth tb == i -> buryBy (Proxy :: Proxy TyVar) instType (BuryDepth i)
+        | otherwise         ->  TypeBinding tb
 
       Named n
-        -> fixType $ Named n
+        ->  Named n
+
+      _ -> error "Non-exhaustive pattern in type instantiation"
 

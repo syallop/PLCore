@@ -29,13 +29,11 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Name
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -65,20 +63,20 @@ import PL.Test.Source
 import PL.Test.Util
 
 data ExprTestCase = ExprTestCase
-  {_underTypeCtx :: TypeCtx TyVar -- ^ Under this given typing context
+  {_underTypeCtx :: TypeCtx DefaultPhase -- ^ Under this given typing context
   ,_isExpr       :: Expr          -- ^ An Expr
-  ,_typed        :: Type TyVar    -- ^ Has this type
+  ,_typed        :: Type    -- ^ Has this type
   ,_parsesFrom   :: Text          -- ^ And also parses from this textual representation
   }
 
 -- | Test whether an expression typechecks.
 -- Name an expression, check it fully typechecks AND type checks to the given type
 typeChecksTo
-  :: TypeCtx TyVar
+  :: TypeCtx DefaultPhase
   -> Text
   -> Expr
-  -> Type TyVar
-  -> (Type TyVar -> Doc)
+  -> Type
+  -> (Type -> Doc)
   -> Spec
 typeChecksTo typeCtx name expr expectTy ppType = it (Text.unpack name) $ case topExprType typeCtx expr of
   Left err
@@ -99,7 +97,7 @@ manyAppliedReducesToSpec
   -> Expr
   -> [(String,[Expr],Expr)]
   -> (Expr -> Doc)
-  -> (Type TyVar -> Doc)
+  -> (Type -> Doc)
   -> Spec
 manyAppliedReducesToSpec name expr reductions ppExpr ppType = describe name $ mapM_ (\(appName,appArgs,appResult) -> appliedReducesToSpec expr appName appArgs appResult ppExpr ppType) reductions
 
@@ -110,7 +108,7 @@ appliedReducesToSpec
   -> [Expr]
   -> Expr
   -> (Expr -> Doc)
-  -> (Type TyVar -> Doc)
+  -> (Type -> Doc)
   -> Spec
 appliedReducesToSpec expr name apps = reduceToSpec name (appise (expr:apps))
 
@@ -120,7 +118,7 @@ reduceToSpec
   -> Expr
   -> Expr
   -> (Expr -> Doc)
-  -> (Type TyVar -> Doc)
+  -> (Type -> Doc)
   -> Spec
 reduceToSpec name expr eqExpr ppExpr ppType = it name $ case reduce expr of
   Left exprErr
@@ -199,9 +197,9 @@ parseToSpec testExprP name txt expectExpr ppExpr = it (Text.unpack name) $ case 
 -- TODO: Derive parser and printer from grammar
 testPipeline
   :: Grammar Expr
-  -> Grammar (Type TyVar)
+  -> Grammar Type
   -> (forall a. Grammar a -> (Parser a,Printer a))
-  -> TypeCtx TyVar
+  -> TypeCtx DefaultPhase
   -> Text.Text
   -> String
 testPipeline testExprGrammar testTypeGrammar parseprint typeCtx txt =

@@ -17,7 +17,6 @@ module PL.Var where
 import PL.Binds
 import PL.Binds.Ix
 import PLPrinter
-import PL.Type
 
 import Data.Monoid
 
@@ -46,20 +45,20 @@ vtwo   = VS vone
 vthree = VS vtwo
 vfour  = VS vthree
 
-instance Binds Var (Type tb) where
+instance Binds Var typ where
 
-  data BindCtx Var (Type tb) = VarCtx [Type tb]
+  data BindCtx Var typ = VarCtx [typ]
 
-  emptyCtx :: BindCtx Var (Type tb)
+  emptyCtx :: BindCtx Var typ
   emptyCtx = VarCtx []
 
-  addBinding :: Type tb -> BindCtx Var (Type tb) -> BindCtx Var (Type tb)
+  addBinding :: typ -> BindCtx Var typ -> BindCtx Var typ
   addBinding t (VarCtx ts) = VarCtx (t:ts)
 
-  lookupBindingTy :: Var -> BindCtx Var (Type tb) -> Maybe (Type tb)
+  lookupBindingTy :: Var -> BindCtx Var typ -> Maybe typ
   lookupBindingTy b (VarCtx ts) =  Just $ ts !! bindDepth b
 
-  toList :: BindCtx Var (Type tb) -> [(Var,Type tb)]
+  toList :: BindCtx Var typ -> [(Var,typ)]
   toList (VarCtx ts) = enumFrom VZ `zip` ts
 
 instance BindingIx Var where

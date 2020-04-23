@@ -22,7 +22,6 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -73,8 +72,8 @@ defaultUnionMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
 
-    isMatchArg           = MatchUnion (fixType $ ProductT []) (MatchProduct [])
-    typed                = fixType $ UnionT $ Set.fromList $ [fixType $ ProductT []]
+    isMatchArg           = MatchUnion (ProductT []) (MatchProduct [])
+    typed                = UnionT $ Set.fromList $ [ProductT []]
     checkMatchWithResult = Right []
     parsesFrom           = src
 

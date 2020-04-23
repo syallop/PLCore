@@ -45,28 +45,28 @@ import Test.Hspec
 import PL.Test.Source
 import PL.Test.Util
 
-type TestType = Type TyVar
-type TestMatchArg = MatchArg Var TyVar
+type TestType = Type
+type TestMatchArg = MatchArg
 
 data MatchArgTestCase = MatchArgTestCase
-  {_underTypeCtx         :: TypeCtx TyVar                     -- ^ Under this given typing context
-  ,_underExprBindCtx     :: BindCtx Var (Type TyVar)
+  {_underTypeCtx         :: TypeCtx DefaultPhase                     -- ^ Under this given typing context
+  ,_underExprBindCtx     :: BindCtx Var (Type)
   ,_underTypeBindCtx     :: BindCtx TyVar Kind
-  ,_underTypeBindings    :: Bindings (Type TyVar)
+  ,_underTypeBindings    :: Bindings (Type)
   ,_isMatchArg           :: TestMatchArg                      -- ^ A MatchArg
-  ,_typed                :: Type TyVar                        -- ^ Has this type
-  ,_checkMatchWithResult :: Either (Error TyVar) [Type TyVar] -- ^ Either produces an error or a list of bound types.
+  ,_typed                :: Type                        -- ^ Has this type
+  ,_checkMatchWithResult :: Either (Error DefaultPhase) [Type] -- ^ Either produces an error or a list of bound types.
   ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 
 hasExpectedResultSpec
-  :: TypeCtx TyVar
-  -> BindCtx Var (Type TyVar)
+  :: TypeCtx DefaultPhase
+  -> BindCtx Var Type
   -> BindCtx TyVar Kind
-  -> Bindings (Type TyVar)
+  -> Bindings Type
   -> TestMatchArg
-  -> Type TyVar
-  -> Either (Error TyVar) [Type TyVar]
+  -> Type
+  -> Either (Error DefaultPhase) [Type]
   -> (TestType -> Doc)
   -> Spec
 hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg expectTy expect ppType =
@@ -76,7 +76,7 @@ hasExpectedResultSpec typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg 
     fromRight _ (Right b) = b
     fromRight b _         = b
 
-    isExpected :: Either (Error TyVar) [Type TyVar] -> Either (Error TyVar) [Type TyVar] -> Expectation
+    isExpected :: Either (Error DefaultPhase) [Type] -> Either (Error DefaultPhase) [Type] -> Expectation
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()

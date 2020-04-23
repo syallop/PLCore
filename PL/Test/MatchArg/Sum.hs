@@ -22,7 +22,6 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -76,7 +75,7 @@ defaultSumMatchArgTestCase src
     -- One of the simplest patterns is therefore a single sum of an empty
     -- product.
     isMatchArg           = MatchSum 0 (MatchProduct [])
-    typed                = fixType $ SumT $ NE.fromList [fixType $ ProductT []]
+    typed                = SumT $ NE.fromList [ProductT []]
     checkMatchWithResult = Right []
     parsesFrom           = src
 

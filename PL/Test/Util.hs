@@ -28,13 +28,11 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.FixExpr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Name
-import PL.FixType
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -67,7 +65,7 @@ putYellow = putColor 33
 putBlue   = putColor 34
 putCyan   = putColor 36
 
-ppError :: (Type tb -> Doc) -> Error tb -> Doc
+ppError :: (Type -> Doc) -> Error DefaultPhase -> Doc
 ppError ppType e = case e of
   EMsg doc
     -> doc

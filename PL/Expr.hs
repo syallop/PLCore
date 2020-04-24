@@ -62,6 +62,9 @@ module PL.Expr
   , pattern Bind
   , pattern MatchArgExtension
 
+  , MatchArgFor
+  , MatchArgF (..)
+
   , mapSubExpressions
   , topExprType
   , exprType
@@ -116,7 +119,6 @@ import Control.Applicative
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Monoid hiding (Sum,Product)
-import Data.Void
 import GHC.Types (Constraint)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map

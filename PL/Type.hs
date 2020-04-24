@@ -46,7 +46,6 @@ import qualified Data.Set as Set
 import Data.Proxy
 import Data.Monoid
 import Data.List.NonEmpty (NonEmpty)
-import Data.Void
 
 type Type = TypeFor DefaultPhase
 
@@ -267,6 +266,17 @@ type family TypeBindingExtension phase
 type family TypeExtension phase
 
 type family TypeBindingFor phase
+
+data Void
+
+instance Show Void where
+  show _ = "Void"
+
+instance Eq Void where
+  _ == _ = True
+
+instance Ord Void where
+  compare _ _ = EQ
 
 -- Some patterns to make working with ExprF nicer
 void :: Void

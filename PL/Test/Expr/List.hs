@@ -82,10 +82,15 @@ listNatExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      , _reducesTo = e
+      , _reducesToWhenApplied = reduces
       }
   where
     ctx = fromJust $ listTypeCtx <> natTypeCtx
     e   = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
     ty  = TypeApp listTypeName natType
-    src = undefined
+
+    -- TODO
+    reduces = []
 

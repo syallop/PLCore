@@ -62,6 +62,9 @@ productThreeExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      ,_reducesTo = e
+      ,_reducesToWhenApplied = reduces
       }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
@@ -75,4 +78,26 @@ productThreeExprTestCase src
               falseTerm                                                     -- _ -> False
           )
     ty = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
+
+    reduces =
+      [("1 True 0"
+       ,[Product [one,trueTerm,zero]]
+       ,trueTerm
+       )
+
+      ,("1 False 0"
+       , [Product [one,falseTerm,zero]]
+       , falseTerm
+       )
+
+      , ("1 True 1"
+        ,[Product [one,trueTerm,one]]
+        ,falseTerm
+        )
+
+      , ("4 False 1"
+        ,[Product [four,falseTerm,one]]
+        ,falseTerm
+        )
+      ]
 

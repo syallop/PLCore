@@ -63,6 +63,9 @@ singleBigLamTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      ,_reducesTo = e
+      ,_reducesToWhenApplied = []
       }
   where
     ctx = bigLamTypeCtx

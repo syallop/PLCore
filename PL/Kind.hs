@@ -9,7 +9,11 @@ Stability   : experimental
 
 The Type of Types.
 -}
-module PL.Kind where
+module PL.Kind
+  ( Kind (..)
+  , kindEq
+  )
+  where
 
 import PLPrinter
 import PLPrinter.Doc

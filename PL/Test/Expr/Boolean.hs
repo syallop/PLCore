@@ -82,6 +82,9 @@ andExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      ,_reducesTo = e
+      ,_reducesToWhenApplied = reductions
       }
   where
     ctx = fromJust boolTypeCtx
@@ -102,4 +105,22 @@ andExprTestCase src
             )
     ty  = Arrow boolType (Arrow boolType boolType)
 
+    reductions =
+      [ ("true"
+        , [trueTerm]
+        , Lam (Named "Bool") $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+            (CaseBranch falsePat falseTerm :| [])
+            (Just trueTerm)
+        )
+
+      , ("false true"
+        , [falseTerm, trueTerm]
+        , falseTerm
+        )
+
+      , ("true true"
+        , [trueTerm, trueTerm]
+        , trueTerm
+        )
+      ]
 

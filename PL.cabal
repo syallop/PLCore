@@ -33,6 +33,10 @@ library
                      , PL.Var
                      , PL.Megaparsec
 
+                     , PL.Test.ExprTestCase
+                     , PL.Test.TypeTestCase
+                     , PL.Test.MatchArgTestCase
+
                      , PL.Test.Expr
                      , PL.Test.Expr.BigLam
                      , PL.Test.Expr.Boolean
@@ -43,14 +47,29 @@ library
                      , PL.Test.Expr.Product
                      , PL.Test.Expr.Sum
                      , PL.Test.Expr.Union
-                     , PL.Test.ExprTestCase
+
+                     , PL.Test.Type
+                     , PL.Test.Type.Named
+
                      , PL.Test.MatchArg
                      , PL.Test.MatchArg.Bind
                      , PL.Test.MatchArg.Binding
                      , PL.Test.MatchArg.Product
                      , PL.Test.MatchArg.Sum
                      , PL.Test.MatchArg.Union
-                     , PL.Test.MatchArgTestCase
+
+                     , PL.Test.Parsing.Expr
+                     , PL.Test.Parsing.Type
+                     , PL.Test.Parsing.MatchArg
+
+                     , PL.Test.TypeChecking.Expr
+                     , PL.Test.TypeChecking.Type
+                     , PL.Test.TypeChecking.MatchArg
+
+                     , PL.Test.Reducing.Expr
+                     , PL.Test.Reducing.Type
+                     , PL.Test.Reducing.MatchArg
+
                      , PL.Test.Source
                      , PL.Test.Util
 
@@ -81,3 +100,38 @@ library
   default-language:    Haskell2010
 
   ghc-options: -fwarn-incomplete-patterns -Werror=incomplete-patterns
+
+test-suite hspec
+  type:              exitcode-stdio-1.0
+  main-is:           Spec.hs
+  hs-source-dirs:    Test
+
+  other-modules:     PL.Test.ExprSpec
+                   , PL.Test.MatchArgSpec
+                   , PL.Test.TypeSpec
+
+  build-depends:     base >=4.7
+                   , PL
+                   , PLGrammar  >= 0.4
+                   , PLParser   >= 0.1
+                   , PLPrinter  >= 0.3
+                   , Reversible >= 0.1
+
+                   , QuickCheck
+                   , containers >=0.5
+                   , hedgehog
+                   , hspec
+                   , megaparsec >=6.4.0
+                   , parser-combinators
+                   , quickcheck-instances
+                   , semigroups
+                   , text
+                   , ghc-prim
+
+  default-language:  Haskell2010
+
+  other-extensions:  OverloadedStrings
+                   , GeneralizedNewtypeDeriving
+                   , LambdaCase
+
+  default-language:    Haskell2010

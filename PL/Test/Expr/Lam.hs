@@ -82,11 +82,17 @@ singleLamTestCase src
   ,_isExpr       = e
   ,_typed        = ty
   ,_parsesFrom   = src
+
+  ,_reducesTo            = e
+  ,_reducesToWhenApplied = reduces
   }
   where
     ctx = fromJust lamTypeCtx
     e   = Lam fooTypeName $ Binding VZ
     ty  = Arrow fooType fooType
+
+    -- TODO
+    reduces = []
 
 -- \Foo -> \Bar -> Foo
 -- Test a nested lambda that takes two different named types and returns the first.
@@ -100,11 +106,17 @@ nestedLamTestCase src
       ,_isExpr       = e
       ,_typed        = ty
       ,_parsesFrom   = src
+
+      ,_reducesTo = e
+      ,_reducesToWhenApplied = reduces
       }
   where
     ctx = fromJust lamTypeCtx
     e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
     ty  = Arrow fooType (Arrow barType fooType)
+
+    -- TODO
+    reduces = []
 
 -- \Foo Bar -> Foo
 -- Test a chained lambda that takes two different named types in succession and
@@ -119,6 +131,9 @@ chainedLamTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      ,_reducesTo = e
+      ,_reducesToWhenApplied = reduces
       }
   where
     ctx = fromJust lamTypeCtx
@@ -133,4 +148,7 @@ chainedLamTestCase src
         . Arrow barType
         . Arrow bazType
         $ fooType
+
+    -- TODO
+    reduces = []
 

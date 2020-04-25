@@ -64,6 +64,9 @@ unionTwoExprTestCase src =
     , _isExpr       = e
     , _typed        = ty
     , _parsesFrom   = src
+
+    ,_reducesTo = e
+    ,_reducesToWhenApplied = reduces
     }
   where
     ctx = fromJust $ boolTypeCtx <> natTypeCtx
@@ -79,4 +82,21 @@ unionTwoExprTestCase src =
                     falseTerm                                                   -- _          -> False
                 )
     ty  = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
+
+    reduces =
+      [("∪ 1 Nat Nat Bool"
+       ,[Union one natTypeName  $ Set.fromList [natTypeName,boolTypeName]]
+       ,trueTerm
+       )
+
+      ,("∪ False Bool Nat Bool"
+       ,[Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]]
+       ,falseTerm
+       )
+
+      ,("∪ True Bool Bool Nat"
+       ,[Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]]
+       ,falseTerm
+       )
+      ]
 

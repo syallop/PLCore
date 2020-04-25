@@ -108,6 +108,9 @@ subTwoExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      , _reducesTo = e
+      ,_reducesToWhenApplied = reduces
       }
   where
     ctx = fromJust natTypeCtx
@@ -123,4 +126,21 @@ subTwoExprTestCase src
                   zTerm                                       --   _     -> Z
             )
     ty = Arrow natType natType
+
+    reduces =
+      [ ("3 - 2 = 1"
+        ,[three]
+        ,one
+        )
+
+      , ( "2 -2 = 0"
+        ,[two]
+        ,zero
+        )
+
+      , ( "1 - 2 = 0"
+        ,[one]
+        ,zero
+        )
+      ]
 

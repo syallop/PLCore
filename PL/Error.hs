@@ -3,6 +3,7 @@
   , OverloadedStrings
   , UndecidableInstances
   , StandaloneDeriving
+  , LambdaCase
   #-}
 {-|
 Module      : PL.Error
@@ -100,6 +101,69 @@ deriving instance
   )
   => Show (Error phase)
 
+
+ppError :: (TypeFor phase -> Doc) -> Error phase -> Doc
+ppError ppType = \case
+  EMsg doc
+    -> doc
+
+  ETypeNotDefined name
+    -> mconcat [ text "Type named '"
+               , document name
+               , text "' is not defined."
+               ]
+
+  ETermNotDefined name
+    -> mconcat [ text "Term named '"
+               , document name
+               , text "' is not defined."
+               ]
+
+  EAppMismatch fTy xTy
+    -> mconcat [ text "Cannot apply expression typed: '"
+               , ppType fTy
+               , text "' to expression typed: '"
+               , ppType xTy
+               , text "'."
+               ]
+
+  EBigAppMismatch fTy xKy
+    -> mconcat [ text "Cannot big-apply expression typed: '"
+               , ppType fTy
+               , text "' to type kinded: '"
+               , document xKy
+               , text "'."
+               ]
+
+  ETypeAppMismatch fKy xKy
+    -> mconcat [ text "Cannot type-apply type kinded: '"
+               , document fKy
+               , text "' to type kinded: '"
+               , document xKy
+               , text "'."
+               ]
+
+  ETypeAppLambda fTy
+    -> mconcat [ text "Cannot type-apply a non type-lam: "
+               , ppType fTy
+               ]
+
+  ESumMismatch actualType index sumTys
+    -> mconcat [ text "Expression had type: "
+               , ppType actualType
+               , text "and claimed to be contained within the sum"
+               , mconcat . NE.toList . fmap ppType $ sumTys
+               , text "at index"
+               , document index
+               ]
+
+  ECaseDefaultMismatch defaultTy firstBranchTy
+    -> mconcat [ text "In a case statement the default branch had type: "
+               , ppType defaultTy
+               , text "whereas the first branch had type: "
+               , ppType firstBranchTy
+               , text " but branches must have the same type."
+               ]
 
 instance (Document (TypeFor phase)) => Document (Error phase) where
   document e = text "ERROR: " <> case e of

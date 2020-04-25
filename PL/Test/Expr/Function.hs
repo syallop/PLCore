@@ -64,6 +64,9 @@ idExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      , _reducesTo = e
+      , _reducesToWhenApplied = reduces
       }
   where
     ctx = emptyTypeCtx
@@ -71,6 +74,10 @@ idExprTestCase src
     -- forall a::k. a -> a
     e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
     ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
+
+    -- TODO
+    reduces =
+      []
 
 constExprTestCase
   :: Source
@@ -81,6 +88,9 @@ constExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      , _reducesTo = e
+      , _reducesToWhenApplied = reduces
       }
   where
     ctx = emptyTypeCtx
@@ -99,6 +109,9 @@ constExprTestCase src
         $ Arrow (TypeBinding $ TyVar VZ)        -- b
         $ TypeBinding . TyVar $ VS VZ                     -- a
 
+    -- TODO
+    reduces = []
+
 applyExprTestCase
   :: Source
   -> ExprTestCase
@@ -108,6 +121,9 @@ applyExprTestCase src
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
+
+      , _reducesTo = e
+      , _reducesToWhenApplied = reduces
       }
   where
     ctx = emptyTypeCtx
@@ -122,4 +138,5 @@ applyExprTestCase src
         $ Arrow (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
         $ Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ)
 
-
+    -- TODO
+    reduces = []

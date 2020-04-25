@@ -32,7 +32,7 @@ import PLParser
 
 import Data.Text (Text)
 import Data.Maybe
-import Data.Monoid
+import Data.Monoid hiding (Sum)
 import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
@@ -64,6 +64,9 @@ sumThreeExprTestCase src =
     , _isExpr       = e
     , _typed        = ty
     , _parsesFrom   = src
+
+    ,_reducesTo = e
+    ,_reducesToWhenApplied = reduces
     }
   where
     ctx = fromJust $ natTypeCtx <> boolTypeCtx
@@ -80,4 +83,21 @@ sumThreeExprTestCase src =
                 )
                 Nothing
     ty  = Arrow (SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) natTypeName
+
+    reduces =
+      [ ("+1 False"
+        ,[Sum falseTerm 1 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]]
+        ,zero
+        )
+
+      , ("+0 0"
+        ,[Sum zero 0 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]]
+        ,zero
+        )
+
+      , ("+2 0"
+        ,[Sum zero 2 $ NE.fromList $[natTypeName,boolTypeName,natTypeName]]
+        ,one
+        )
+      ]
 

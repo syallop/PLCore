@@ -65,69 +65,6 @@ putYellow = putColor 33
 putBlue   = putColor 34
 putCyan   = putColor 36
 
-ppError :: (Type -> Doc) -> Error DefaultPhase -> Doc
-ppError ppType e = case e of
-  EMsg doc
-    -> doc
-
-  ETypeNotDefined name
-    -> mconcat [ PLPrinter.text "Type named '"
-               , ppTypeName name
-               , PLPrinter.text "' is not defined."
-               ]
-
-  ETermNotDefined name
-    -> mconcat [ PLPrinter.text "Term named '"
-               , ppTermName name
-               , PLPrinter.text "' is not defined."
-               ]
-
-  EAppMismatch fTy xTy
-    -> mconcat [ PLPrinter.text "Cannot apply expression typed: '"
-               , ppType fTy
-               , PLPrinter.text "' to expression typed: '"
-               , ppType xTy
-               , PLPrinter.text "'."
-               ]
-
-  EBigAppMismatch fTy xKy
-    -> mconcat [ PLPrinter.text "Cannot big-apply expression typed: '"
-               , ppType fTy
-               , PLPrinter.text "' to type kinded: '"
-               , ppKind xKy
-               , PLPrinter.text "'."
-               ]
-
-  ETypeAppMismatch fKy xKy
-    -> mconcat [ PLPrinter.text "Cannot type-apply type kinded: '"
-               , ppKind fKy
-               , PLPrinter.text "' to type kinded: '"
-               , ppKind xKy
-               , PLPrinter.text "'."
-               ]
-
-  ETypeAppLambda fTy
-    -> mconcat [ PLPrinter.text "Cannot type-apply a non type-lam: "
-               , ppType fTy
-               ]
-
-  ESumMismatch actualType index sumTys
-    -> mconcat [ PLPrinter.text "Expression had type: "
-               , ppType actualType
-               , PLPrinter.text "and claimed to be contained within the sum"
-               , mconcat . fmap ppType . NE.toList $ sumTys
-               , PLPrinter.text "at index"
-               , document index
-               ]
-
-  ECaseDefaultMismatch defaultTy firstBranchTy
-    -> mconcat [ PLPrinter.text "In a case statement the default branch had type: "
-               , ppType defaultTy
-               , PLPrinter.text "whereas the first branch had type: "
-               , ppType firstBranchTy
-               , PLPrinter.text " but branches must have the same type."
-               ]
-
 ppTypeName :: TypeName -> Doc
 ppTypeName (TypeName n) = PLPrinter.char '#' <> PLPrinter.text n
 

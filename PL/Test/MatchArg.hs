@@ -10,7 +10,28 @@ Stability   : experimental
 
 HSpec tests for PL.Expr's MatchArg
 -}
-module PL.Test.MatchArg where
+module PL.Test.MatchArg
+  (
+  -- Construct test case input
+    TestMatchArgSources (..)
+  , mkMatchArgTestCases
+
+  -- Test parsing
+  , parsesToMatchArgsSpec
+  , parseToMatchArgSpec
+
+  -- Test Type checking
+  , typeChecksMatchArgsSpec
+  , typeCheckMatchArgSpec
+
+  -- Test Reduction
+  , reducesMatchArgsToSpec
+  , reduceMatchArgToSpec
+
+  -- Misc
+  , typeCtx
+  )
+  where
 
 -- Abstracts the pattern of testing MatchArg parsing and typechecking.
 import PL.Test.MatchArgTestCase
@@ -25,6 +46,10 @@ import PL.Test.MatchArg.Union
 import PL.Test.Expr.Boolean
 import PL.Test.Expr.Natural
 import PL.Test.Expr.List
+
+import PL.Test.Parsing.MatchArg
+import PL.Test.TypeChecking.MatchArg
+import PL.Test.Reducing.MatchArg
 
 import PL.Bindings
 import PL.Binds
@@ -50,18 +75,12 @@ import Data.Maybe
 import Data.Monoid hiding (Product,Sum)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import qualified Data.Map as Map
 
 import Test.Hspec
 import PL.Test.Source
 
--- type context of bools and nats
-typeCtx :: TypeCtx DefaultPhase
-typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
-  [ boolTypeCtx
-  , natTypeCtx
-  , listTypeCtx
-  ]
-
+-- | A record of the sources required to run all of the MatchArg tests.
 data TestMatchArgSources = TestMatchArgSources
   { _bindTestCases    :: TestBindSources
   , _sumTestCases     :: TestSumSources
@@ -70,11 +89,12 @@ data TestMatchArgSources = TestMatchArgSources
   , _bindingTestCases :: TestBindingSources
   }
 
--- A List of named TestCase structures
-testCases
+-- | Given a collection of test sources, we can produce a list mapping their names
+-- to their defined testcases.
+mkMatchArgTestCases
   :: TestMatchArgSources
-  -> [(Text.Text, MatchArgTestCase)]
-testCases t = mconcat
+  -> Map.Map Text.Text MatchArgTestCase
+mkMatchArgTestCases t = Map.fromList . mconcat $
   [ bindTestCases    . _bindTestCases    $ t
   , sumTestCases     . _sumTestCases     $ t
   , productTestCases . _productTestCases $ t
@@ -82,58 +102,11 @@ testCases t = mconcat
   , bindingTestCases . _bindingTestCases $ t
   ]
 
--- Define:
---
--- spec :: Spec
--- spec = parserSpec YOURPARSER
---
--- to define a spec testing your MatchArg parser.
-parserSpec
-  :: TestMatchArgSources
-  -> Parser TestMatchArg
-  -> (TestType -> Doc)
-  -> (TestMatchArg -> Doc)
-  -> Spec
-parserSpec sources testMatchArgP ppType ppMatchArg
-  = describe "MatchArg Var TyVar" $ sequence_
-    [ parseTo sources testMatchArgP ppMatchArg
-    , hasExpectedResult sources ppType
-    ]
-
--- Test that Text strings parse to an expected expression
-parseTo
-  :: TestMatchArgSources
-  -> Parser TestMatchArg
-  -> (TestMatchArg -> Doc)
-  -> Spec
-parseTo sources testMatchArgP ppMatchArg
-  = describe "A String parses to the expected MatchArg"
-  . mapM_ (\(name,testCase) -> parseToSpec testMatchArgP
-                                           name
-                                           (_parsesFrom testCase)
-                                           (_isMatchArg testCase)
-                                           ppMatchArg
-          )
-  . testCases
-  $ sources
-
-
--- Test that MatchArgs bind the expected types or fail predictably.
-hasExpectedResult
-  :: TestMatchArgSources
-  -> (TestType -> Doc)
-  -> Spec
-hasExpectedResult sources ppType
-  = describe "A MatchArg evaluates to the expected result"
-  . mapM_ (\(name,testCase) -> hasExpectedResultSpec (_underTypeCtx         testCase)
-                                                     (_underExprBindCtx     testCase)
-                                                     (_underTypeBindCtx     testCase)
-                                                     (_underTypeBindings    testCase)
-                                                     (_isMatchArg           testCase)
-                                                     (_typed                testCase)
-                                                     (_checkMatchWithResult testCase)
-                                                     ppType
-          )
-          . testCases
-          $ sources
+-- type context of bools and nats
+typeCtx :: TypeCtx DefaultPhase
+typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
+  [ boolTypeCtx
+  , natTypeCtx
+  , listTypeCtx
+  ]
 

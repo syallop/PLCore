@@ -27,7 +27,49 @@ Stability   : experimental
 Types inhabited by Expressions. Types are structural until explicitly Named
 and can abstract and be applied much like Expressions.
 -}
-module PL.Type where
+module PL.Type
+  ( Type
+  , pattern Named
+  , pattern Arrow
+  , pattern SumT
+  , pattern ProductT
+  , pattern UnionT
+  , pattern BigArrow
+  , pattern TypeLam
+  , pattern TypeApp
+  , pattern TypeBinding
+  , pattern TypeExtension
+
+  , TypeFor
+  , TypeF (..)
+
+  , NamedExtension
+  , ArrowExtension
+  , SumTExtension
+  , ProductTExtension
+  , UnionTExtension
+  , BigArrowExtension
+  , TypeLamExtension
+  , TypeAppExtension
+  , TypeBindingExtension
+
+  , TypeExtension
+
+  , TypeBindingFor
+
+  , isType
+  , (-->)
+  , ty
+  , arrowise
+  , unarrowise
+  , instantiate
+
+  -- TODO: Relocate
+  , DefaultPhase
+  , Void
+  , void
+  )
+  where
 
 import PL.Binds.Ix
 import PL.Name

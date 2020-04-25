@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-|
 Module      : PL.Test.Expr.Natural
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -68,28 +70,92 @@ naturalTestCases t =
   [ ("subtract two", subTwoExprTestCase . _subTwoTestCase $ t)
   ]
 
-natTypeCtx = insertRecType "Nat" natType emptyTypeCtx
-natTypeName = Named "Nat"
-natType    = SumT natSumType
-natSumType = NE.fromList $
-               [ProductT []
-               ,Named "Nat"
-               ]
 
-zTerm, sTerm :: Expr
+natTypeCtx
+  :: (SumTExtension phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,NamedExtension    phase ~ Void
+     )
+  => TypeCtx phase
+natTypeCtx = fromJust $ insertRecType "Nat" natType emptyTypeCtx
+
+natTypeName
+  :: NamedExtension phase ~ Void
+  => TypeFor phase
+natTypeName = Named "Nat"
+
+natType
+  :: (SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,NamedExtension    phase ~ Void
+     )
+  => TypeFor phase
+natType = SumT natSumType
+
+natSumType
+  :: (ProductTExtension phase ~ Void
+     ,NamedExtension    phase ~ Void
+     )
+  => NonEmpty (TypeFor phase)
+natSumType = NE.fromList $
+  [ProductT []
+  ,Named "Nat"
+  ]
+
+zTerm
+  :: (SumExtension      phase ~ Void
+     ,ProductExtension  phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,NamedExtension phase ~ Void
+     )
+  => ExprFor phase
 zTerm = Sum (Product []) 0 natSumType
+
+sTerm
+  :: (SumExtension      phase ~ Void
+     ,ProductExtension  phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,LamExtension      phase ~ Void
+     ,BindingFor        phase ~ Var
+     ,AbstractionFor    phase ~ TypeFor phase
+     ,BindingExtension  phase ~ Void
+     ,NamedExtension    phase ~ Void
+     )
+  => ExprFor phase
 sTerm = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
 
-zPat :: MatchArg
+zPat
+  :: (MatchSumExtension     phase ~ Void
+     ,MatchProductExtension phase ~ Void
+     )
+  => MatchArgFor phase
 zPat = MatchSum 0 (MatchProduct [])
 
-sPat :: MatchArg -> MatchArg
+sPat
+  :: (MatchSumExtension phase ~ Void)
+  => MatchArgFor phase
+  -> MatchArgFor phase
 sPat = MatchSum 1
 
-suc :: Expr -> Expr
+type SucConstraints phase =
+  (AppExtension      phase ~ Void
+  ,BindingExtension  phase ~ Void
+  ,AbstractionFor    phase ~ TypeFor phase
+  ,BindingFor        phase ~ Var
+  ,LamExtension      phase ~ Void
+  ,ProductExtension  phase ~ Void
+  ,ProductTExtension phase ~ Void
+  ,SumExtension      phase ~ Void
+  ,NamedExtension    phase ~ Void
+  )
+
+suc
+  :: SucConstraints phase
+  => ExprFor phase
+  -> ExprFor phase
 suc n = App sTerm (n)
 
-zero, one, two, three, four :: Expr
+zero, one, two, three, four :: SucConstraints phase => ExprFor phase
 zero  = zTerm
 one   = suc zero
 two   = suc one
@@ -113,7 +179,7 @@ subTwoExprTestCase src
       ,_reducesToWhenApplied = reduces
       }
   where
-    ctx = fromJust natTypeCtx
+    ctx = natTypeCtx
 
     e :: Expr
     e =

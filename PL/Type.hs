@@ -30,15 +30,25 @@ and can abstract and be applied much like Expressions.
 module PL.Type
   ( Type
   , pattern Named
+  , pattern NamedExt
   , pattern Arrow
+  , pattern ArrowExt
   , pattern SumT
+  , pattern SumTExt
   , pattern ProductT
+  , pattern ProductTExt
   , pattern UnionT
+  , pattern UnionTExt
   , pattern BigArrow
+  , pattern BigArrowExt
   , pattern TypeLam
+  , pattern TypeLamExt
   , pattern TypeApp
+  , pattern TypeAppExt
   , pattern TypeBinding
+  , pattern TypeBindingExt
   , pattern TypeExtension
+  , pattern TypeExtensionExt
 
   , TypeFor
   , TypeF (..)
@@ -324,47 +334,95 @@ instance Ord Void where
 void :: Void
 void = error "Cannot evaluate Void"
 
--- TODO: These could be more abstract
-
-pattern Named :: TypeName -> Type
+-- NamedF for phases where there is no extension to the constructor.
+pattern Named :: NamedExtension phase ~ Void => TypeName -> TypeFor phase
 pattern Named name <- FixPhase (NamedF _ name)
   where Named name =  FixPhase (NamedF void name)
 
-pattern Arrow :: Type -> Type -> Type
+pattern NamedExt :: NamedExtension phase -> TypeName -> TypeFor phase
+pattern NamedExt ext name <- FixPhase (NamedF ext name)
+  where NamedExt ext name =  FixPhase (NamedF ext name)
+
+-- ArrowF for phases where there is no extension to the constructor.
+pattern Arrow :: ArrowExtension phase ~ Void => TypeFor phase -> TypeFor phase -> TypeFor phase
 pattern Arrow fromTy toTy <- FixPhase (ArrowF _ fromTy toTy)
   where Arrow fromTy toTy =  FixPhase (ArrowF void fromTy toTy)
 
-pattern SumT :: NonEmpty Type -> Type
+pattern ArrowExt :: ArrowExtension phase -> TypeFor phase -> TypeFor phase -> TypeFor phase
+pattern ArrowExt ext fromTy toTy <- FixPhase (ArrowF ext fromTy toTy)
+  where ArrowExt ext fromTy toTy =  FixPhase (ArrowF ext fromTy toTy)
+
+-- SumT for phases where there is no extension to the constructor.
+pattern SumT :: SumTExtension phase ~ Void => NonEmpty (TypeFor phase) -> TypeFor phase
 pattern SumT types <- FixPhase (SumTF _ types)
   where SumT types =  FixPhase (SumTF void types)
 
-pattern ProductT :: [Type] -> Type
+pattern SumTExt :: SumTExtension phase -> NonEmpty (TypeFor phase) -> TypeFor phase
+pattern SumTExt ext types <- FixPhase (SumTF ext types)
+  where SumTExt ext types =  FixPhase (SumTF ext types)
+
+-- ProductT for phases where there is no extension to the constructor.
+pattern ProductT :: ProductTExtension phase ~ Void => [TypeFor phase] -> TypeFor phase
 pattern ProductT types <- FixPhase (ProductTF _ types)
   where ProductT types =  FixPhase (ProductTF void types)
 
-pattern UnionT :: Set.Set Type -> Type
+pattern ProductTExt :: ProductTExtension phase -> [TypeFor phase] -> TypeFor phase
+pattern ProductTExt ext types <- FixPhase (ProductTF ext types)
+  where ProductTExt ext types =  FixPhase (ProductTF ext types)
+
+-- UnionT for phases where there is no extension to the constructor.
+pattern UnionT :: UnionTExtension phase ~ Void => Set.Set (TypeFor phase) -> TypeFor phase
 pattern UnionT types <- FixPhase (UnionTF _ types)
   where UnionT types =  FixPhase (UnionTF void types)
 
-pattern BigArrow :: Kind -> Type -> Type
+pattern UnionTExt :: UnionTExtension phase -> Set.Set (TypeFor phase) -> TypeFor phase
+pattern UnionTExt ext types <- FixPhase (UnionTF ext types)
+  where UnionTExt ext types =  FixPhase (UnionTF ext types)
+
+-- BigArrow for phases where there is no extension to the constructor.
+pattern BigArrow :: BigArrowExtension phase ~ Void => Kind -> TypeFor phase -> TypeFor phase
 pattern BigArrow kind ty <- FixPhase (BigArrowF _ kind ty)
   where BigArrow kind ty =  FixPhase (BigArrowF void kind ty)
 
-pattern TypeLam :: Kind -> Type -> Type
+pattern BigArrowExt :: BigArrowExtension phase -> Kind -> TypeFor phase -> TypeFor phase
+pattern BigArrowExt ext kind ty <- FixPhase (BigArrowF ext kind ty)
+  where BigArrowExt ext kind ty =  FixPhase (BigArrowF ext kind ty)
+
+-- TypeLam for phases where there is no extension to the constructor.
+pattern TypeLam :: TypeLamExtension phase ~ Void => Kind -> TypeFor phase -> TypeFor phase
 pattern TypeLam absTy ty <- FixPhase (TypeLamF _ absTy ty)
   where TypeLam absTy ty =  FixPhase (TypeLamF void absTy ty)
 
-pattern TypeApp :: Type -> Type -> Type
+pattern TypeLamExt :: TypeLamExtension phase -> Kind -> TypeFor phase -> TypeFor phase
+pattern TypeLamExt ext absTy ty <- FixPhase (TypeLamF ext absTy ty)
+  where TypeLamExt ext absTy ty =  FixPhase (TypeLamF ext absTy ty)
+
+-- TypeApp for phases where there is no extension to the constructor.
+pattern TypeApp :: TypeAppExtension phase ~ Void => TypeFor phase -> TypeFor phase -> TypeFor phase
 pattern TypeApp fTy xTy <- FixPhase (TypeAppF _ fTy xTy)
   where TypeApp fTy xTy =  FixPhase (TypeAppF void fTy xTy)
 
-pattern TypeBinding :: TyVar -> Type
+pattern TypeAppExt :: TypeAppExtension phase -> TypeFor phase -> TypeFor phase -> TypeFor phase
+pattern TypeAppExt ext fTy xTy <- FixPhase (TypeAppF ext fTy xTy)
+  where TypeAppExt ext fTy xTy =  FixPhase (TypeAppF ext fTy xTy)
+
+-- TypeBinding for phases where there is no extension to the constructor.
+pattern TypeBinding :: TypeBindingExtension phase ~ Void => TypeBindingFor phase -> TypeFor phase
 pattern TypeBinding tyVar <- FixPhase (TypeBindingF _ tyVar)
   where TypeBinding tyVar =  FixPhase (TypeBindingF void tyVar)
 
-pattern TypeExtension :: Type
+pattern TypeBindingExt :: TypeBindingExtension phase -> TypeBindingFor phase -> TypeFor phase
+pattern TypeBindingExt ext tyVar <- FixPhase (TypeBindingF ext tyVar)
+  where TypeBindingExt ext tyVar =  FixPhase (TypeBindingF ext tyVar)
+
+-- TypeExtensionF for phases where there is no extension to number of constructors.
+pattern TypeExtension :: TypeExtension phase ~ Void => TypeFor phase
 pattern TypeExtension <- FixPhase (TypeExtensionF _)
   where TypeExtension = FixPhase (TypeExtensionF void)
+
+pattern TypeExtensionExt :: TypeExtension phase -> TypeFor phase
+pattern TypeExtensionExt ext <- FixPhase (TypeExtensionF ext)
+  where TypeExtensionExt ext = FixPhase (TypeExtensionF ext)
 
 -- Phases
 data DefaultPhase

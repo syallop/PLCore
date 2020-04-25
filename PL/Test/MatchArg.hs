@@ -104,7 +104,7 @@ mkMatchArgTestCases t = Map.fromList . mconcat $
 
 -- type context of bools and nats
 typeCtx :: TypeCtx DefaultPhase
-typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
+typeCtx = foldr unionTypeCtx emptyTypeCtx
   [ boolTypeCtx
   , natTypeCtx
   , listTypeCtx

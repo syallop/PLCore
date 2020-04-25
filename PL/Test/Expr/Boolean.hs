@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
 {-|
 Module      : PL.Text.Expr.Boolean
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -60,17 +61,62 @@ booleanTestCases t =
   [("and", andExprTestCase . _andTestCase $ t)
   ]
 
-boolTypeCtx = insertType "Bool" boolType emptyTypeCtx
+boolTypeCtx
+  :: (SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     )
+  => TypeCtx phase
+boolTypeCtx = fromJust $ insertType "Bool" boolType emptyTypeCtx
+
+boolTypeName
+  :: NamedExtension phase ~ Void
+  => TypeFor phase
 boolTypeName = Named "Bool"
+
+boolType
+  :: (SumTExtension phase ~ Void, ProductTExtension phase ~ Void)
+  => TypeFor phase
 boolType = SumT boolSumType
+
+boolSumType
+  :: (SumTExtension phase ~ Void, ProductTExtension phase ~ Void)
+  => NonEmpty (TypeFor phase)
 boolSumType = NE.fromList $
-                [ProductT []
-                ,ProductT []
-                ]
-falseTerm     = Sum (Product []) 0 boolSumType
-trueTerm      = Sum (Product []) 1 boolSumType
-falsePat      = MatchSum 0 (MatchProduct [])
-truePat       = MatchSum 1 (MatchProduct [])
+  [ ProductT []
+  , ProductT []
+  ]
+
+falseTerm
+  :: (SumExtension      phase ~ Void
+     ,ProductExtension  phase ~ Void
+     ,SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     )
+  => ExprFor phase
+falseTerm = Sum (Product []) 0 boolSumType
+
+trueTerm
+  :: (SumExtension      phase ~ Void
+     ,ProductExtension  phase ~ Void
+     ,SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     )
+  => ExprFor phase
+trueTerm = Sum (Product []) 1 boolSumType
+
+falsePat
+  :: (MatchSumExtension phase     ~ Void
+     ,MatchProductExtension phase ~ Void
+     )
+  => MatchArgFor phase
+falsePat = MatchSum 0 (MatchProduct [])
+
+truePat
+  :: (MatchSumExtension phase     ~ Void
+     ,MatchProductExtension phase ~ Void
+     )
+  => MatchArgFor phase
+truePat = MatchSum 1 (MatchProduct [])
 
 -- Boolean and
 andExprTestCase
@@ -87,7 +133,7 @@ andExprTestCase src
       ,_reducesToWhenApplied = reductions
       }
   where
-    ctx = fromJust boolTypeCtx
+    ctx = boolTypeCtx
     e   = Lam boolTypeName $ Lam boolTypeName $                               -- \x:Bool y:Bool ->
         CaseAnalysis $ Case (Binding VZ)                                      -- case y of
           $ CaseBranches                                                      --

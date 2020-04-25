@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-|
 Module      : PL.Test.Expr.List
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -41,6 +43,7 @@ import PLParser
 import Data.Text (Text)
 import Data.Monoid ((<>))
 import Data.Maybe
+import Data.List.NonEmpty (NonEmpty) 
 import qualified Data.List.NonEmpty as NE
 
 import PL.Test.Expr.Natural
@@ -58,18 +61,77 @@ listTestCases t =
   [
   ]
 
-listTypeCtx  = insertRecType "List" listType emptyTypeCtx
-listTypeName = Named "List"
-listType     = TypeLam Kind $ SumT listSumType
-listSumType  = NE.fromList $
-                 [ ProductT [] -- : List a
-                 , ProductT $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
-                 ]
+listTypeCtx
+  :: (TypeLamExtension  phase ~ Void
+     ,SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,TypeBindingFor       phase ~ TyVar
+     ,TypeBindingExtension phase ~ Void
+     ,TypeAppExtension     phase ~ Void
+     ,NamedExtension       phase ~ Void
+     )
+  => TypeCtx phase
+listTypeCtx = fromJust $ insertRecType "List" listType emptyTypeCtx
 
-emptyTerm :: Expr
+listTypeName
+  :: NamedExtension phase ~ Void
+  => TypeFor phase
+listTypeName = Named "List"
+
+listType
+  :: (TypeLamExtension     phase ~ Void
+     ,SumTExtension        phase ~ Void
+     ,ProductTExtension    phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor       phase ~ TyVar
+     ,TypeAppExtension     phase ~ Void
+     ,NamedExtension       phase ~ Void
+     )
+  => TypeFor phase
+listType = TypeLam Kind $ SumT listSumType
+
+listSumType
+  :: (ProductTExtension    phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor       phase ~ TyVar
+     ,TypeAppExtension     phase ~ Void
+     ,NamedExtension       phase ~ Void
+     )
+  => NonEmpty (TypeFor phase)
+listSumType = NE.fromList $
+ [ ProductT [] -- : List a
+ , ProductT $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
+ ]
+
+emptyTerm
+  :: (BigLamExtension      phase ~ Void
+     ,SumExtension         phase ~ Void
+     ,ProductExtension     phase ~ Void
+     ,TypeAppExtension     phase ~ Void
+     ,TypeBindingFor       phase ~ TyVar
+     ,TypeBindingExtension phase ~ Void
+     ,ProductTExtension    phase ~ Void
+     ,NamedExtension       phase ~ Void
+     )
+  => ExprFor phase
 emptyTerm = BigLam Kind $ Sum (Product []) 0 listSumType
 
-consTerm :: Expr
+consTerm
+  :: forall phase
+   . (BigLamExtension      phase ~ Void
+     ,SumExtension         phase ~ Void
+     ,ProductExtension     phase ~ Void
+     ,TypeAppExtension     phase ~ Void
+     ,TypeBindingFor       phase ~ TyVar
+     ,TypeBindingExtension phase ~ Void
+     ,ProductTExtension    phase ~ Void
+     ,NamedExtension       phase ~ Void
+     ,LamExtension         phase ~ Void
+     ,AbstractionFor       phase ~ TypeFor phase
+     ,BindingExtension     phase ~ Void
+     ,BindingFor           phase ~ Var
+     )
+  => ExprFor phase
 consTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ, Binding VZ]) 1 listSumType
 
 -- [0]
@@ -87,7 +149,7 @@ listNatExprTestCase src
       , _reducesToWhenApplied = reduces
       }
   where
-    ctx = fromJust $ listTypeCtx <> natTypeCtx
+    ctx = listTypeCtx <> natTypeCtx
     e   = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
     ty  = TypeApp listTypeName natType
 

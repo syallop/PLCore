@@ -39,15 +39,25 @@ Patterns are provided for constructing and matching on 'default' expressions.
 module PL.Expr
   ( Expr
   , pattern Lam
+  , pattern LamExt
   , pattern App
+  , pattern AppExt
   , pattern Binding
+  , pattern BindingExt
   , pattern CaseAnalysis
+  , pattern CaseAnalysisExt
   , pattern Sum
+  , pattern SumExt
   , pattern Product
+  , pattern ProductExt
   , pattern Union
+  , pattern UnionExt
   , pattern BigLam
+  , pattern BigLamExt
   , pattern BigApp
+  , pattern BigAppExt
   , pattern ExprExtension
+  , pattern ExprExtensionExt
 
   , ExprFor
   , ExprF (..)
@@ -56,11 +66,17 @@ module PL.Expr
 
   , MatchArg (..)
   , pattern MatchSum
+  , pattern MatchSumExt
   , pattern MatchProduct
+  , pattern MatchProductExt
   , pattern MatchUnion
+  , pattern MatchUnionExt
   , pattern MatchBinding
+  , pattern MatchBindingExt
   , pattern Bind
+  , pattern BindExt
   , pattern MatchArgExtension
+  , pattern MatchArgExtensionExt
 
   , MatchArgFor
   , MatchArgF (..)
@@ -360,49 +376,95 @@ type family ExprExtension phase
 type family BindingFor     phase
 type family AbstractionFor phase
 
--- TODO: Could these use AbstractionFor, etc to be slightly more general and
--- still usable or should other phases define their own patterns, perhaps to be
--- imported qualified like "TypeChecked.Lam ABS EXPR"?
-
-pattern Lam :: Type -> Expr -> Expr
+-- LamF for phases where there is no extension to the constructor.
+pattern Lam :: LamExtension phase ~ Void => AbstractionFor phase -> ExprFor phase -> ExprFor phase
 pattern Lam abs expr <- FixPhase (LamF _ abs expr)
   where Lam abs expr =  FixPhase (LamF void abs expr)
 
-pattern App :: Expr -> Expr -> Expr
+pattern LamExt :: LamExtension phase -> AbstractionFor phase -> ExprFor phase -> ExprFor phase
+pattern LamExt ext abs expr <- FixPhase (LamF ext abs expr)
+  where LamExt ext abs expr =  FixPhase (LamF ext abs expr)
+
+-- AppF for phases where there is no extension to the constructor.
+pattern App :: AppExtension phase ~ Void => ExprFor phase -> ExprFor phase -> ExprFor phase
 pattern App f x <- FixPhase (AppF _ f x)
   where App f x =  FixPhase (AppF void f x)
 
-pattern Binding :: Var -> Expr
+pattern AppExt :: AppExtension phase -> ExprFor phase -> ExprFor phase -> ExprFor phase
+pattern AppExt ext f x <- FixPhase (AppF ext f x)
+  where AppExt ext f x =  FixPhase (AppF ext f x)
+
+-- BindingF for phases where there is no extension to the constructor.
+pattern Binding :: BindingExtension phase ~ Void => BindingFor phase -> ExprFor phase
 pattern Binding b <- FixPhase (BindingF _ b)
   where Binding b = FixPhase (BindingF void b)
 
-pattern CaseAnalysis :: Case Expr MatchArg -> Expr
+pattern BindingExt :: BindingExtension phase -> BindingFor phase -> ExprFor phase
+pattern BindingExt ext b <- FixPhase (BindingF ext b)
+  where BindingExt ext b = FixPhase (BindingF ext b)
+
+-- CaseAnalysisF for phases where there is no extension to the constructor.
+pattern CaseAnalysis :: CaseAnalysisExtension phase ~ Void => Case (ExprFor phase) (MatchArgFor phase) -> ExprFor phase
 pattern CaseAnalysis c <- FixPhase (CaseAnalysisF _ c)
   where CaseAnalysis c =  FixPhase (CaseAnalysisF void c)
 
-pattern Sum :: Expr -> Int -> NonEmpty Type -> Expr
+pattern CaseAnalysisExt :: CaseAnalysisExtension phase -> Case (ExprFor phase) (MatchArgFor phase) -> ExprFor phase
+pattern CaseAnalysisExt ext c <- FixPhase (CaseAnalysisF ext c)
+  where CaseAnalysisExt ext c =  FixPhase (CaseAnalysisF ext c)
+
+-- SumF for phases where there is no extension to the constructor.
+pattern Sum :: SumExtension phase ~ Void =>  ExprFor phase -> Int -> NonEmpty (TypeFor phase) -> ExprFor phase
 pattern Sum expr ix types <- FixPhase (SumF _ expr ix types)
   where Sum expr ix types =  FixPhase (SumF void expr ix types)
 
-pattern Product :: [Expr] -> Expr
+pattern SumExt :: SumExtension phase -> ExprFor phase -> Int -> NonEmpty (TypeFor phase) -> ExprFor phase
+pattern SumExt ext expr ix types <- FixPhase (SumF ext expr ix types)
+  where SumExt ext expr ix types =  FixPhase (SumF ext expr ix types)
+
+-- ProductF for phases where there is no extension to the constructor.
+pattern Product :: ProductExtension phase ~ Void =>  [ExprFor phase] -> ExprFor phase
 pattern Product exprs <- FixPhase (ProductF _ exprs)
   where Product exprs =  FixPhase (ProductF void exprs)
 
-pattern Union :: Expr -> Type -> Set.Set Type -> Expr
+pattern ProductExt :: ProductExtension phase ->  [ExprFor phase] -> ExprFor phase
+pattern ProductExt ext exprs <- FixPhase (ProductF ext exprs)
+  where ProductExt ext exprs =  FixPhase (ProductF ext exprs)
+
+-- UnionF for phases where there is no extension to the constructor.
+pattern Union :: UnionExtension phase ~ Void =>  ExprFor phase -> TypeFor phase -> Set.Set (TypeFor phase) -> ExprFor phase
 pattern Union expr typeIx types <- FixPhase (UnionF _ expr typeIx types)
   where Union expr typeIx types =  FixPhase (UnionF void expr typeIx types)
 
-pattern BigLam :: Kind -> Expr -> Expr
+pattern UnionExt :: UnionExtension phase ->  ExprFor phase -> TypeFor phase -> Set.Set (TypeFor phase) -> ExprFor phase
+pattern UnionExt ext expr typeIx types <- FixPhase (UnionF ext expr typeIx types)
+  where UnionExt ext expr typeIx types =  FixPhase (UnionF ext expr typeIx types)
+
+-- BigLamF for phases where there is no extension to the constructor.
+pattern BigLam :: BigLamExtension phase ~ Void =>  Kind -> ExprFor phase -> ExprFor phase
 pattern BigLam typeAbs expr <- FixPhase (BigLamF _ typeAbs expr)
   where BigLam typeAbs expr =  FixPhase (BigLamF void typeAbs expr)
 
-pattern BigApp :: Expr -> Type -> Expr
+pattern BigLamExt :: BigLamExtension phase ->  Kind -> ExprFor phase -> ExprFor phase
+pattern BigLamExt ext typeAbs expr <- FixPhase (BigLamF ext typeAbs expr)
+  where BigLamExt ext typeAbs expr =  FixPhase (BigLamF ext typeAbs expr)
+
+-- BigAppF for phases where there is no extension to the constructor.
+pattern BigApp :: BigAppExtension phase ~ Void =>  ExprFor phase -> TypeFor phase -> ExprFor phase
 pattern BigApp f xType <- FixPhase (BigAppF _ f xType)
   where BigApp f xType =  FixPhase (BigAppF void f xType)
 
-pattern ExprExtension :: Expr
+pattern BigAppExt :: BigAppExtension phase ->  ExprFor phase -> TypeFor phase -> ExprFor phase
+pattern BigAppExt ext f xType <- FixPhase (BigAppF ext f xType)
+  where BigAppExt ext f xType =  FixPhase (BigAppF ext f xType)
+
+-- ExprExtensionF for phases where there is no extension to the number of constructors.
+pattern ExprExtension :: ExprExtension phase ~ Void =>  ExprFor phase
 pattern ExprExtension <- FixPhase (ExprExtensionF _)
   where ExprExtension =  FixPhase (ExprExtensionF void)
+
+pattern ExprExtensionExt :: ExprExtension phase ->  ExprFor phase
+pattern ExprExtensionExt ext <- FixPhase (ExprExtensionF ext)
+  where ExprExtensionExt ext =  FixPhase (ExprExtensionF ext)
 
 -- The DefaultPhase has no extensions to constructors or the expression itself
 -- Bindings are Var's (indexes without names), abstractions are Types (with no names) and type
@@ -561,31 +623,59 @@ type family BindExtension phase
 -- MatchArg type which depend upon the phase
 type family MatchArgExtension phase
 
--- TODO: Should these patterns be more general?
-
-pattern MatchSum :: Int -> MatchArg -> MatchArg
+-- MatchSumF for phases where there is no extension to the constructor.
+pattern MatchSum :: MatchSumExtension phase ~ Void => Int -> MatchArgFor phase -> MatchArgFor phase
 pattern MatchSum ix match <- FixPhase (MatchSumF _ ix match)
   where MatchSum ix match =  FixPhase (MatchSumF void ix match)
 
-pattern MatchProduct :: [MatchArg] -> MatchArg
+pattern MatchSumExt :: MatchSumExtension phase -> Int -> MatchArgFor phase -> MatchArgFor phase
+pattern MatchSumExt ext ix match <- FixPhase (MatchSumF ext ix match)
+  where MatchSumExt ext ix match =  FixPhase (MatchSumF ext ix match)
+
+-- MatchProductF for phases where there is no extension to the constructor.
+pattern MatchProduct :: MatchProductExtension phase ~ Void => [MatchArgFor phase] -> MatchArgFor phase
 pattern MatchProduct matches <- FixPhase (MatchProductF _ matches)
   where MatchProduct matches =  FixPhase (MatchProductF void matches)
 
-pattern MatchUnion :: Type -> MatchArg -> MatchArg
+pattern MatchProductExt :: MatchProductExtension phase -> [MatchArgFor phase] -> MatchArgFor phase
+pattern MatchProductExt ext matches <- FixPhase (MatchProductF ext matches)
+  where MatchProductExt ext matches =  FixPhase (MatchProductF ext matches)
+
+-- MatchUnionF for phases where there is no extension to the constructor.
+pattern MatchUnion :: MatchUnionExtension phase ~ Void => TypeFor phase -> MatchArgFor phase -> MatchArgFor phase
 pattern MatchUnion typeIx match <- FixPhase (MatchUnionF _ typeIx match)
   where MatchUnion typeIx match =  FixPhase (MatchUnionF void typeIx match)
 
-pattern MatchBinding :: Var -> MatchArg
+pattern MatchUnionExt :: MatchUnionExtension phase -> TypeFor phase -> MatchArgFor phase -> MatchArgFor phase
+pattern MatchUnionExt ext typeIx match <- FixPhase (MatchUnionF ext typeIx match)
+  where MatchUnionExt ext typeIx match =  FixPhase (MatchUnionF ext typeIx match)
+
+-- MatchBindingF for phases where there is no extension to the constructor.
+pattern MatchBinding :: MatchBindingExtension phase ~ Void => BindingFor phase -> MatchArgFor phase
 pattern MatchBinding equalTo <- FixPhase (MatchBindingF _ equalTo)
   where MatchBinding equalTo =  FixPhase (MatchBindingF void equalTo)
 
-pattern Bind :: MatchArg
+pattern MatchBindingExt :: MatchBindingExtension phase -> BindingFor phase -> MatchArgFor phase
+pattern MatchBindingExt ext equalTo <- FixPhase (MatchBindingF ext equalTo)
+  where MatchBindingExt ext equalTo =  FixPhase (MatchBindingF ext equalTo)
+
+-- BindF for phases where there is no extension to the constructor.
+pattern Bind :: BindExtension phase ~ Void => MatchArgFor phase
 pattern Bind <- FixPhase (BindF _)
   where Bind =  FixPhase (BindF void)
 
-pattern MatchArgExtension :: MatchArg
+pattern BindExt :: BindExtension phase -> MatchArgFor phase
+pattern BindExt ext <- FixPhase (BindF ext)
+  where BindExt ext =  FixPhase (BindF ext)
+
+-- MatchArgExtensionF for phases where there is no extension to the number of constructors.
+pattern MatchArgExtension :: MatchArgExtension phase ~ Void => MatchArgFor phase
 pattern MatchArgExtension <- FixPhase (MatchArgExtensionF _)
   where MatchArgExtension =  FixPhase (MatchArgExtensionF void)
+
+pattern MatchArgExtensionExt :: MatchArgExtension phase -> MatchArgFor phase
+pattern MatchArgExtensionExt ext <- FixPhase (MatchArgExtensionF ext)
+  where MatchArgExtensionExt ext =  FixPhase (MatchArgExtensionF ext)
 
 -- The DefaultPhase has no extensions to constructors or the MatchArg itself
 type instance MatchSumExtension DefaultPhase = Void

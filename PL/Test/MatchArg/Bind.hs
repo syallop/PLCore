@@ -95,8 +95,8 @@ bindBoolMatchArgTestCase
   :: Source
   -> MatchArgTestCase
 bindBoolMatchArgTestCase src = (defaultBindMatchArgTestCase src)
-  { _underTypeCtx = fromJust boolTypeCtx
-  , _typed = boolTypeName
+  { _underTypeCtx         = boolTypeCtx
+  , _typed                = boolTypeName
   , _checkMatchWithResult = Right [boolType]
   }
 

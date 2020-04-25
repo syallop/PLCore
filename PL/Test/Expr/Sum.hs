@@ -69,7 +69,7 @@ sumThreeExprTestCase src =
     ,_reducesToWhenApplied = reduces
     }
   where
-    ctx = fromJust $ natTypeCtx <> boolTypeCtx
+    ctx = natTypeCtx <> boolTypeCtx
     e   = Lam (SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat|Bool|Nat ->
             CaseAnalysis $ Case (Binding VZ)                                          -- case x of
               $ CaseBranches                                                          --

@@ -69,7 +69,7 @@ unionTwoExprTestCase src =
     ,_reducesToWhenApplied = reduces
     }
   where
-    ctx = fromJust $ boolTypeCtx <> natTypeCtx
+    ctx = boolTypeCtx <> natTypeCtx
     e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
             CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --

@@ -93,7 +93,7 @@ mkTypeTestCases t = Map.fromList . mconcat $
 
 -- | A test type context contains bools, nats and lists.
 typeCtx :: TypeCtx DefaultPhase
-typeCtx = foldr (unionTypeCtx . fromJust) emptyTypeCtx
+typeCtx = foldr unionTypeCtx emptyTypeCtx
   [ boolTypeCtx
   , natTypeCtx
   , listTypeCtx

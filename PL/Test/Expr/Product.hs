@@ -67,7 +67,7 @@ productThreeExprTestCase src
       ,_reducesToWhenApplied = reduces
       }
   where
-    ctx = fromJust $ natTypeCtx <> boolTypeCtx
+    ctx = natTypeCtx <> boolTypeCtx
     e   = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
       CaseAnalysis $ Case (Binding VZ)                                      -- case x of
         $ CaseBranches                                                                --

@@ -41,41 +41,15 @@ module PL.Commented
   , Commented (..)
 
   -- Aliases in the CommentedPhase
-  , Expr
-  , Type
-  , MatchArg
+  , CommentedExpr
+  , CommentedType
+  , CommentedMatchArg
 
   -- Expressions, types and matchargs are extended with the possibility for an
   -- associated comment
   , pattern CommentedExpr
   , pattern CommentedType
   , pattern CommentedMatchArg
-
-  , pattern Lam
-  , pattern App
-  , pattern Binding
-  , pattern CaseAnalysis
-  , pattern Sum
-  , pattern Product
-  , pattern Union
-  , pattern BigLam
-  , pattern BigApp
-
-  , pattern MatchSum
-  , pattern MatchProduct
-  , pattern MatchUnion
-  , pattern MatchBinding
-  , pattern Bind
-
-  , pattern Named
-  , pattern Arrow
-  , pattern SumT
-  , pattern ProductT
-  , pattern UnionT
-  , pattern BigArrow
-  , pattern TypeLam
-  , pattern TypeApp
-  , pattern TypeBinding
 
   -- Convert a commented expression into an expression in the DefaultPhase
   -- with comments removed.
@@ -88,61 +62,8 @@ module PL.Commented
   )
   where
 
--- Import only the extension points for expressions
--- leaving patterns to be qualified by the DefaultPhase
 import PL.Expr
-  ( ExprF(..)
-  , ExprFor
-  , LamExtension
-  , AppExtension
-  , BindingExtension
-  , CaseAnalysisExtension
-  , SumExtension
-  , ProductExtension
-  , UnionExtension
-  , BigLamExtension
-  , BigAppExtension
-  , ExprExtension
-
-  , BindingFor
-  , AbstractionFor
-
-  , MatchArgF(..)
-  , MatchArgFor
-  , MatchSumExtension
-  , MatchProductExtension
-  , MatchUnionExtension
-  , MatchBindingExtension
-  , BindExtension
-  , MatchArgExtension
-  )
-import qualified PL.Expr as DefaultPhase
-
--- Import only the extension points for types
--- leaving patterns to be qualified by the DefaultPhase
 import PL.Type
-  ( TypeF(..)
-  , NamedExtension
-  , ArrowExtension
-  , SumTExtension
-  , ProductTExtension
-  , UnionTExtension
-  , BigArrowExtension
-  , TypeLamExtension
-  , TypeAppExtension
-  , TypeBindingExtension
-  , TypeExtension
-
-  , TypeBindingFor
-
-  , TypeFor
-
-  -- Dont belong there:
-  , DefaultPhase
-  , void
-  , Void
-  )
-import qualified PL.Type as DefaultPhase
 
 import PL.Var
 import PL.Case
@@ -223,118 +144,27 @@ type instance BindingFor     CommentedPhase = Var
 type instance TypeBindingFor CommentedPhase = TyVar
 type instance AbstractionFor CommentedPhase = TypeFor CommentedPhase
 
-type Expr     = ExprFor     CommentedPhase
-type Type     = TypeFor     CommentedPhase
-type MatchArg = MatchArgFor CommentedPhase
+type CommentedExpr     = ExprFor     CommentedPhase
+type CommentedType     = TypeFor     CommentedPhase
+type CommentedMatchArg = MatchArgFor CommentedPhase
 
 -- Pattern synonyms
 
--- New extension point wraps expressions in comments
-pattern CommentedExpr :: Comment -> Expr -> Expr
+-- TODO: Should these be more general to allow commenting currently un-commented
+-- things?
+
+-- New extension points wrap expressions, matchargs and types in comments.
+pattern CommentedExpr :: Comment -> CommentedExpr -> CommentedExpr
 pattern CommentedExpr comment expr <- FixPhase (ExprExtensionF (Commented comment expr))
   where CommentedExpr comment expr =  FixPhase (ExprExtensionF (Commented comment expr))
 
-pattern Lam :: Type -> Expr -> Expr
-pattern Lam abs expr <- FixPhase (LamF _ abs expr)
-  where Lam abs expr =  FixPhase (LamF void abs expr)
-
-pattern App :: Expr -> Expr -> Expr
-pattern App f x <- FixPhase (AppF _ f x)
-  where App f x =  FixPhase (AppF void f x)
-
-pattern Binding :: Var -> Expr
-pattern Binding b <- FixPhase (BindingF _ b)
-  where Binding b = FixPhase (BindingF void b)
-
-pattern CaseAnalysis :: Case Expr MatchArg -> Expr
-pattern CaseAnalysis c <- FixPhase (CaseAnalysisF _ c)
-  where CaseAnalysis c =  FixPhase (CaseAnalysisF void c)
-
-pattern Sum :: Expr -> Int -> NonEmpty Type -> Expr
-pattern Sum expr ix types <- FixPhase (SumF _ expr ix types)
-  where Sum expr ix types =  FixPhase (SumF void expr ix types)
-
-pattern Product :: [Expr] -> Expr
-pattern Product exprs <- FixPhase (ProductF _ exprs)
-  where Product exprs =  FixPhase (ProductF void exprs)
-
-pattern Union :: Expr -> Type -> Set.Set Type -> Expr
-pattern Union expr typeIx types <- FixPhase (UnionF _ expr typeIx types)
-  where Union expr typeIx types =  FixPhase (UnionF void expr typeIx types)
-
-pattern BigLam :: Kind -> Expr -> Expr
-pattern BigLam typeAbs expr <- FixPhase (BigLamF _ typeAbs expr)
-  where BigLam typeAbs expr =  FixPhase (BigLamF void typeAbs expr)
-
-pattern BigApp :: Expr -> Type -> Expr
-pattern BigApp f xType <- FixPhase (BigAppF _ f xType)
-  where BigApp f xType =  FixPhase (BigAppF void f xType)
-
--- New extension point wraps matchargs in comments
-pattern CommentedMatchArg :: Comment -> MatchArg -> MatchArg
+pattern CommentedMatchArg :: Comment -> CommentedMatchArg -> CommentedMatchArg
 pattern CommentedMatchArg comment commentedMatchArg <- FixPhase (MatchArgExtensionF (Commented comment commentedMatchArg))
   where CommentedMatchArg comment commentedMatchArg =  FixPhase (MatchArgExtensionF (Commented comment commentedMatchArg))
 
-pattern MatchSum :: Int -> MatchArg -> MatchArg
-pattern MatchSum ix match <- FixPhase (MatchSumF _ ix match)
-  where MatchSum ix match =  FixPhase (MatchSumF void ix match)
-
-pattern MatchProduct :: [MatchArg] -> MatchArg
-pattern MatchProduct matches <- FixPhase (MatchProductF _ matches)
-  where MatchProduct matches =  FixPhase (MatchProductF void matches)
-
-pattern MatchUnion :: Type -> MatchArg -> MatchArg
-pattern MatchUnion typeIx match <- FixPhase (MatchUnionF _ typeIx match)
-  where MatchUnion typeIx match =  FixPhase (MatchUnionF void typeIx match)
-
-pattern MatchBinding :: Var -> MatchArg
-pattern MatchBinding equalTo <- FixPhase (MatchBindingF _ equalTo)
-  where MatchBinding equalTo =  FixPhase (MatchBindingF void equalTo)
-
-pattern Bind :: MatchArg
-pattern Bind <- FixPhase (BindF _)
-  where Bind =  FixPhase (BindF void)
-
--- New extension point wraps types in comments
-pattern CommentedType :: Comment -> Type -> Type
+pattern CommentedType :: Comment -> CommentedType -> CommentedType
 pattern CommentedType comment commentedType <- FixPhase (TypeExtensionF (Commented comment commentedType))
   where CommentedType comment commentedType =  FixPhase (TypeExtensionF (Commented comment commentedType))
-
-pattern Named :: TypeName -> Type
-pattern Named name <- FixPhase (NamedF _ name)
-  where Named name =  FixPhase (NamedF void name)
-
-pattern Arrow :: Type -> Type -> Type
-pattern Arrow fromTy toTy <- FixPhase (ArrowF _ fromTy toTy)
-  where Arrow fromTy toTy =  FixPhase (ArrowF void fromTy toTy)
-
-pattern SumT :: NonEmpty Type -> Type
-pattern SumT types <- FixPhase (SumTF _ types)
-  where SumT types =  FixPhase (SumTF void types)
-
-pattern ProductT :: [Type] -> Type
-pattern ProductT types <- FixPhase (ProductTF _ types)
-  where ProductT types =  FixPhase (ProductTF void types)
-
-pattern UnionT :: Set.Set Type -> Type
-pattern UnionT types <- FixPhase (UnionTF _ types)
-  where UnionT types =  FixPhase (UnionTF void types)
-
-pattern BigArrow :: Kind -> Type -> Type
-pattern BigArrow kind ty <- FixPhase (BigArrowF _ kind ty)
-  where BigArrow kind ty =  FixPhase (BigArrowF void kind ty)
-
-pattern TypeLam :: Kind -> Type -> Type
-pattern TypeLam absTy ty <- FixPhase (TypeLamF _ absTy ty)
-  where TypeLam absTy ty =  FixPhase (TypeLamF void absTy ty)
-
-pattern TypeApp :: Type -> Type -> Type
-pattern TypeApp fTy xTy <- FixPhase (TypeAppF _ fTy xTy)
-  where TypeApp fTy xTy =  FixPhase (TypeAppF void fTy xTy)
-
-pattern TypeBinding :: TyVar -> Type
-pattern TypeBinding tyVar <- FixPhase (TypeBindingF _ tyVar)
-  where TypeBinding tyVar =  FixPhase (TypeBindingF void tyVar)
 
 -- TODO: These functions could be written in terms of recursion schemes.
 
@@ -344,31 +174,31 @@ stripComments
   -> ExprFor DefaultPhase
 stripComments = \case
   Lam ty expr
-    -> DefaultPhase.Lam (stripTypeComments ty) (stripComments expr)
+    -> Lam (stripTypeComments ty) (stripComments expr)
 
   App fExpr xExpr
-    -> DefaultPhase.App (stripComments fExpr) (stripComments xExpr)
+    -> App (stripComments fExpr) (stripComments xExpr)
 
   CaseAnalysis c
-     -> DefaultPhase.CaseAnalysis $ stripCaseComments c
+     -> CaseAnalysis $ stripCaseComments c
 
   Sum expr ix ty
-    -> DefaultPhase.Sum (stripComments expr) ix (fmap stripTypeComments ty)
+    -> Sum (stripComments expr) ix (fmap stripTypeComments ty)
 
   Product prodExprs
-    -> DefaultPhase.Product (fmap stripComments prodExprs)
+    -> Product (fmap stripComments prodExprs)
 
   Union unionExpr tyIx ty
-    -> DefaultPhase.Union (stripComments unionExpr) (stripTypeComments tyIx) (Set.map stripTypeComments ty)
+    -> Union (stripComments unionExpr) (stripTypeComments tyIx) (Set.map stripTypeComments ty)
 
   Binding b
-    -> DefaultPhase.Binding b
+    -> Binding b
 
   BigLam takeTy expr
-    -> DefaultPhase.BigLam takeTy (stripComments expr)
+    -> BigLam takeTy (stripComments expr)
 
   BigApp fExpr xTy
-    -> DefaultPhase.BigApp (stripComments fExpr) (stripTypeComments xTy)
+    -> BigApp (stripComments fExpr) (stripTypeComments xTy)
 
   CommentedExpr _comment commentedExpr
     -> stripComments commentedExpr
@@ -380,31 +210,31 @@ stripTypeComments
   -> TypeFor DefaultPhase
 stripTypeComments = \case
   Named tyName
-    -> DefaultPhase.Named tyName
+    -> Named tyName
 
   Arrow from to
-    -> DefaultPhase.Arrow (stripTypeComments from) (stripTypeComments to)
+    -> Arrow (stripTypeComments from) (stripTypeComments to)
 
   SumT types
-    -> DefaultPhase.SumT (fmap stripTypeComments types)
+    -> SumT (fmap stripTypeComments types)
 
   ProductT types
-    -> DefaultPhase.ProductT (fmap stripTypeComments types)
+    -> ProductT (fmap stripTypeComments types)
 
   UnionT types
-    -> DefaultPhase.UnionT (Set.map stripTypeComments $ types)
+    -> UnionT (Set.map stripTypeComments $ types)
 
   BigArrow from to
-    -> DefaultPhase.BigArrow from (stripTypeComments to)
+    -> BigArrow from (stripTypeComments to)
 
   TypeLam kind typ
-    -> DefaultPhase.TypeLam kind (stripTypeComments typ)
+    -> TypeLam kind (stripTypeComments typ)
 
   TypeApp x y
-    -> DefaultPhase.TypeApp (stripTypeComments x) (stripTypeComments y)
+    -> TypeApp (stripTypeComments x) (stripTypeComments y)
 
   TypeBinding b
-    -> DefaultPhase.TypeBinding b
+    -> TypeBinding b
 
   CommentedType _comment commentedType
     -> stripTypeComments commentedType
@@ -436,19 +266,19 @@ stripMatchArgComments
   -> MatchArgFor DefaultPhase
 stripMatchArgComments = \case
   Bind
-    -> DefaultPhase.Bind
+    -> Bind
 
   MatchBinding b
-    -> DefaultPhase.MatchBinding b
+    -> MatchBinding b
 
   MatchSum sumIndex nestedMatchArg
-    -> DefaultPhase.MatchSum sumIndex (stripMatchArgComments nestedMatchArg)
+    -> MatchSum sumIndex (stripMatchArgComments nestedMatchArg)
 
   MatchProduct nestedMatchArgs
-    -> DefaultPhase.MatchProduct (fmap stripMatchArgComments nestedMatchArgs)
+    -> MatchProduct (fmap stripMatchArgComments nestedMatchArgs)
 
   MatchUnion unionIndexTy nestedMatchArg
-    -> DefaultPhase.MatchUnion (stripTypeComments unionIndexTy) (stripMatchArgComments nestedMatchArg)
+    -> MatchUnion (stripTypeComments unionIndexTy) (stripMatchArgComments nestedMatchArg)
 
   CommentedMatchArg _comment commentedMatchArg
     -> stripMatchArgComments commentedMatchArg
@@ -461,5 +291,5 @@ commentedExpr :: ExprFor CommentedPhase
 commentedExpr = CommentedExpr (Comment "Ignore value typed Foo and return value typed Bar") $ Lam (Named "Foo") $ Lam (Named "Bar") $ Binding VZ
 
 strippedExpr :: ExprFor DefaultPhase
-strippedExpr = DefaultPhase.Lam (DefaultPhase.Named "Foo") $ DefaultPhase.Lam (DefaultPhase.Named "Bar") $ DefaultPhase.Binding VZ
+strippedExpr = Lam (Named "Foo") $ Lam (Named "Bar") $ Binding VZ
 

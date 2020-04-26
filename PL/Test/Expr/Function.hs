@@ -31,8 +31,6 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 
-import PLParser
-
 import Data.Text (Text)
 
 import PL.Test.ExprTestCase

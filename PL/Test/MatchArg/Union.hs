@@ -26,8 +26,6 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 
-import PLParser
-
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 

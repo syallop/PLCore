@@ -82,8 +82,11 @@ import PL.Kind
 import PL.FixPhase
 
 import Data.Text
+import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Set as Set
+
+import Data.String
 
 -- | The phase where an expression is no more than a structurally sound AST with
 -- optional comments around nodes.
@@ -97,6 +100,11 @@ data Comment = Comment
   { _commentText :: Text
   }
   deriving (Show, Eq, Ord)
+
+instance IsString Comment where
+  fromString str
+    | elem '"' str = error $ "Cannot construct Comment from string as it contains a double quote character: " <> str
+    | otherwise    = Comment . Text.pack $ str
 
 -- | A thing is commented when it is associated with a comment.
 data Commented e = Commented

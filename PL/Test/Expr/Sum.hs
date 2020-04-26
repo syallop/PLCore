@@ -29,8 +29,6 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 
-import PLParser
-
 import Data.Text (Text)
 import Data.Maybe
 import Data.Monoid hiding (Sum)

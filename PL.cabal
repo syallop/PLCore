@@ -81,7 +81,6 @@ library
   build-depends:       base >= 4.12
 
                      , PLGrammar  >= 0.4
-                     , PLParser   >= 0.1
                      , PLPrinter  >= 0.3
                      , Reversible >= 0.1
 
@@ -113,7 +112,6 @@ test-suite hspec
   build-depends:     base >=4.7
                    , PL
                    , PLGrammar  >= 0.4
-                   , PLParser   >= 0.1
                    , PLPrinter  >= 0.3
                    , Reversible >= 0.1
 

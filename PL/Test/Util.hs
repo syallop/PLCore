@@ -18,9 +18,6 @@ module PL.Test.Util
   , ppError
   , ppTypeName
   , ppTermName
-  , ppCursor
-  , ppExpected
-  , ppPos
   )
   where
 
@@ -39,10 +36,8 @@ import PL.Var
 import PL.Bindings
 
 import PL.Name
-import PLParser
 import PLPrinter
 import PLPrinter.Doc
-import PLParser.Cursor
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.List as List
@@ -77,75 +72,4 @@ ppKind k = case k of
     -> PLPrinter.text "KIND"
   KindArrow from to
     -> PLPrinter.char '^' <> parens (ppKind from) <> parens (ppKind to)
-
-ppCursor :: Cursor -> Doc
-ppCursor (Cursor prev next pos) =
-  let (before,pointer,after) = point (Cursor prev next pos)
-   in mconcat [ rawText before
-              , lineBreak
-              , text pointer
-              , lineBreak
-              , ppPos pos
-              , lineBreak
-
-              , rawText after
-              ]
-
-ppPos :: Pos -> Doc
-ppPos (Pos t l c) = mconcat
-  [text "Line:     ", int l,lineBreak
-  ,text "Character:", int c,lineBreak
-  ,text "Total:    ", int t,lineBreak
-  ]
-
-ppExpected :: Expected -> Doc
-ppExpected e = showExpectedDoc e
-
-showExpectedDoc :: Expected -> Doc
-showExpectedDoc = bulleted
-                . flattenExpectedDoc
-
-
--- Returns alternatives
-flattenExpectedDoc :: Expected -> [Doc]
-flattenExpectedDoc e = List.nub $ case e of
-  ExpectEither es0 es1
-    -> flattenExpectedDoc es0 <> flattenExpectedDoc es1
-
-  ExpectFail
-    -> []
-
-  ExpectText txt
-    -> [text txt]
-
-  -- For a predicate with a descriptive label, the label is enough.
-  ExpectPredicate (Label lTxt Descriptive) _
-    -> [text $ "_PREDICATE_" <> lTxt]
-
-  -- For an enhancing label, we still want to see the rest of the definition.
-  ExpectPredicate (Label lTxt Enhancing) mE
-    -> map ((text "_PREDICATE_" <> text lTxt) <>) $ maybe [] flattenExpectedDoc mE
-
-  ExpectAnything
-    -> [text "ANYTHING"]
-
-  ExpectN i e
-    -> [text $ "_EXACTLY_" <> (Text.pack . show $ i) <> "_"
-       ,mconcat . flattenExpectedDoc $ e
-       ]
-
-  -- A descriptive label is sufficient.
-  ExpectLabel (Label lTxt Descriptive) e
-    -> [text lTxt]
-
-  -- An enhancing label requires the rest of the definition.
-  ExpectLabel (Label lTxt Enhancing) e
-    -> [text $ lTxt <> " " <> (render . mconcat . flattenExpectedDoc $ e)
-       ]
-
-  ExpectThen e0 e1
-    -> [ text . render . mconcat . flattenExpectedDoc $ e0
-       , text "_THEN_"
-       , text . render . mconcat . flattenExpectedDoc $ e1
-       ]
 

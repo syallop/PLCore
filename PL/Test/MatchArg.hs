@@ -64,7 +64,6 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 
-import PLParser
 import PLPrinter
 
 import Control.Applicative

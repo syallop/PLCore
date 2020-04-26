@@ -26,9 +26,7 @@ import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
-import PLParser (runParser,Parser,ParseResult(..),pointTo)
 import PLGrammar
-import PLParser
 import PLPrinter
 
 import Control.Applicative

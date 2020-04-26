@@ -28,8 +28,6 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 
-import PLParser
-
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as Text

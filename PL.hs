@@ -35,9 +35,6 @@ import PL.Kind               as X
 -- Type and variable names for example.
 import PL.Name               as X
 
--- A NIH parser with backtracking, leftovers and automatic whitespace consumption.
-import PLParser              as X
-
 -- A description of a languages grammar. Can be translated to a Parser and
 -- eventually to a corresponing printer.
 import PLGrammar             as X

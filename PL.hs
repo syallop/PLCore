@@ -17,6 +17,9 @@ import PL.Binds.Ix           as X
 -- Case analysis on... things
 import PL.Case               as X
 
+-- Expressions, Types, etc extended with comments.
+import PL.Commented          as X
+
 -- Errors that may be thrown in various compilation stages.
 import PL.Error              as X
 
@@ -42,6 +45,10 @@ import PLGrammar             as X
 -- A NIH Pretty-Printer
 import PLPrinter              as X
 
+-- Machinery for representing ASTs as fix points over their recursive
+-- occurances, with a 'phase' parameter to accomodate a trees-that-grow pattern.
+import PL.FixPhase            as X
+
 -- Reduce expressions by maintaining a binding ctx and performing substitution
 -- and recursive reduction when necessary.
 import PL.Reduce             as X
@@ -59,7 +66,6 @@ import PL.Type               as X
 
 -- Maps names to types allowing type resolution.
 import PL.TypeCtx            as X
-
 
 -- Variables which can be used within a binding context to Types.
 import PL.Var

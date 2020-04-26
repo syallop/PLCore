@@ -41,6 +41,7 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 import Data.List
 import Data.Text (Text)
+import Data.Function
 
 import Test.Hspec
 import PL.Test.Source
@@ -92,7 +93,7 @@ parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (T
          , indent1 . ppExpr . stripComments $ expectedExpr
          ]
 
-    | parsedExpr /= expectedExpr
+    | on (/=) stripComments parsedExpr expectedExpr
     -> expectationFailure . Text.unpack . render . document . mconcat $
          [ text "Successfully parsed without leftovers an unexpected expression. Got:"
          , lineBreak

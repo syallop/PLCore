@@ -20,6 +20,7 @@ module PL.Test.Expr.Function
 import PL.Bindings
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -65,7 +66,7 @@ idExprTestCase src
       , _typed        = ty
       , _parsesFrom   = src
 
-      , _reducesTo = e
+      , _reducesTo = stripComments e
       , _reducesToWhenApplied = reduces
       }
   where
@@ -89,7 +90,7 @@ constExprTestCase src
       , _typed        = ty
       , _parsesFrom   = src
 
-      , _reducesTo = e
+      , _reducesTo = stripComments e
       , _reducesToWhenApplied = reduces
       }
   where
@@ -122,7 +123,7 @@ applyExprTestCase src
       , _typed        = ty
       , _parsesFrom   = src
 
-      , _reducesTo = e
+      , _reducesTo = stripComments e
       , _reducesToWhenApplied = reduces
       }
   where

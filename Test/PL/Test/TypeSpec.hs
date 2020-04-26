@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 module PL.Test.TypeSpec where
 
 import PL
@@ -42,10 +45,10 @@ spec = do
     typeTestCases :: Map.Map Text TypeTestCase
     typeTestCases = mkTypeTestCases $ TestTypeSources {}
 
-    ppExpr :: ExprFor DefaultPhase -> Doc
+    ppExpr :: forall phase. Show (ExprFor phase) => ExprFor phase -> Doc
     ppExpr = text . Text.pack . show
 
-    ppType :: TypeFor DefaultPhase -> Doc
+    ppType :: Type -> Doc
     ppType = text . Text.pack . show
 
     ppKind :: Kind -> Doc

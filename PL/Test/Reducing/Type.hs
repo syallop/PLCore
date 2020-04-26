@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , GADTs
+  , RankNTypes
   #-}
 module PL.Test.Reducing.Type
   ( reducesTypesToSpec
@@ -11,6 +12,7 @@ module PL.Test.Reducing.Type
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Kind
 import PL.Reduce
@@ -63,21 +65,20 @@ reducesTypesToSpec testCases ppType =
 -- Name a type, apply it to a list of (argnames,argument,expected result) tuples.
 -- Where the type in turn applied to each list of arguments must reduce to the given expected result
 reduceTypeToSpec
-  :: phase ~ DefaultPhase
-  => Text.Text
-  -> TypeFor DefaultPhase
+  :: Text.Text
+  -> TypeFor CommentedPhase
   -> [(Text.Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase], TypeFor DefaultPhase)]
   -> (TypeFor DefaultPhase -> Doc)
   -> Spec
 reduceTypeToSpec name inputType reductions ppType = describe (Text.unpack name <> " reduces as expected") $
-  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (appise (inputType:args)) expectReduction ppType) reductions
+  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (appise (stripTypeComments inputType : args)) expectReduction ppType) reductions
   where
     reduceSpec
       :: Text.Text
       -> TypeCtx DefaultPhase
       -> Type
       -> Type
-      -> (Type -> Doc)
+      -> (TypeFor DefaultPhase -> Doc)
       -> Spec
     reduceSpec name underCtx typ eqType ppType = it (Text.unpack name) $ case reduceType underCtx typ of
       Left typErr

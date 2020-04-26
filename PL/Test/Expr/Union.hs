@@ -18,6 +18,7 @@ module PL.Test.Expr.Union
 import PL.Bindings
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -65,11 +66,13 @@ unionTwoExprTestCase src =
     , _typed        = ty
     , _parsesFrom   = src
 
-    ,_reducesTo = e
+    ,_reducesTo = stripComments e
     ,_reducesToWhenApplied = reduces
     }
   where
     ctx = boolTypeCtx <> natTypeCtx
+
+    e :: CommentedExpr
     e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
             CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --

@@ -21,6 +21,7 @@ import PL.Binds
 import PL.Case
 import PL.Error
 import PL.Expr
+import PL.Commented
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -52,13 +53,16 @@ import Test.Hspec
 import PL.Test.Source
 import PL.Test.Util
 
+-- ExprTestCase collects together common parameters for testcases on expressions
+--
+-- It's likely factored badly.
 data ExprTestCase = ExprTestCase
-  {_underTypeCtx :: TypeCtx DefaultPhase -- ^ Under this given typing context
-  ,_isExpr       :: ExprFor DefaultPhase -- ^ An Expr
-  ,_typed        :: TypeFor DefaultPhase -- ^ Has this type
-  ,_parsesFrom   :: Text                 -- ^ And also parses from this textual representation
+  {_underTypeCtx :: TypeCtx DefaultPhase   -- ^ Under this given typing context
+  ,_isExpr       :: ExprFor CommentedPhase -- ^ An Expr
+  ,_typed        :: TypeFor DefaultPhase   -- ^ Has this type
+  ,_parsesFrom   :: Text                   -- ^ And also parses from this textual representation
 
-  ,_reducesTo :: ExprFor DefaultPhase -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
+  ,_reducesTo :: ExprFor DefaultPhase      -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
   ,_reducesToWhenApplied :: [(Text,[ExprFor DefaultPhase],ExprFor DefaultPhase)] -- When applied to a list of arguments, reduces to some result
   }
 

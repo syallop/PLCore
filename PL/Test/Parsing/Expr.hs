@@ -1,6 +1,7 @@
 {-# LANGUAGE
     FlexibleContexts
   , OverloadedStrings
+  , RankNTypes
   #-}
 module PL.Test.Parsing.Expr
   ( parsesToSpec
@@ -10,6 +11,7 @@ module PL.Test.Parsing.Expr
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -48,7 +50,7 @@ import PL.Test.Util
 -- order to produce the intended expression.
 parsesToSpec
   :: Map.Map Text.Text ExprTestCase
-  -> (Source -> Either (Error DefaultPhase) (ExprFor DefaultPhase, Source))
+  -> (Source -> Either (Error DefaultPhase) (ExprFor CommentedPhase, Source))
   -> (ExprFor DefaultPhase -> Doc)
   -> (Error DefaultPhase -> Doc)
   -> Spec
@@ -61,13 +63,12 @@ parsesToSpec testCases parseExpression ppExpr ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended expression.
 parseToSpec
-  :: (Eq (ExprFor phase))
-  => (Source -> Either (Error phase) (ExprFor phase,Source))
+  :: (Source -> Either (Error DefaultPhase) (ExprFor CommentedPhase,Source))
   -> Text.Text
   -> Source
-  -> ExprFor phase
-  -> (ExprFor phase -> Doc)
-  -> (Error phase -> Doc)
+  -> ExprFor CommentedPhase
+  -> (ExprFor DefaultPhase -> Doc)
+  -> (Error DefaultPhase -> Doc)
   -> Spec
 parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseExpression inputSource of
   Left err
@@ -84,22 +85,22 @@ parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (T
          , lineBreak
          , text "After parsing:"
          , lineBreak
-         , indent1 $ ppExpr parsedExpr
+         , indent1 . ppExpr . stripComments $ parsedExpr
          , lineBreak
          , text "when we expected: "
          , lineBreak
-         , indent1 $ ppExpr expectedExpr
+         , indent1 . ppExpr . stripComments $ expectedExpr
          ]
 
     | parsedExpr /= expectedExpr
     -> expectationFailure . Text.unpack . render . document . mconcat $
          [ text "Successfully parsed without leftovers an unexpected expression. Got:"
          , lineBreak
-         , indent1 $ ppExpr parsedExpr
+         , indent1 . ppExpr . stripComments $ parsedExpr
          , lineBreak
          , text "But we expected:"
          , lineBreak
-         , indent1 $ ppExpr expectedExpr
+         , indent1 . ppExpr . stripComments $ expectedExpr
          ]
 
     | otherwise

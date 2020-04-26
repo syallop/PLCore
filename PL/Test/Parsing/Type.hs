@@ -1,6 +1,7 @@
 {-# LANGUAGE
     FlexibleContexts
   , OverloadedStrings
+  , RankNTypes
   #-}
 module PL.Test.Parsing.Type
   ( parsesToTypesSpec
@@ -10,6 +11,7 @@ module PL.Test.Parsing.Type
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Kind
 import PL.Reduce
@@ -47,9 +49,9 @@ import PL.Test.Util
 -- order to produce the intended type.
 parsesToTypesSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (Source -> Either (Error DefaultPhase) (TypeFor DefaultPhase, Source))
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Source -> Either (Error CommentedPhase) (TypeFor CommentedPhase, Source))
+  -> (forall phase. TypeFor phase -> Doc)
+  -> (forall phase. Error phase -> Doc)
   -> Spec
 parsesToTypesSpec testCases parseType ppType ppError
   = describe "All example types can be parsed by some parser and some source"
@@ -60,13 +62,12 @@ parsesToTypesSpec testCases parseType ppType ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended type.
 parseToTypeSpec
-  :: (Eq (TypeFor phase))
-  => (Source -> Either (Error phase) (TypeFor phase,Source))
+  :: (Source -> Either (Error CommentedPhase) (TypeFor CommentedPhase,Source))
   -> Text.Text
   -> Source
-  -> TypeFor phase
-  -> (TypeFor phase -> Doc)
-  -> (Error phase -> Doc)
+  -> TypeFor CommentedPhase
+  -> (forall phase. TypeFor phase -> Doc)
+  -> (forall phase. Error phase -> Doc)
   -> Spec
 parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseType inputSource of
   Left err

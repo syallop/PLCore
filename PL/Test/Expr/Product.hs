@@ -18,6 +18,7 @@ module PL.Test.Expr.Product
 import PL.Bindings
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -63,7 +64,7 @@ productThreeExprTestCase src
       , _typed        = ty
       , _parsesFrom   = src
 
-      ,_reducesTo = e
+      ,_reducesTo = stripComments e
       ,_reducesToWhenApplied = reduces
       }
   where

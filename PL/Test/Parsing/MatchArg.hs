@@ -1,6 +1,7 @@
 {-# LANGUAGE
     FlexibleContexts
   , OverloadedStrings
+  , RankNTypes
   #-}
 module PL.Test.Parsing.MatchArg
   ( parsesToMatchArgsSpec
@@ -10,6 +11,7 @@ module PL.Test.Parsing.MatchArg
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Kind
 import PL.Reduce
@@ -49,7 +51,7 @@ import PL.Test.Util
 -- order to produce the intended MatchArg.
 parsesToMatchArgsSpec
   :: Map.Map Text.Text MatchArgTestCase
-  -> (Source -> Either (Error DefaultPhase) (MatchArgFor DefaultPhase, Source))
+  -> (Source -> Either (Error DefaultPhase) (MatchArgFor CommentedPhase, Source))
   -> (MatchArgFor DefaultPhase -> Doc)
   -> (Error DefaultPhase -> Doc)
   -> Spec
@@ -62,13 +64,12 @@ parsesToMatchArgsSpec testCases parseMatchArg ppMatchArg ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended matcharg.
 parseToMatchArgSpec
-  :: (Eq (MatchArgFor phase))
-  => (Source -> Either (Error phase) (MatchArgFor phase,Source))
+  :: (Source -> Either (Error DefaultPhase) (MatchArgFor CommentedPhase,Source))
   -> Text.Text
   -> Source
-  -> MatchArgFor phase
-  -> (MatchArgFor phase -> Doc)
-  -> (Error phase -> Doc)
+  -> MatchArgFor CommentedPhase
+  -> (MatchArgFor DefaultPhase -> Doc)
+  -> (Error DefaultPhase -> Doc)
   -> Spec
 parseToMatchArgSpec parseMatchArg name inputSource expectedMatchArg ppMatchArg ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseMatchArg inputSource of
   Left err
@@ -85,22 +86,22 @@ parseToMatchArgSpec parseMatchArg name inputSource expectedMatchArg ppMatchArg p
          , lineBreak
          , text "After parsing:"
          , lineBreak
-         , indent1 $ ppMatchArg parsedMatchArg
+         , indent1 . ppMatchArg . stripMatchArgComments $ parsedMatchArg
          , lineBreak
          , text "when we expected: "
          , lineBreak
-         , indent1 $ ppMatchArg expectedMatchArg
+         , indent1 . ppMatchArg . stripMatchArgComments $ expectedMatchArg
          ]
 
     | parsedMatchArg /= expectedMatchArg
     -> expectationFailure . Text.unpack . render . document . mconcat $
          [ text "Successfully parsed without leftovers an unexpected matcharg. Got:"
          , lineBreak
-         , indent1 $ ppMatchArg parsedMatchArg
+         , indent1 . ppMatchArg . stripMatchArgComments $ parsedMatchArg
          , lineBreak
          , text "But we expected:"
          , lineBreak
-         , indent1 $ ppMatchArg expectedMatchArg
+         , indent1 . ppMatchArg .stripMatchArgComments $ expectedMatchArg
          ]
 
     | otherwise

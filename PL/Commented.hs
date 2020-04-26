@@ -59,6 +59,15 @@ module PL.Commented
   , stripCaseBranchesComments
   , stripCaseBranchComments
   , stripMatchArgComments
+
+  -- Convert a DefaultPhase expression into one that can be decorated with
+  -- comments
+  , addComments
+  , addTypeComments
+  , addCaseComments
+  , addCaseBranchesComments
+  , addCaseBranchComments
+  , addMatchArgComments
   )
   where
 
@@ -87,14 +96,14 @@ data CommentedPhase
 data Comment = Comment
   { _commentText :: Text
   }
-  deriving Show
+  deriving (Show, Eq, Ord)
 
 -- | A thing is commented when it is associated with a comment.
 data Commented e = Commented
   { _comment   :: Comment
   , _commentee :: e
   }
-  deriving Show
+  deriving (Show, Eq, Ord)
 
 -- | A Type is in the commented phase when is has an additional constructor
 -- which may recursively contain types wrapped in comments.
@@ -285,6 +294,115 @@ stripMatchArgComments = \case
 
   _ -> error "Non-exhaustive pattern match when stripping comments from match statement"
 
+addComments
+  :: ExprFor DefaultPhase
+  -> ExprFor CommentedPhase
+addComments = \case
+  Lam ty expr
+    -> Lam (addTypeComments ty) (addComments expr)
+
+  App fExpr xExpr
+    -> App (addComments fExpr) (addComments xExpr)
+
+  CaseAnalysis c
+     -> CaseAnalysis $ addCaseComments c
+
+  Sum expr ix ty
+    -> Sum (addComments expr) ix (fmap addTypeComments ty)
+
+  Product prodExprs
+    -> Product (fmap addComments prodExprs)
+
+  Union unionExpr tyIx ty
+    -> Union (addComments unionExpr) (addTypeComments tyIx) (Set.map addTypeComments ty)
+
+  Binding b
+    -> Binding b
+
+  BigLam takeTy expr
+    -> BigLam takeTy (addComments expr)
+
+  BigApp fExpr xTy
+    -> BigApp (addComments fExpr) (addTypeComments xTy)
+
+  _ -> error "Non-exhaustive pattern adding comments"
+
+addTypeComments
+  :: TypeFor DefaultPhase
+  -> TypeFor CommentedPhase
+addTypeComments = \case
+  Named tyName
+    -> Named tyName
+
+  Arrow from to
+    -> Arrow (addTypeComments from) (addTypeComments to)
+
+  SumT types
+    -> SumT (fmap addTypeComments types)
+
+  ProductT types
+    -> ProductT (fmap addTypeComments types)
+
+  UnionT types
+    -> UnionT (Set.map addTypeComments $ types)
+
+  BigArrow from to
+    -> BigArrow from (addTypeComments to)
+
+  TypeLam kind typ
+    -> TypeLam kind (addTypeComments typ)
+
+  TypeApp x y
+    -> TypeApp (addTypeComments x) (addTypeComments y)
+
+  TypeBinding b
+    -> TypeBinding b
+
+  _ -> error "Non-exhaustive pattern in addTypeComments"
+
+addCaseComments
+  :: Case (ExprFor DefaultPhase) (MatchArgFor DefaultPhase)
+  -> Case (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
+addCaseComments (Case expr branches) = Case (addComments expr) (addCaseBranchesComments branches)
+
+addCaseBranchesComments
+  :: CaseBranches (ExprFor DefaultPhase) (MatchArgFor DefaultPhase)
+  -> CaseBranches (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
+addCaseBranchesComments = \case
+  DefaultOnly expr
+    -> DefaultOnly (addComments expr)
+
+  CaseBranches neBranches mDefault
+    -> CaseBranches (fmap addCaseBranchComments neBranches) (fmap addComments mDefault)
+
+addCaseBranchComments
+  :: CaseBranch (ExprFor DefaultPhase) (MatchArgFor DefaultPhase)
+  -> CaseBranch (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
+addCaseBranchComments (CaseBranch match result) = CaseBranch (addMatchArgComments match) (addComments result)
+
+addMatchArgComments
+  :: MatchArgFor DefaultPhase
+  -> MatchArgFor CommentedPhase
+addMatchArgComments = \case
+  Bind
+    -> Bind
+
+  MatchBinding b
+    -> MatchBinding b
+
+  MatchSum sumIndex nestedMatchArg
+    -> MatchSum sumIndex (addMatchArgComments nestedMatchArg)
+
+  MatchProduct nestedMatchArgs
+    -> MatchProduct (fmap addMatchArgComments nestedMatchArgs)
+
+  MatchUnion unionIndexTy nestedMatchArg
+    -> MatchUnion (addTypeComments unionIndexTy) (addMatchArgComments nestedMatchArg)
+
+  _ -> error "Non-exhaustive pattern match when add comments from match statement"
+
+
+  _ -> error "Non-exhaustive pattern in stripComments"
 
 -- stripComments commentedExpr == strippedExpr
 commentedExpr :: ExprFor CommentedPhase

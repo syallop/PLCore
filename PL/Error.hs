@@ -4,6 +4,7 @@
   , UndecidableInstances
   , StandaloneDeriving
   , LambdaCase
+  , RankNTypes
   #-}
 {-|
 Module      : PL.Error

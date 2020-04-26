@@ -78,6 +78,8 @@ module PL.Type
   , DefaultPhase
   , Void
   , void
+
+  , forgetTypeExtensions
   )
   where
 
@@ -98,6 +100,7 @@ import qualified Data.Set as Set
 import Data.Proxy
 import Data.Monoid
 import Data.List.NonEmpty (NonEmpty)
+import qualified Data.Text as Text
 
 type Type = TypeFor DefaultPhase
 
@@ -548,4 +551,43 @@ instantiate = instantiate' 0
         ->  Named n
 
       _ -> error "Non-exhaustive pattern in type instantiation"
+
+-- Forget all constructor extensions on a Type that uses TyVars for bindings in
+-- order to produce a type in the default phase.
+forgetTypeExtensions
+  :: (TypeBindingFor phase ~ TyVar)
+  => TypeFor phase
+  -> TypeFor DefaultPhase
+forgetTypeExtensions = \case
+  NamedExt _ n
+    -> Named n
+
+  ArrowExt _ from to
+    -> Arrow (forgetTypeExtensions from) (forgetTypeExtensions to)
+
+  SumTExt _ types
+    -> SumT (fmap forgetTypeExtensions types)
+
+  ProductTExt _ types
+    -> ProductT (fmap forgetTypeExtensions types)
+
+  UnionTExt _ types
+    -> UnionT (Set.map forgetTypeExtensions types)
+
+  BigArrowExt _ abs toType
+    -> BigArrow abs (forgetTypeExtensions toType)
+
+  TypeLamExt _ abs toType
+    -> TypeLam abs (forgetTypeExtensions toType)
+
+  TypeAppExt _ fType xType
+    -> TypeApp (forgetTypeExtensions fType) (forgetTypeExtensions xType)
+
+  TypeBindingExt _ binding
+    -> TypeBinding binding
+
+  TypeExtensionExt _
+    -> TypeExtension
+
+  _ -> error "Non-exhaustive pattern forgetting type extensions"
 

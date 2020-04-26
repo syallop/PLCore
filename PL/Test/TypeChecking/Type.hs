@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , GADTs
+  , RankNTypes
   #-}
 module PL.Test.TypeChecking.Type
   ( typeChecksTypesSpec
@@ -11,6 +12,7 @@ module PL.Test.TypeChecking.Type
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -60,16 +62,15 @@ typeChecksTypesSpec testCases ppKind ppError =
 
 -- | Test whether a type typechecks (kind checks) to the intended kind.
 typeCheckTypeSpec
-  :: phase ~ DefaultPhase
-  => Text.Text
-  -> TypeFor phase
-  -> BindCtx (TypeBindingFor phase) Kind
-  -> TypeCtx phase
+  :: Text.Text
+  -> TypeFor CommentedPhase
+  -> BindCtx (TypeBindingFor DefaultPhase) Kind
+  -> TypeCtx DefaultPhase
   -> Kind
   -> (Kind -> Doc)
-  -> (Error phase -> Doc)
+  -> (Error DefaultPhase -> Doc)
   -> Spec
-typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name <> " kind checks as expected") $ case typeKind bindCtx underTypeCtx inputType of
+typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name <> " kind checks as expected") $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

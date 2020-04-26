@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , GADTs
+  , RankNTypes
   #-}
 module PL.Test.TypeChecking.MatchArg
   ( typeChecksMatchArgsSpec
@@ -11,6 +12,7 @@ module PL.Test.TypeChecking.MatchArg
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -68,13 +70,12 @@ typeChecksMatchArgsSpec testCases ppType ppError =
 -- - A matcharg requires a unique type. This might be interesting for passing around patterns as first class things.
 
 typeCheckMatchArgSpec
-  :: phase ~ DefaultPhase
-  => Text.Text
-  -> MatchArgFor phase
+  :: Text.Text
+  -> MatchArgFor CommentedPhase
   -> TypeCtx phase
   -> TypeFor phase
-  -> (TypeFor phase -> Doc)
-  -> (Error phase -> Doc)
+  -> (TypeFor DefaultPhase -> Doc)
+  -> (Error DefaultPhase -> Doc)
   -> Spec
 typeCheckMatchArgSpec name inputMatchArg underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ pendingWith "There is no defined notion of typechecking for a matcharg (yet)"
 

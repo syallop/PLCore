@@ -36,6 +36,7 @@ module PL.Test.Expr.Natural
 import PL.Bindings
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -175,13 +176,13 @@ subTwoExprTestCase src
       , _typed        = ty
       , _parsesFrom   = src
 
-      , _reducesTo = e
+      , _reducesTo = stripComments e
       ,_reducesToWhenApplied = reduces
       }
   where
     ctx = natTypeCtx
 
-    e :: Expr
+    e :: CommentedExpr
     e =
       Lam natTypeName $                                       -- \n : Nat ->
         CaseAnalysis $ Case (Binding $ VZ)                    -- case n of

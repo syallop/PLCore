@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , GADTs
+  , RankNTypes
   #-}
 module PL.Test.TypeChecking.Expr
   ( typeChecksSpec
@@ -12,6 +13,7 @@ module PL.Test.TypeChecking.Expr
 import PL.Binds
 import PL.Case
 import PL.Error
+import PL.Commented
 import PL.Expr
 import PL.Kind
 import PL.Reduce
@@ -59,15 +61,14 @@ typeChecksSpec testCases ppType ppError
 
 -- | Test whether an expression typechecks to the intended type.
 typeCheckSpec
-  :: phase ~ DefaultPhase
-  => Text.Text
-  -> ExprFor phase
-  -> TypeCtx phase
-  -> TypeFor phase
-  -> (TypeFor phase -> Doc)
-  -> (Error phase -> Doc)
+  :: Text.Text
+  -> ExprFor CommentedPhase
+  -> TypeCtx DefaultPhase
+  -> TypeFor DefaultPhase
+  -> (TypeFor DefaultPhase -> Doc)
+  -> (Error DefaultPhase -> Doc)
   -> Spec
-typeCheckSpec name inputExpr underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ case topExprType underTypeCtx inputExpr of
+typeCheckSpec name inputExpr underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ case topExprType underTypeCtx (stripComments inputExpr) of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

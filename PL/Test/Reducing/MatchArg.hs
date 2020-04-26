@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , GADTs
+  , RankNTypes
   #-}
 module PL.Test.Reducing.MatchArg
   ( reducesMatchArgsToSpec
@@ -11,6 +12,7 @@ module PL.Test.Reducing.MatchArg
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -53,13 +55,14 @@ reducesMatchArgsToSpec
   -> Spec
 reducesMatchArgsToSpec testCases ppType =
   describe "All example matcharg programs reduce as expected"
-    . mapM_ (\(name,testCase) -> reduceMatchArgToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (_isMatchArg testCase) (_typed testCase) (_checkMatchWithResult testCase) ppType)
+    . mapM_ (\(name,testCase) -> reduceMatchArgToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (stripMatchArgComments $ _isMatchArg testCase) (_typed testCase) (_checkMatchWithResult testCase) ppType)
     . Map.toList
     $ testCases
 
 -- | Test whether a matcharg reduces to bind the expected values.
 reduceMatchArgToSpec
-  :: phase ~ DefaultPhase
+  :: forall phase
+   . phase ~ DefaultPhase
   => Text.Text
   -> TypeCtx phase
   -> BindCtx (BindingFor phase) (AbstractionFor phase)
@@ -67,13 +70,18 @@ reduceMatchArgToSpec
   -> Bindings (TypeFor phase)
   -> MatchArgFor phase
   -> Type
-  -> Either (Error DefaultPhase) [TypeFor phase]
-  -> (TypeFor phase -> Doc)
+  -> Either (Error phase) [TypeFor phase]
+  -> (TypeFor DefaultPhase -> Doc)
   -> Spec
 reduceMatchArgToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg expectTy expect ppType =
   it (Text.unpack name <> " reduces as expected") $ isExpected (checkMatchWith testMatchArg expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
-    isExpected :: Either (Error DefaultPhase) [Type] -> Either (Error DefaultPhase) [Type] -> Expectation
+  {-
+    isExpected
+      :: Either (Error phase) [TypeFor phase]
+      -> Either (Error phase) [TypeFor phase]
+      -> Expectation
+  -}
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()

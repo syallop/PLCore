@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , GADTs
+  , RankNTypes
   #-}
 module PL.Test.Reducing.Expr
   ( reducesToSpec
@@ -11,6 +12,7 @@ module PL.Test.Reducing.Expr
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -63,22 +65,21 @@ reducesToSpec testCases ppExpr ppType =
 -- Name an expression, apply it to a list of (argnames,argument,expected result) tuples.
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 reduceToSpec
-  :: phase ~ DefaultPhase
-  => Text.Text
-  -> ExprFor DefaultPhase
+  :: Text.Text
+  -> ExprFor CommentedPhase
   -> [(Text.Text, [ExprFor DefaultPhase], ExprFor DefaultPhase)]
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> Spec
 reduceToSpec name inputExpr reductions ppExpr ppType = describe (Text.unpack name <> " reduces as expected") $
-  mapM_ (\(name,args,expectReduction) -> reduceSpec name (appise (inputExpr:args)) expectReduction ppExpr ppType) reductions
+  mapM_ (\(name,args,expectReduction) -> reduceSpec name (appise (stripComments inputExpr : args)) expectReduction ppExpr ppType) reductions
   where
     reduceSpec
       :: Text.Text
-      -> Expr
-      -> Expr
-      -> (Expr -> Doc)
-      -> (Type -> Doc)
+      -> ExprFor DefaultPhase
+      -> ExprFor DefaultPhase
+      -> (ExprFor DefaultPhase -> Doc)
+      -> (TypeFor DefaultPhase -> Doc)
       -> Spec
     reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case reduce expr of
       Left exprErr

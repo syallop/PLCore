@@ -14,6 +14,7 @@ module PL.Test.MatchArgTestCase where
 
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -50,12 +51,12 @@ type TestMatchArg = MatchArg
 
 data MatchArgTestCase = MatchArgTestCase
   {_underTypeCtx         :: TypeCtx DefaultPhase                     -- ^ Under this given typing context
-  ,_underExprBindCtx     :: BindCtx Var (Type)
+  ,_underExprBindCtx     :: BindCtx Var (TypeFor DefaultPhase)
   ,_underTypeBindCtx     :: BindCtx TyVar Kind
-  ,_underTypeBindings    :: Bindings (Type)
-  ,_isMatchArg           :: TestMatchArg                      -- ^ A MatchArg
+  ,_underTypeBindings    :: Bindings (TypeFor DefaultPhase)
+  ,_isMatchArg           :: MatchArgFor CommentedPhase -- ^ A MatchArg
   ,_typed                :: Type                        -- ^ Has this type
-  ,_checkMatchWithResult :: Either (Error DefaultPhase) [Type] -- ^ Either produces an error or a list of bound types.
+  ,_checkMatchWithResult :: Either (Error DefaultPhase) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
   ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 

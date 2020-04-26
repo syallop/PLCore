@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
 {-|
 Module      : PL.Test.Type.Named
 Copyright   : (c) Samuel A. Yallop, 2020
@@ -17,6 +18,7 @@ module PL.Test.Type.Named
 import PL.Bindings
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -50,9 +52,21 @@ namedTestCases t =
   ]
 
 namedTypeCtx
+  :: (NamedExtension phase ~ Void
+     ,SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     )
+  => TypeCtx phase
+namedTypeCtx
   = fromJust
   . insertType "Preexisting" preExistingType
   $ emptyTypeCtx
+
+preExistingType
+  :: (SumTExtension     phase ~ Void
+     ,ProductTExtension phase ~ Void
+     )
+  => TypeFor phase
 preExistingType = SumT $ NE.fromList [ProductT []]
 
 simpleNameTestCase
@@ -64,7 +78,7 @@ simpleNameTestCase src
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
-  ,_reducesTo            = ty
+  ,_reducesTo            = stripTypeComments ty
   ,_reducesToWhenApplied = reduces
   }
   where

@@ -87,8 +87,7 @@ singleLamTestCase src
   }
   where
     ctx = fromJust lamTypeCtx
-    e   = CommentedExpr "An anonymous function which accepts any expression with the type Foo and binds it in the 0th position to be returned unchanged."
-        $ Lam fooTypeName $ Binding VZ
+    e   = Lam fooTypeName $ Binding VZ
     ty  = Arrow fooType fooType
 
     -- TODO
@@ -112,8 +111,7 @@ nestedLamTestCase src
       }
   where
     ctx = fromJust lamTypeCtx
-    e   = CommentedExpr "Accept multiple arguments by nesting lambdas. Bindings may refer to any expression bound in a lambda above them."
-        $ Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
+    e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
     ty  = Arrow fooType (Arrow barType fooType)
 
     -- TODO
@@ -138,8 +136,7 @@ chainedLamTestCase src
       }
   where
     ctx = fromJust lamTypeCtx
-    e   = CommentedExpr "Instead of nesting lambdas to accept multiple arguments they can be given to a single lambda."
-        $ Lam fooTypeName
+    e   = Lam fooTypeName
         . Lam barTypeName
         . Lam bazTypeName
         . Binding

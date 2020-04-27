@@ -58,28 +58,33 @@ reduceType
   :: TypeCtx DefaultPhase
   -> TypeFor DefaultPhase
   -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
-reduceType = reduceTypeWith emptyBindings
+reduceType typeCtx typ = reduceTypeWith emptyBindings typeCtx (Just 100) typ
 
 -- | 'reduceType' with a collection of initial bindings as if Types have already
 -- been applied to an outer type lambda abstraction.
 reduceTypeWith
   :: Bindings (TypeFor DefaultPhase)
   -> TypeCtx DefaultPhase
+  -> Maybe Int
   -> TypeFor DefaultPhase
   -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
-reduceTypeWith bindings typeNameCtx ty = do
-  -- Apply the reduce step until the expression no longer changes.
-  -- This requires that reduction eventually converges - diverging will lead to
-  -- non-termination.
-  -- TODO: We could add a reduction limit here to guard against accidental
-  -- diversion.
-  -- TODO: reduceTypeStep only reduces one level under types for each call. If
-  -- we assume the type reduces, we should reduce faster by recursing with
-  -- reduceTypeWith instead.
-  reducedTy <- reduceTypeStep bindings typeNameCtx ty
-  if reducedTy == ty
-    then pure ty
-    else reduceTypeWith bindings typeNameCtx reducedTy
+reduceTypeWith bindings typeNameCtx reductionLimit ty
+  | reductionLimit == Just 0
+   = Left . ETypeReductionLimitReached $ ty
+
+  | otherwise
+   = do -- Apply the reduce step until the expression no longer changes.
+        -- This requires that reduction eventually converges - diverging will lead to
+        -- non-termination.
+        -- TODO: We could add a reduction limit here to guard against accidental
+        -- diversion.
+        -- TODO: reduceTypeStep only reduces one level under types for each call. If
+        -- we assume the type reduces, we should reduce faster by recursing with
+        -- reduceTypeWith instead.
+        reducedTy <- reduceTypeStep bindings typeNameCtx ty
+        if reducedTy == ty
+          then pure ty
+          else reduceTypeWith bindings typeNameCtx (fmap (subtract 1) reductionLimit) reducedTy
 
 -- | 'reduceType' a single step with a collection of initial type bindings as if
 -- Types have already been applied to an outer type lambda abstraction.
@@ -179,7 +184,6 @@ reduceTypeStep bindings typeNameCtx ty = case ty of
 
   -- Names are reduced by substituting their definition.
   -- TODO:
-  -- - Should we leave recursive types unsubstituted?
   -- - Should we reduce the definition of non-recursive types?
   -- - Should we reduce the definition of recursive types (being careful not to
   --   expand the recursion?)
@@ -191,8 +195,10 @@ reduceTypeStep bindings typeNameCtx ty = case ty of
          Just (TypeInfo NonRec k ty)
            -> Right ty
 
+         -- Do not expose the definition of recursive types so that recursive
+         -- reduction terminates!
          Just (TypeInfo Rec k ty)
-           -> Right ty
+           -> pure $ Named n
 
   -- Reduce a single step under the arrow type.
   Arrow from to

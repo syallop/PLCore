@@ -57,6 +57,9 @@ data Error phase
   -- different types.
   | ECaseDefaultMismatch (TypeFor phase) (TypeFor phase)
 
+  -- | A given reduction limit has been exceeded when trying to reduce a type.
+  | ETypeReductionLimitReached (TypeFor phase)
+
 deriving instance
   (Eq (NamedExtension phase)
   ,Eq (ArrowExtension phase)
@@ -166,6 +169,12 @@ ppError ppType = \case
                , text " but branches must have the same type."
                ]
 
+  ETypeReductionLimitReached typ
+    -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
+               , lineBreak
+               , ppType typ
+               ]
+
 instance (Document (TypeFor phase)) => Document (Error phase) where
   document e = text "ERROR: " <> case e of
     EMsg doc
@@ -227,5 +236,11 @@ instance (Document (TypeFor phase)) => Document (Error phase) where
                  , text "whereas the first branch had type: "
                  , document firstBranchTy
                  , text " but branches must have the same type."
+                 ]
+
+    ETypeReductionLimitReached typ
+      -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
+                 , lineBreak
+                 , document typ
                  ]
 

@@ -76,7 +76,8 @@ idExprTestCase src
 
     -- TODO
     reduces =
-      []
+      [
+      ]
 
 constExprTestCase
   :: Source
@@ -109,7 +110,8 @@ constExprTestCase src
         $ TypeBinding . TyVar $ VS VZ                     -- a
 
     -- TODO
-    reduces = []
+    reduces =
+      []
 
 applyExprTestCase
   :: Source

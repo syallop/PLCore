@@ -53,6 +53,7 @@ import Data.Maybe
 import Data.Proxy
 
 import qualified Data.Text as Text
+import qualified Data.Set as Set
 
 import PLPrinter
 
@@ -86,7 +87,7 @@ reduce
   :: TypeCtx DefaultPhase
   -> Expr
   -> Either (Error DefaultPhase) Expr
-reduce = reduceWith emptyBindings emptyBindings
+reduce typeCtx expr = reduceWith emptyBindings emptyBindings typeCtx (Just 100) expr
 
 -- | 'reduce' with a collection of initial bindings as if Expressions and Types
 -- have already been applied to an outer lambda abstraction.
@@ -94,21 +95,29 @@ reduceWith
   :: Bindings Expr
   -> Bindings Type
   -> TypeCtx DefaultPhase
+  -> Maybe Int
   -> Expr
   -> Either (Error DefaultPhase) Expr
-reduceWith bindings typeBindings typeCtx initialExpr = do
-  -- Apply the reduce step until the expression no longer changes.
-  -- This requires that reduction eventually converges - diverging will lead to
-  -- non-termination.
-  -- TODO: We could add a reduction limit here to guard against accidental
-  -- diversion.
-  -- TODO: reduceStep only reduces one level under expressions for each call. If
-  -- we assume the expression reduces, we should reduce faster by recursing with
-  -- reduceWith instead.
-  reducedExpr <- reduceStep bindings typeBindings typeCtx initialExpr
-  if reducedExpr == initialExpr
-    then pure initialExpr
-    else reduceWith bindings typeBindings typeCtx reducedExpr
+reduceWith bindings typeBindings typeCtx reductionLimit initialExpr
+  | reductionLimit == Just 0
+   = Left . EMsg . mconcat $
+       [ text "Reduction limit reached when reducing expression. Got: "
+       , text . Text.pack . show $ initialExpr
+       ]
+
+  | otherwise
+   = do -- Apply the reduce step until the expression no longer changes.
+        -- This requires that reduction eventually converges - diverging will lead to
+        -- non-termination.
+        -- TODO: We could add a reduction limit here to guard against accidental
+        -- diversion.
+        -- TODO: reduceStep only reduces one level under expressions for each call. If
+        -- we assume the expression reduces, we should reduce faster by recursing with
+        -- reduceWith instead.
+        reducedExpr <- reduceStep bindings typeBindings typeCtx initialExpr
+        if reducedExpr == initialExpr
+          then pure initialExpr
+          else reduceWith bindings typeBindings typeCtx (fmap (subtract 1) reductionLimit) reducedExpr
 
 -- | 'reduce' a single step with a collection of initial bindings as if Expressions and Types
 -- have already been applied to an outer lambda abstraction.
@@ -156,19 +165,24 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
 
   -- Reduce a single step under the sum expression.
   Sum sumExpr sumIx sumTy
-    -> Sum <$> reduceStep bindings typeBindings typeCtx sumExpr <*> pure sumIx <*> pure sumTy
+    -> Sum <$> reduceStep bindings typeBindings typeCtx sumExpr
+           <*> pure sumIx
+           <*> mapM (reduceTypeWith typeBindings typeCtx (Just 100)) sumTy
 
   -- Reduce a single step under all product expressions.
   Product productExprs
     -> Product <$> mapM (reduceStep bindings typeBindings typeCtx) productExprs
 
   -- Reduce a single step under the union expression.
-  Union unionExpr unionTyIx unionTy
-    -> Union <$> reduceStep bindings typeBindings typeCtx unionExpr <*> pure unionTyIx <*> pure unionTy
+  Union unionExpr unionTyIx unionTys
+    -> Union <$> reduceStep bindings typeBindings typeCtx unionExpr
+             <*> reduceTypeWith typeBindings typeCtx (Just 100) unionTyIx
+             <*> ((fmap Set.fromList) <$> mapM (reduceTypeWith typeBindings typeCtx (Just 100)) . Set.toList $ unionTys)
 
   -- Reduce a single step under the lambda expression.
   Lam takeTy lamExpr
-    -> Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) typeBindings typeCtx lamExpr
+    -> Lam <$> reduceTypeWith typeBindings typeCtx (Just 100) takeTy
+           <*> reduceStep (unbound $ bury bindings) typeBindings typeCtx lamExpr
 
   -- Reduce using strictish semantics:
   -- - First reduce a step under the applied expression
@@ -220,8 +234,7 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
           -- - Should we reduce the type before applying it?
           -- - Should we be reducing types everywhere else inside expression
           --   reduction?
-          ty' <- reduceType typeCtx ty
-          let ty' = ty
+          ty' <- reduceTypeWith typeBindings typeCtx (Just 100) ty
           f'  <- reduceStep bindings typeBindings typeCtx f
           case f' of
             -- Big Lambdas are reduced by binding applied types into the body
@@ -489,7 +502,7 @@ exprEq
   -> Expr
   -> Either (Error DefaultPhase) Bool
 exprEq bindings typeBindings typeCtx e0 e1 = do
-  redE0 <- reduceWith bindings typeBindings typeCtx e0
-  redE1 <- reduceWith bindings typeBindings typeCtx e1
+  redE0 <- reduceWith bindings typeBindings typeCtx (Just 100) e0
+  redE1 <- reduceWith bindings typeBindings typeCtx (Just 100) e1
   Right $ redE0 == redE1
 

@@ -3,6 +3,7 @@
   , ScopedTypeVariables
   , FlexibleContexts
   , GADTs
+  , ConstraintKinds
   #-}
 {-|
 Module      : PL.ReduceType
@@ -14,8 +15,9 @@ Duplication of Reduce but acting at the type level. Currently has the right
 to behave differently and terminate on types that could be otherwise reduced.
 -}
 module PL.ReduceType
-  (reduceType
-  ,reduceTypeStep
+  ( reduceType
+  , reduceTypeWith
+  , reduceTypeStep
   )
   where
 
@@ -36,82 +38,151 @@ import Data.Proxy
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
--- | Reduce a top-level type - A type under no outer abstractions
--- Assume kind checked?
+-- | Reducing a Type means to walk down the AST that is presumed to be:
+-- - Type checked
+-- - Kind checked
+-- - Stripped of unecessary extensions such as comments
+--
+-- And attempt to reduce it to it's normal form.
+--
+-- Reducing means to:
+--
+-- - Replace bound typebindings with the bound type.
+-- - Leave unbound bindings intact, ensuring they are adjusted to point at the
+--   correct abstraction where necessary.
+--
+-- - Reducing has strict semantics meaning:
+--   - Arguments to type application are reduced themselves before being
+--   substituted into the body of the type function.
 reduceType
-  :: forall phase
-   . (Eq (NamedExtension phase)
-     ,Eq (ArrowExtension phase)
-     ,Eq (SumTExtension phase)
-     ,Eq (ProductTExtension phase)
-     ,Eq (UnionTExtension phase)
-     ,Eq (BigArrowExtension phase)
-     ,Eq (TypeLamExtension phase)
-     ,Eq (TypeAppExtension phase)
-     ,Eq (TypeBindingExtension phase)
-     ,Eq (TypeExtension phase)
-     ,Eq (TypeBindingFor phase)
-     , phase ~ DefaultPhase
-     , HasBinding (TypeFor phase) (TypeBindingFor phase)
-     )
-  => TypeCtx phase
-  -> TypeFor phase
-  -> Either (Error phase) (TypeFor phase)
-reduceType = reduceTypeRec emptyBindings
-  where
+  :: TypeCtx DefaultPhase
+  -> TypeFor DefaultPhase
+  -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
+reduceType = reduceTypeWith emptyBindings
 
-  -- Recursively reduce a type until it no longer reduces.
-  reduceTypeRec :: Bindings (TypeFor phase) -> TypeCtx phase -> TypeFor phase -> Either (Error phase) (TypeFor phase)
-  reduceTypeRec bindings typeNameCtx ty = do
-    reducedTy <- reduceTypeStep bindings typeNameCtx ty
-    if reducedTy == ty then pure ty else reduceTypeRec bindings typeNameCtx reducedTy
+-- | 'reduceType' with a collection of initial bindings as if Types have already
+-- been applied to an outer type lambda abstraction.
+reduceTypeWith
+  :: Bindings (TypeFor DefaultPhase)
+  -> TypeCtx DefaultPhase
+  -> TypeFor DefaultPhase
+  -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
+reduceTypeWith bindings typeNameCtx ty = do
+  -- Apply the reduce step until the expression no longer changes.
+  -- This requires that reduction eventually converges - diverging will lead to
+  -- non-termination.
+  -- TODO: We could add a reduction limit here to guard against accidental
+  -- diversion.
+  -- TODO: reduceTypeStep only reduces one level under types for each call. If
+  -- we assume the type reduces, we should reduce faster by recursing with
+  -- reduceTypeWith instead.
+  reducedTy <- reduceTypeStep bindings typeNameCtx ty
+  if reducedTy == ty
+    then pure ty
+    else reduceTypeWith bindings typeNameCtx reducedTy
 
--- Reduce a type by a single reduction step.
+-- | 'reduceType' a single step with a collection of initial type bindings as if
+-- Types have already been applied to an outer type lambda abstraction.
 reduceTypeStep
-  :: forall phase
-   . phase ~ DefaultPhase
-  => Bindings (TypeFor phase)
-  -> TypeCtx phase
-  -> TypeFor phase
-  -> Either (Error phase) (TypeFor phase)
+  :: Bindings (TypeFor DefaultPhase)
+  -> TypeCtx DefaultPhase
+  -> TypeFor DefaultPhase
+  -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
 reduceTypeStep bindings typeNameCtx ty = case ty of
 
-  -- Bindings reduce to whatever they've been bound to, if they've been bound that is.
+  -- TypeBindings are substituted if they have been bound.
   TypeBinding b
-    -> pure $ case index (Proxy :: Proxy (TypeBindingFor phase)) bindings (bindDepth b) of
-         Unbound   -> TypeBinding b
-         Bound ty' -> ty' -- maybe should reduce again?
+    -> let ix = bindDepth b
+        in case safeIndex (Proxy :: Proxy (TypeBindingFor DefaultPhase)) bindings ix of
+             -- If no type has been bound there is no further reduction
+             -- possible.
+             -- E.G. We're looking at '?0' in a type lambda that has not been
+             -- applied.
+             Just Unbound
+               -> pure $ TypeBinding b
 
+             -- If a type has been bound, we substitute it for the binding.
+             -- We assume strict evaluation of the type and so don't reduce it
+             -- again.
+             Just (Bound ty')
+               -> pure ty'
+
+            -- We've been asked to bind a type further away than there are
+            -- type lambda abstractions.
+            -- This indicates either a logic error in the reduction or a failure
+            -- to type-check/ validate the input AST for this case.
+            --
+            -- TODO:
+            -- - Are invalid bindings caught at the type-checking phase?
+            -- - Can we check in an earlier phase and avoid doing so here?
+             Nothing
+               -> Left . EMsg . mconcat $
+                    [ text "Cannot bind a type from "
+                    , text . Text.pack . show $ ix
+                    , text " type abstractions away as there are not that many type abstractions"
+                    ]
+
+  -- Reduce using strictish semantics:
+  -- - First reduce a step under the applied type
+  -- - Then reduce a step under the type function
+  -- - Then bind the type and reduce the entire type a step.
+  --
+  -- Typechecking _should_ have ensured the type function is an arrow kind that
+  -- matches the type. It should therefore only be a type lambda or a type binding
+  -- to a (possibly unknown) function.
   TypeApp f x
     -> do x' <- reduceTypeStep bindings typeNameCtx x
           f' <- reduceTypeStep bindings typeNameCtx f
           case f' of
-            TypeLam _ fTy
-              -> reduceTypeStep (bind x' bindings) typeNameCtx fTy
+            -- Type lambdas are reduced by binding applied values into the body
+            -- and reducing.
+            TypeLam _absKind fBodyExpr
+              -> reduceTypeStep (bind x' bindings) typeNameCtx fBodyExpr
 
+            -- The function we're applying is 'higher order' - it is sourced
+            -- from a function itself.
+            --
+            -- If a type was bound it should have been substituted in the
+            -- function reduction and so we can assume it is unbound and do
+            -- nothing except reduce the argument a step.
+            -- If we're wrong an additional reduceStep on the
+            -- application should make progress.
+            TypeBinding tyVar
+              -> pure $ TypeApp (TypeBinding tyVar) x'
+
+            -- We're applying a named type which should be looked up in the type
+            -- context.
+            --
+            -- Similar to TypeBindings - this should have been reduced away
+            -- already.
             Named n
               -> case lookupTypeNameInfo n typeNameCtx of
-                   Nothing -> Left $ EMsg $ text "Cant reduce type application to a name which does not exist in the context"
+                   Nothing
+                     -> Left $ EMsg $ text "Cant reduce type application to a name which does not exist in the context"
 
-                   -- f is a named type we know of
-                   -- we've assumed everything has been kind-checked so we're
-                   -- not gonna reduce further for reasons. Mainly we would
-                   -- like to terminate...
-                   Just ti -> Right $ TypeApp f' x'
+                   Just ti
+                     -> Right $ TypeApp f' x'
 
+            -- An error here indicates type/kind checking has not been performed/ has
+            -- been performed incorrectly as the type in type function
+            -- position is not a lambda.
             _ -> Left $ ETypeAppLambda f
 
-  -- Reduce under a lambda by noting the abstraction is buried and Unbound
-  -- TODO: Maybe dont reduce under
-  TypeLam takeKind ty
-    -> (TypeLam takeKind) <$> reduceTypeStep (unbound $ bury bindings) typeNameCtx ty
+  -- Reduce a single step under the type lambda type.
+  TypeLam takeKind tyBody
+    -> (TypeLam takeKind) <$> reduceTypeStep (unbound $ bury bindings) typeNameCtx tyBody
 
-  -- TODO: Remain unconvinced by this definition.
-  -- Reduce the rhs by noting the abstraction is Unbound
-  BigArrow from to
-    -> (BigArrow from) <$> reduceTypeStep (unbound bindings) typeNameCtx to
+  -- Reduce a single step under the big arrow types.
+  BigArrow fromKind toTy
+    -- TODO: Should bindings be wrapped with 'unbound'?
+    -> BigArrow fromKind <$> reduceTypeStep bindings typeNameCtx toTy
 
-  -- Dont reduce names
+  -- Names are reduced by substituting their definition.
+  -- TODO:
+  -- - Should we leave recursive types unsubstituted?
+  -- - Should we reduce the definition of non-recursive types?
+  -- - Should we reduce the definition of recursive types (being careful not to
+  --   expand the recursion?)
   Named n
     -> case lookupTypeNameInitialInfo n typeNameCtx of
          Nothing
@@ -120,22 +191,24 @@ reduceTypeStep bindings typeNameCtx ty = case ty of
          Just (TypeInfo NonRec k ty)
            -> Right ty
 
-         -- Dont reduce recursive types
-         {-Just (TypeInfo Rec k ty)-}
-           {--> Right $ Named n-}
          Just (TypeInfo Rec k ty)
            -> Right ty
 
+  -- Reduce a single step under the arrow type.
   Arrow from to
     -> Arrow <$> reduceTypeStep bindings typeNameCtx from <*> reduceTypeStep bindings typeNameCtx to
 
+  -- Reduce a single step under the sum types.
   SumT types
     -> SumT <$> mapM (reduceTypeStep bindings typeNameCtx) types
 
+  -- Reduce a single step under the product types.
   ProductT types
     -> ProductT <$> mapM (reduceTypeStep bindings typeNameCtx) types
 
+  -- Reduce a single step under the union types.
   UnionT types
     -> (UnionT . Set.fromList) <$> mapM (reduceTypeStep bindings typeNameCtx) (Set.toList types)
 
   _ -> error "Non-exhaustive pattern in type reduction"
+

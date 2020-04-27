@@ -733,7 +733,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
                                  Right isSameType
                                    | isSameType -> Right bTy
                                    | otherwise  -> Left $ EAppMismatch fTy xTy
-            _ -> error "Attempting to apply non-arrow type"
+            _ -> Left $ EMsg $ text "The first argument to an application must be a lambda with an arrow type."
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
   -- has that sum type.

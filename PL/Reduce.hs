@@ -42,6 +42,8 @@ import PL.Name
 import PL.Type
 import PL.Var
 import PL.TyVar
+import PL.TypeCtx
+import PL.ReduceType
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -81,7 +83,8 @@ import PLPrinter
 --   - Case analysis reduces it's scrutinee fully before proceeding with
 --   matches.
 reduce
-  :: Expr
+  :: TypeCtx DefaultPhase
+  -> Expr
   -> Either (Error DefaultPhase) Expr
 reduce = reduceWith emptyBindings emptyBindings
 
@@ -90,9 +93,10 @@ reduce = reduceWith emptyBindings emptyBindings
 reduceWith
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> Either (Error DefaultPhase) Expr
-reduceWith bindings typeBindings initialExpr = do
+reduceWith bindings typeBindings typeCtx initialExpr = do
   -- Apply the reduce step until the expression no longer changes.
   -- This requires that reduction eventually converges - diverging will lead to
   -- non-termination.
@@ -101,19 +105,20 @@ reduceWith bindings typeBindings initialExpr = do
   -- TODO: reduceStep only reduces one level under expressions for each call. If
   -- we assume the expression reduces, we should reduce faster by recursing with
   -- reduceWith instead.
-  reducedExpr <- reduceStep bindings typeBindings initialExpr
+  reducedExpr <- reduceStep bindings typeBindings typeCtx initialExpr
   if reducedExpr == initialExpr
     then pure initialExpr
-    else reduceWith bindings typeBindings reducedExpr
+    else reduceWith bindings typeBindings typeCtx reducedExpr
 
 -- | 'reduce' a single step with a collection of initial bindings as if Expressions and Types
 -- have already been applied to an outer lambda abstraction.
 reduceStep
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> Either (Error DefaultPhase) Expr
-reduceStep bindings typeBindings initialExpr = case initialExpr of
+reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
   -- TODO: Consider whether/ where we should reduce types.
 
   -- Bindings are substituted if they have been bound.
@@ -151,19 +156,19 @@ reduceStep bindings typeBindings initialExpr = case initialExpr of
 
   -- Reduce a single step under the sum expression.
   Sum sumExpr sumIx sumTy
-    -> Sum <$> reduceStep bindings typeBindings sumExpr <*> pure sumIx <*> pure sumTy
+    -> Sum <$> reduceStep bindings typeBindings typeCtx sumExpr <*> pure sumIx <*> pure sumTy
 
   -- Reduce a single step under all product expressions.
   Product productExprs
-    -> Product <$> mapM (reduceStep bindings typeBindings) productExprs
+    -> Product <$> mapM (reduceStep bindings typeBindings typeCtx) productExprs
 
   -- Reduce a single step under the union expression.
   Union unionExpr unionTyIx unionTy
-    -> Union <$> reduceStep bindings typeBindings unionExpr <*> pure unionTyIx <*> pure unionTy
+    -> Union <$> reduceStep bindings typeBindings typeCtx unionExpr <*> pure unionTyIx <*> pure unionTy
 
   -- Reduce a single step under the lambda expression.
   Lam takeTy lamExpr
-    -> Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) typeBindings lamExpr
+    -> Lam <$> pure takeTy <*> reduceStep (unbound $ bury bindings) typeBindings typeCtx lamExpr
 
   -- Reduce using strictish semantics:
   -- - First reduce a step under the applied expression
@@ -174,20 +179,21 @@ reduceStep bindings typeBindings initialExpr = case initialExpr of
   -- matches the expression. It should therefore only be a lambda or a binding
   -- to a (possibly unknown) function.
   App f x
-    -> do x' <- reduceStep bindings typeBindings x
-          f' <- reduceStep bindings typeBindings f
+    -> do x' <- reduceStep bindings typeBindings typeCtx x
+          f' <- reduceStep bindings typeBindings typeCtx f
           case f' of
             -- Lambdas are reduced by binding applied values into the body and
             -- reducing.
             Lam _abs fBodyExpr
-              -> reduceStep (bind x' bindings) typeBindings fBodyExpr
+              -> reduceStep (bind x' bindings) typeBindings typeCtx fBodyExpr
 
             -- The function we're applying is 'higher order' - it is sourced
             -- from a function itself.
             --
             -- If an expression was bound it should have been substituted in the
             -- function reduction and so we can assume it is unbound and do
-            -- nothing. If we're wrong an additional reduceStep on the
+            -- nothing except reduce the argument a step.
+            -- If we're wrong an additional reduceStep on the
             -- application should make progress.
             Binding var
               -> pure $ App (Binding var) x'
@@ -197,12 +203,48 @@ reduceStep bindings typeBindings initialExpr = case initialExpr of
             -- position is not a lambda.
             _ -> Left $ EMsg $ text "Can't reduce because the expression in function position of an application isn't a lambda"
 
-  -- Reduce under the Big Lambda/ App
-  -- TODO: Pass kind bindings through the reduction as with Lam
+  -- Reduce a single step under the big lambda expression.
   BigLam takeKind lamExpr
-    -> Left $ EMsg $ text "Reducing under big lambdas is not implemented yet"
+    -> BigLam <$> pure takeKind <*> reduceStep bindings (unbound $ bury typeBindings) typeCtx lamExpr
+
+  -- Reduce using strictish semantics:
+  -- - First reduce a step under the applied type
+  -- - Then reduce a step under the function
+  -- - Then bind the type in the expression body and reduce it a step.
+  --
+  -- Type/ kind checking _should_ have ensured the function is a BigArrow type
+  -- that matches the type. It should therefore only be a BigLambda or a
+  -- typebinding to a (possibly) unknown function.
   BigApp f ty
-    -> Left $ EMsg $ text "Reducing under big applications is not implemented yet"
+    -> do -- TODO:
+          -- - Should we reduce the type before applying it?
+          -- - Should we be reducing types everywhere else inside expression
+          --   reduction?
+          ty' <- reduceType typeCtx ty
+          let ty' = ty
+          f'  <- reduceStep bindings typeBindings typeCtx f
+          case f' of
+            -- Big Lambdas are reduced by binding applied types into the body
+            -- and reducing.
+            BigLam _absKind fBodyExpr
+              -> reduceStep bindings (bind ty' typeBindings) typeCtx fBodyExpr
+
+            -- The function we're applying is 'higher order' - it is sourced
+            -- from a function itself.
+            --
+            -- If a type was bound it should have been substituted in the
+            -- function reduction and so we can assume it is unbound and do
+            -- nothing except reduce the argument a step.
+            -- If we're wrong an additional reduceStep on the
+            -- application should make progress.
+            Binding var
+              -> pure $ BigApp (Binding var) ty'
+
+            -- An error here indicates type/ kind checking has not been performed/ has
+            -- been performed incorrectly as the expression in function
+            -- position is not a big lambda.
+            _ -> Left $ EMsg $ text "Can't reduce because the expression in function position of a big application isn't a big lambda"
+
 
   -- If the case scrutinee is an unbound variable, reduce all of the possible branches a step.
   -- , otherwise, find the first matching branch and bind all matching variables into the RHS before reducing it.
@@ -212,16 +254,16 @@ reduceStep bindings typeBindings initialExpr = case initialExpr of
   -- - Fail to find a match.
   -- - Arbitrarily pick the first of an overlapping match.
   CaseAnalysis (Case caseScrutinee caseBranches)
-    -> do reducedCaseScrutinee <- reduceStep bindings typeBindings caseScrutinee
+    -> do reducedCaseScrutinee <- reduceStep bindings typeBindings typeCtx caseScrutinee
           case reducedCaseScrutinee of
             -- If the scrutinee is a binding that is unbound, we can still
             -- reduce each of the possible branches a step.
             Binding _
-              -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSStep bindings typeBindings caseBranches
+              -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSStep bindings typeBindings typeCtx caseBranches
 
             -- Otherwise we can proceed to identify a matching branch which we
             -- can substitute under like a lambda expression.
-            _ -> reducePossibleCaseBranchesStep bindings typeBindings reducedCaseScrutinee caseBranches
+            _ -> reducePossibleCaseBranchesStep bindings typeBindings typeCtx reducedCaseScrutinee caseBranches
 
   _ -> error "Non-exhaustive pattern in reduction step"
 
@@ -234,9 +276,10 @@ reduceStep bindings typeBindings initialExpr = case initialExpr of
 reducePossibleCaseRHSStep
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> CaseBranches Expr MatchArg
   -> Either (Error DefaultPhase) (CaseBranches Expr MatchArg)
-reducePossibleCaseRHSStep bindings typeBindings = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings typeBindings)
+reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings typeBindings typeCtx)
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
 -- branch, substitute the expression and reduce a step.
@@ -246,19 +289,20 @@ reducePossibleCaseRHSStep bindings typeBindings = sequenceCaseBranchesExpr . map
 reducePossibleCaseBranchesStep
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> CaseBranches Expr MatchArg
   -> Either (Error DefaultPhase) Expr
-reducePossibleCaseBranchesStep bindings typeBindings scrutineeExpr = \case
+reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \case
   -- With only a default branch there is no need to bind the matched value as it
   -- should be accessible in the outer scope.
   DefaultOnly defaultExpr
-    -> reduceStep bindings typeBindings defaultExpr
+    -> reduceStep bindings typeBindings typeCtx defaultExpr
 
   -- With one-many branches and a possible default, we try each branch in order
   -- and fall back to the default if a match is not found.
   CaseBranches branches mDefaultExpr
-    -> case tryBranches bindings typeBindings scrutineeExpr branches of
+    -> case tryBranches bindings typeBindings typeCtx scrutineeExpr branches of
 
          -- No branch matches. We therefore expect a default to exist.
          -- No branchs pattern matches with the expression. A default branch
@@ -273,12 +317,12 @@ reducePossibleCaseBranchesStep bindings typeBindings scrutineeExpr = \case
                 -- As with a DefaultOnly we don't bind the scrutineeExpression
                 -- under the match body.
                 Just defaultExpr
-                  -> reduceStep bindings typeBindings defaultExpr
+                  -> reduceStep bindings typeBindings typeCtx defaultExpr
 
          -- The branch matches, bind the scrutinee expression and reduce a step
          -- under the case body.
          Just (bindExprs,rhsExpr)
-           -> reduceStep (bindAll (reverse bindExprs) bindings) typeBindings rhsExpr
+           -> reduceStep (bindAll (reverse bindExprs) bindings) typeBindings typeCtx rhsExpr
 
 -- | Try to match a (non-binding) expression against a collection of case
 -- branches.
@@ -292,10 +336,11 @@ reducePossibleCaseBranchesStep bindings typeBindings scrutineeExpr = \case
 tryBranches
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> NonEmpty (CaseBranch Expr MatchArg)
   -> Maybe ([Expr],Expr)
-tryBranches bindings typeBindings caseScrutinee branches = firstMatch $ tryBranch bindings typeBindings caseScrutinee <$> branches
+tryBranches bindings typeBindings typeCtx caseScrutinee branches = firstMatch $ tryBranch bindings typeBindings typeCtx caseScrutinee <$> branches
   where
     -- The first 'Just'
     firstMatch :: NonEmpty (Maybe a) -> Maybe a
@@ -314,21 +359,23 @@ tryBranches bindings typeBindings caseScrutinee branches = firstMatch $ tryBranc
 tryBranch
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> CaseBranch Expr MatchArg
   -> Maybe ([Expr],Expr)
-tryBranch bindings typeBindings caseScrutinee (CaseBranch matchArg rhsExpr) =
-  (,rhsExpr) <$> patternBinding bindings typeBindings caseScrutinee matchArg
+tryBranch bindings typeBindings typeCtx caseScrutinee (CaseBranch matchArg rhsExpr) =
+  (,rhsExpr) <$> patternBinding bindings typeBindings typeCtx caseScrutinee matchArg
 
 -- | Given a scrutinee expression and a pattern, if the pattern matches,
 -- return the list of expressions that should be bound under the RHS.
 patternBinding
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> MatchArg
   -> Maybe [Expr]
-patternBinding bindings typeBindings caseScrutinee matchArg = case (caseScrutinee,matchArg) of
+patternBinding bindings typeBindings typeCtx caseScrutinee matchArg = case (caseScrutinee,matchArg) of
 
   -- This pattern matches when the scrutinee expression is equal to the
   -- expression referenced by a binding.
@@ -347,7 +394,7 @@ patternBinding bindings typeBindings caseScrutinee matchArg = case (caseScrutine
            -- If the expression is bound, there is a match if it reduces to
            -- exactly the same value.
            Bound bExpr
-             -> case exprEq bindings typeBindings expr bExpr of
+             -> case exprEq bindings typeBindings typeCtx expr bExpr of
 
                   -- One of the expressions is invalid.
                   -- This shouldnt happen because:
@@ -369,7 +416,7 @@ patternBinding bindings typeBindings caseScrutinee matchArg = case (caseScrutine
   (Sum sumExpr sumIx sumTys, MatchSum ix matchArg)
     -- This index matches. Attempt to match further.
     | sumIx == ix
-     -> patternBinding bindings typeBindings sumExpr matchArg
+     -> patternBinding bindings typeBindings typeCtx sumExpr matchArg
 
     -- Indexes are different.
     | otherwise
@@ -377,7 +424,7 @@ patternBinding bindings typeBindings caseScrutinee matchArg = case (caseScrutine
 
   -- Product patterns match when each constituent expression matches.
   (Product productExprs, MatchProduct matchArgs)
-    -> patternBindings bindings typeBindings productExprs matchArgs
+    -> patternBindings bindings typeBindings typeCtx productExprs matchArgs
 
   -- Union patterns begin matching when paired with a union expression with the
   -- same type index.
@@ -386,7 +433,7 @@ patternBinding bindings typeBindings caseScrutinee matchArg = case (caseScrutine
     -- TODO: Consider using typeEq to determine matches. Currently types which
     -- would reduce to the same type do not match.
     | unionTyIx == ty
-      -> patternBinding bindings typeBindings unionExpr matchArg
+      -> patternBinding bindings typeBindings typeCtx unionExpr matchArg
 
     -- Type indexes are different.
     | otherwise
@@ -419,16 +466,17 @@ patternBinding bindings typeBindings caseScrutinee matchArg = case (caseScrutine
 patternBindings
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> [Expr]
   -> [MatchArg]
   -> Maybe [Expr]
-patternBindings bindings typeBindings exprs matchArgs
+patternBindings bindings typeBindings typeCtx exprs matchArgs
   -- Sanity check that we have the same number of expressions and patterns
   | length exprs /= length matchArgs
    = error "Cannot decide whether a list of expressions and patterns match as there are differing amounts. This indicates the input has not been correctly type-checked."
 
   | otherwise
-   = concat <$> zipWithM (patternBinding bindings typeBindings) exprs matchArgs
+   = concat <$> zipWithM (patternBinding bindings typeBindings typeCtx) exprs matchArgs
 
 -- | Test whether two expressions are equal under the same bindings.
 -- Expressions are equal when they reduce to the same form as well as when they
@@ -436,11 +484,12 @@ patternBindings bindings typeBindings exprs matchArgs
 exprEq
   :: Bindings Expr
   -> Bindings Type
+  -> TypeCtx DefaultPhase
   -> Expr
   -> Expr
   -> Either (Error DefaultPhase) Bool
-exprEq bindings typeBindings e0 e1 = do
-  redE0 <- reduceWith bindings typeBindings e0
-  redE1 <- reduceWith bindings typeBindings e1
+exprEq bindings typeBindings typeCtx e0 e1 = do
+  redE0 <- reduceWith bindings typeBindings typeCtx e0
+  redE1 <- reduceWith bindings typeBindings typeCtx e1
   Right $ redE0 == redE1
 

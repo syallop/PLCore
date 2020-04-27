@@ -56,7 +56,7 @@ reducesToSpec
   -> Spec
 reducesToSpec testCases ppExpr ppType =
   describe "All example programs reduce as expected"
-    . mapM_ (\(name,testCase) -> reduceToSpec name (_isExpr testCase) (("Reduces",[],_reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType)
+    . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],_reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType)
     . Map.toList
     $ testCases
 
@@ -66,12 +66,13 @@ reducesToSpec testCases ppExpr ppType =
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 reduceToSpec
   :: Text.Text
+  -> TypeCtx DefaultPhase
   -> ExprFor CommentedPhase
   -> [(Text.Text, [ExprFor DefaultPhase], ExprFor DefaultPhase)]
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> Spec
-reduceToSpec name inputExpr reductions ppExpr ppType = describe (Text.unpack name <> " reduces as expected") $
+reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType = describe (Text.unpack name <> " reduces as expected") $
   mapM_ (\(name,args,expectReduction) -> reduceSpec name (appise (stripComments inputExpr : args)) expectReduction ppExpr ppType) reductions
   where
     reduceSpec
@@ -81,7 +82,7 @@ reduceToSpec name inputExpr reductions ppExpr ppType = describe (Text.unpack nam
       -> (ExprFor DefaultPhase -> Doc)
       -> (TypeFor DefaultPhase -> Doc)
       -> Spec
-    reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case reduce expr of
+    reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case reduce underTypeCtx expr of
       Left exprErr
         -> expectationFailure . Text.unpack . render . ppError ppType $ exprErr
 
@@ -91,7 +92,7 @@ reduceToSpec name inputExpr reductions ppExpr ppType = describe (Text.unpack nam
 
              -- Doesnt equal initial expression.
              -- reduce that expression and check once more
-             else case reduce eqExpr of
+             else case reduce underTypeCtx eqExpr of
                     Left eqExprErr
                       -> expectationFailure . Text.unpack . render $ mconcat
                            [ text "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"

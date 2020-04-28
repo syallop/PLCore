@@ -70,8 +70,8 @@ defaultUnionMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
 
-    isMatchArg           = MatchUnion (ProductT []) (MatchProduct [])
-    typed                = UnionT $ Set.fromList $ [ProductT []]
+    isMatchArg           = MatchUnion EmptyProductT MatchEmptyProduct
+    typed                = UnionT $ Set.fromList $ [EmptyProductT]
     checkMatchWithResult = Right []
     parsesFrom           = src
 

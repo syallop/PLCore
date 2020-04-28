@@ -69,8 +69,8 @@ defaultProductMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
 
-    isMatchArg           = MatchProduct []
-    typed                = ProductT []
+    isMatchArg           = MatchEmptyProduct
+    typed                = EmptyProductT
     checkMatchWithResult = Right []
     parsesFrom           = src
 

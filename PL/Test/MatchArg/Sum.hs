@@ -72,8 +72,8 @@ defaultSumMatchArgTestCase src
     -- MatchArg might not support matching on empty sums.
     -- One of the simplest patterns is therefore a single sum of an empty
     -- product.
-    isMatchArg           = MatchSum 0 (MatchProduct [])
-    typed                = SumT $ NE.fromList [ProductT []]
+    isMatchArg           = MatchSum 0 MatchEmptyProduct
+    typed                = SumT $ NE.fromList [EmptyProductT]
     checkMatchWithResult = Right []
     parsesFrom           = src
 

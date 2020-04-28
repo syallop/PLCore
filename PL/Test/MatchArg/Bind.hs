@@ -70,8 +70,8 @@ defaultBindMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
     isMatchArg           = Bind
-    typed                = SumT $ NE.fromList [ProductT []]
-    checkMatchWithResult = Right [SumT $ NE.fromList [ProductT []]]
+    typed                = SumT $ NE.fromList [EmptyProductT]
+    checkMatchWithResult = Right [SumT $ NE.fromList [EmptyProductT]]
     parsesFrom           = src
 
 -- Test binding an empty sum.
@@ -85,8 +85,8 @@ bindProdMatchArgTestCase
   :: Source
   -> MatchArgTestCase
 bindProdMatchArgTestCase src = (defaultBindMatchArgTestCase src)
-  { _typed = ProductT []
-  , _checkMatchWithResult = Right [ProductT []]
+  { _typed = EmptyProductT
+  , _checkMatchWithResult = Right [EmptyProductT]
   }
 
 bindBoolMatchArgTestCase

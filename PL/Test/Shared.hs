@@ -119,8 +119,8 @@ boolSumType
   :: (SumTExtension phase ~ Void, ProductTExtension phase ~ Void)
   => NonEmpty (TypeFor phase)
 boolSumType = NE.fromList $
-  [ ProductT []
-  , ProductT []
+  [ EmptyProductT
+  , EmptyProductT
   ]
 
 -- | False has type Bool.
@@ -131,7 +131,7 @@ falseTerm
      ,ProductTExtension phase ~ Void
      )
   => ExprFor phase
-falseTerm = Sum (Product []) 0 boolSumType
+falseTerm = Sum EmptyProduct 0 boolSumType
 
 -- | True has type Bool.
 trueTerm
@@ -141,7 +141,7 @@ trueTerm
      ,ProductTExtension phase ~ Void
      )
   => ExprFor phase
-trueTerm = Sum (Product []) 1 boolSumType
+trueTerm = Sum EmptyProduct 1 boolSumType
 
 -- | Pattern that matches the False value of Bool.
 falsePat
@@ -149,7 +149,7 @@ falsePat
      ,MatchProductExtension phase ~ Void
      )
   => MatchArgFor phase
-falsePat = MatchSum 0 (MatchProduct [])
+falsePat = MatchSum 0 MatchEmptyProduct
 
 -- | Pattern that matches the True value of Bool.
 truePat
@@ -157,7 +157,7 @@ truePat
      ,MatchProductExtension phase ~ Void
      )
   => MatchArgFor phase
-truePat = MatchSum 1 (MatchProduct [])
+truePat = MatchSum 1 MatchEmptyProduct
 
 {- Naturals -}
 
@@ -188,7 +188,7 @@ natSumType
      )
   => NonEmpty (TypeFor phase)
 natSumType = NE.fromList $
-  [ProductT []
+  [EmptyProductT
   ,Named "Nat"
   ]
 
@@ -199,7 +199,7 @@ zTerm
      ,NamedExtension phase ~ Void
      )
   => ExprFor phase
-zTerm = Sum (Product []) 0 natSumType
+zTerm = Sum EmptyProduct 0 natSumType
 
 sTerm
   :: (SumExtension      phase ~ Void
@@ -219,7 +219,7 @@ zPat
      ,MatchProductExtension phase ~ Void
      )
   => MatchArgFor phase
-zPat = MatchSum 0 (MatchProduct [])
+zPat = MatchSum 0 MatchEmptyProduct
 
 sPat
   :: (MatchSumExtension phase ~ Void)
@@ -280,13 +280,13 @@ unitProductType = []
 unitTerm
   :: ProductExtension phase ~ Void
   => ExprFor phase
-unitTerm = Product []
+unitTerm = EmptyProduct
 
 -- | Pattern that matches the Unit value of Unit.
 unitPat
   :: MatchProductExtension phase ~ Void
   => MatchArgFor phase
-unitPat = MatchProduct []
+unitPat = MatchEmptyProduct
 
 {- Lists -}
 -- TODO: Unfinished/ untested.
@@ -329,7 +329,7 @@ listSumType
      )
   => NonEmpty (TypeFor phase)
 listSumType = NE.fromList $
- [ ProductT [] -- : List a
+ [ EmptyProductT -- : List a
  , ProductT $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
  ]
 
@@ -344,7 +344,7 @@ emptyTerm
      ,NamedExtension       phase ~ Void
      )
   => ExprFor phase
-emptyTerm = BigLam Kind $ Sum (Product []) 0 listSumType
+emptyTerm = BigLam Kind $ Sum EmptyProduct 0 listSumType
 
 consTerm
   :: forall phase
@@ -369,7 +369,7 @@ emptyPat
      ,MatchProductExtension phase ~ Void
      )
   => MatchArgFor phase
-emptyPat = MatchSum 0 (MatchProduct [])
+emptyPat = MatchSum 0 MatchEmptyProduct
 
 consPat
   :: (MatchSumExtension phase     ~ Void

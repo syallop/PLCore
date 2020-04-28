@@ -37,6 +37,8 @@ module PL.Type
   , pattern SumTExt
   , pattern ProductT
   , pattern ProductTExt
+  , pattern EmptyProductT
+  , pattern EmptyProductTExt
   , pattern UnionT
   , pattern UnionTExt
   , pattern BigArrow
@@ -369,9 +371,18 @@ pattern ProductT :: ProductTExtension phase ~ Void => [TypeFor phase] -> TypeFor
 pattern ProductT types <- FixPhase (ProductTF _ types)
   where ProductT types =  FixPhase (ProductTF void types)
 
+-- ProductT for the empty product in phases where there is no extension to the constructor.
+pattern EmptyProductT :: ProductTExtension phase ~ Void => TypeFor phase
+pattern EmptyProductT <- FixPhase (ProductTF _ [])
+  where EmptyProductT =  FixPhase (ProductTF void [])
+
 pattern ProductTExt :: ProductTExtension phase -> [TypeFor phase] -> TypeFor phase
 pattern ProductTExt ext types <- FixPhase (ProductTF ext types)
   where ProductTExt ext types =  FixPhase (ProductTF ext types)
+
+pattern EmptyProductTExt :: ProductTExtension phase -> TypeFor phase
+pattern EmptyProductTExt ext <- FixPhase (ProductTF ext [])
+  where EmptyProductTExt ext =  FixPhase (ProductTF ext [])
 
 -- UnionT for phases where there is no extension to the constructor.
 pattern UnionT :: UnionTExtension phase ~ Void => Set.Set (TypeFor phase) -> TypeFor phase

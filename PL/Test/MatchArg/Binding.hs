@@ -63,11 +63,11 @@ defaultBindingMatchArgTestCase src
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = addBinding (ProductT []) $ emptyCtx
+    exprBindCtx          = addBinding EmptyProductT $ emptyCtx
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
     isMatchArg           = MatchBinding VZ
-    typed                = ProductT []
+    typed                = EmptyProductT
     checkMatchWithResult = Right []
     parsesFrom           = src
 

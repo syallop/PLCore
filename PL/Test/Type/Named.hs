@@ -67,7 +67,7 @@ preExistingType
      ,ProductTExtension phase ~ Void
      )
   => TypeFor phase
-preExistingType = SumT $ NE.fromList [ProductT []]
+preExistingType = SumT $ NE.fromList [EmptyProductT]
 
 simpleNameTestCase
   :: Source

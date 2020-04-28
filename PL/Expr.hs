@@ -50,6 +50,8 @@ module PL.Expr
   , pattern SumExt
   , pattern Product
   , pattern ProductExt
+  , pattern EmptyProduct
+  , pattern EmptyProductExt
   , pattern Union
   , pattern UnionExt
   , pattern BigLam
@@ -69,6 +71,8 @@ module PL.Expr
   , pattern MatchSumExt
   , pattern MatchProduct
   , pattern MatchProductExt
+  , pattern MatchEmptyProduct
+  , pattern MatchEmptyProductExt
   , pattern MatchUnion
   , pattern MatchUnionExt
   , pattern MatchBinding
@@ -426,9 +430,18 @@ pattern Product :: ProductExtension phase ~ Void =>  [ExprFor phase] -> ExprFor 
 pattern Product exprs <- FixPhase (ProductF _ exprs)
   where Product exprs =  FixPhase (ProductF void exprs)
 
+-- The empty product for phases where there is no extension to the constructor.
+pattern EmptyProduct :: ProductExtension phase ~ Void => ExprFor phase
+pattern EmptyProduct <- FixPhase (ProductF _ [])
+  where EmptyProduct =  FixPhase (ProductF void [])
+
 pattern ProductExt :: ProductExtension phase ->  [ExprFor phase] -> ExprFor phase
 pattern ProductExt ext exprs <- FixPhase (ProductF ext exprs)
   where ProductExt ext exprs =  FixPhase (ProductF ext exprs)
+
+pattern EmptyProductExt :: ProductExtension phase -> ExprFor phase
+pattern EmptyProductExt ext <- FixPhase (ProductF ext [])
+  where EmptyProductExt ext =  FixPhase (ProductF ext [])
 
 -- UnionF for phases where there is no extension to the constructor.
 pattern Union :: UnionExtension phase ~ Void =>  ExprFor phase -> TypeFor phase -> Set.Set (TypeFor phase) -> ExprFor phase
@@ -637,9 +650,19 @@ pattern MatchProduct :: MatchProductExtension phase ~ Void => [MatchArgFor phase
 pattern MatchProduct matches <- FixPhase (MatchProductF _ matches)
   where MatchProduct matches =  FixPhase (MatchProductF void matches)
 
+-- MatchProductF for the empty product in phase with no extension to the
+-- constructor.
+pattern MatchEmptyProduct :: MatchProductExtension phase ~ Void => MatchArgFor phase
+pattern MatchEmptyProduct <- FixPhase (MatchProductF _ [])
+  where MatchEmptyProduct =  FixPhase (MatchProductF void [])
+
 pattern MatchProductExt :: MatchProductExtension phase -> [MatchArgFor phase] -> MatchArgFor phase
 pattern MatchProductExt ext matches <- FixPhase (MatchProductF ext matches)
   where MatchProductExt ext matches =  FixPhase (MatchProductF ext matches)
+
+pattern MatchEmptyProductExt :: MatchProductExtension phase -> MatchArgFor phase
+pattern MatchEmptyProductExt ext <- FixPhase (MatchProductF ext [])
+  where MatchEmptyProductExt ext =  FixPhase (MatchProductF ext [])
 
 -- MatchUnionF for phases where there is no extension to the constructor.
 pattern MatchUnion :: MatchUnionExtension phase ~ Void => TypeFor phase -> MatchArgFor phase -> MatchArgFor phase

@@ -66,31 +66,10 @@ module PL.Expr
 
   , DefaultPhase
 
-  , MatchArg (..)
-  , pattern MatchSum
-  , pattern MatchSumExt
-  , pattern MatchProduct
-  , pattern MatchProductExt
-  , pattern MatchEmptyProduct
-  , pattern MatchEmptyProductExt
-  , pattern MatchUnion
-  , pattern MatchUnionExt
-  , pattern MatchBinding
-  , pattern MatchBindingExt
-  , pattern Bind
-  , pattern BindExt
-  , pattern MatchArgExtension
-  , pattern MatchArgExtensionExt
-
-  , MatchArgFor
-  , MatchArgF (..)
-
   , mapSubExpressions
   , topExprType
   , exprType
   , branchType
-  , checkMatchWith
-  , checkMatchesWith
 
   , appise
   , lamise
@@ -108,13 +87,6 @@ module PL.Expr
   , BindingFor
   , AbstractionFor
   , TypeBindingFor
-
-  , MatchSumExtension
-  , MatchProductExtension
-  , MatchUnionExtension
-  , MatchBindingExtension
-  , BindExtension
-  , MatchArgExtension
   )
   where
 
@@ -134,7 +106,7 @@ import PL.TypeCtx
 
 import PL.Var
 import PL.TyVar
-import PL.MatchArg
+import PL.Pattern
 
 import Control.Applicative
 import Data.List (intercalate)
@@ -237,7 +209,7 @@ data ExprF phase expr
     --   _     -> "default case"
     | CaseAnalysisF
       { _caseAnalysisExtension :: CaseAnalysisExtension phase
-      , _caseAnalysis          :: Case expr (MatchArgFor phase)
+      , _caseAnalysis          :: Case expr (PatternFor phase)
       }
 
     -- | A Sum is an expression indexed within an ordered collection of
@@ -337,7 +309,7 @@ deriving instance
   ,Eq (BindingFor phase)
   ,Eq (TypeBindingFor phase)
   ,Eq (TypeFor phase)
-  ,Eq (MatchArgFor phase)
+  ,Eq (PatternFor phase)
   ,Eq expr
   )
   => Eq (ExprF phase expr)
@@ -357,7 +329,7 @@ deriving instance
   ,Show (BindingFor phase)
   ,Show (TypeBindingFor phase)
   ,Show (TypeFor phase)
-  ,Show (MatchArgFor phase)
+  ,Show (PatternFor phase)
   ,Show expr
   )
   => Show (ExprF phase expr)
@@ -408,11 +380,11 @@ pattern BindingExt ext b <- FixPhase (BindingF ext b)
   where BindingExt ext b = FixPhase (BindingF ext b)
 
 -- CaseAnalysisF for phases where there is no extension to the constructor.
-pattern CaseAnalysis :: CaseAnalysisExtension phase ~ Void => Case (ExprFor phase) (MatchArgFor phase) -> ExprFor phase
+pattern CaseAnalysis :: CaseAnalysisExtension phase ~ Void => Case (ExprFor phase) (PatternFor phase) -> ExprFor phase
 pattern CaseAnalysis c <- FixPhase (CaseAnalysisF _ c)
   where CaseAnalysis c =  FixPhase (CaseAnalysisF void c)
 
-pattern CaseAnalysisExt :: CaseAnalysisExtension phase -> Case (ExprFor phase) (MatchArgFor phase) -> ExprFor phase
+pattern CaseAnalysisExt :: CaseAnalysisExtension phase -> Case (ExprFor phase) (PatternFor phase) -> ExprFor phase
 pattern CaseAnalysisExt ext c <- FixPhase (CaseAnalysisF ext c)
   where CaseAnalysisExt ext c =  FixPhase (CaseAnalysisF ext c)
 
@@ -561,7 +533,7 @@ mapSubExpressions f e = case e of
 topExprType
   :: TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error Type MatchArg) Type
+  -> Either (Error Type Pattern) Type
 topExprType = exprType emptyCtx emptyCtx emptyBindings
 
 -- | Under a binding context, type check an expression.
@@ -571,7 +543,7 @@ exprType
   -> Bindings Type            -- Associate type bindings to their bound or unbound types
   -> TypeCtx DefaultPhase -- Associate Named types to their TypeInfo
   -> Expr                     -- Expression to type-check
-  -> Either (Error Type MatchArg) Type
+  -> Either (Error Type Pattern) Type
 exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
@@ -651,7 +623,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
           -- Type must be in the set somewhere...
           -- TODO
-          _ <- if Set.member (Right True :: Either (Error Type MatchArg) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
+          _ <- if Set.member (Right True :: Either (Error Type Pattern) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
                  then Right ()
                  else Left $ EMsg $ text "Expressions type is not within the union"
 

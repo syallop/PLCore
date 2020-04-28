@@ -4,13 +4,13 @@
   , FlexibleContexts
   #-}
 {-|
-Module      : PL.Test.MatchArgTestCase
+Module      : PL.Test.PatternTestCase
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 -}
-module PL.Test.MatchArgTestCase where
+module PL.Test.PatternTestCase where
 
 import PL.Binds
 import PL.Case
@@ -21,7 +21,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.MatchArg
+import PL.Pattern
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -46,16 +46,16 @@ import PL.Test.Source
 import PL.Test.Util
 
 type TestType = Type
-type TestMatchArg = MatchArg
+type TestPattern = Pattern
 
-data MatchArgTestCase = MatchArgTestCase
+data PatternTestCase = PatternTestCase
   {_underTypeCtx         :: TypeCtx DefaultPhase                     -- ^ Under this given typing context
   ,_underExprBindCtx     :: BindCtx Var (TypeFor DefaultPhase)
   ,_underTypeBindCtx     :: BindCtx TyVar Kind
   ,_underTypeBindings    :: Bindings (TypeFor DefaultPhase)
-  ,_isMatchArg           :: MatchArgFor CommentedPhase -- ^ A MatchArg
+  ,_isPattern           :: PatternFor CommentedPhase -- ^ A Pattern
   ,_typed                :: Type                        -- ^ Has this type
-  ,_checkMatchWithResult :: Either (Error Type MatchArg) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
+  ,_checkMatchWithResult :: Either (Error Type Pattern) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
   ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 

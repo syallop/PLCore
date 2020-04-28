@@ -24,6 +24,7 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
+import PL.Pattern
 
 import PL.Test.ExprTestCase
 
@@ -53,11 +54,11 @@ reducesToSpec
   :: Map.Map Text.Text ExprTestCase
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
-  -> (MatchArgFor DefaultPhase -> Doc)
+  -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reducesToSpec testCases ppExpr ppType ppMatchArg =
+reducesToSpec testCases ppExpr ppType ppPattern =
   describe "All example programs reduce as expected"
-    . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],_reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppMatchArg)
+    . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],_reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
     . Map.toList
     $ testCases
 
@@ -72,9 +73,9 @@ reduceToSpec
   -> [(Text.Text, [ExprFor DefaultPhase], ExprFor DefaultPhase)]
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
-  -> (MatchArgFor DefaultPhase -> Doc)
+  -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppMatchArg = describe (Text.unpack name <> " reduces as expected") $
+reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = describe (Text.unpack name <> " reduces as expected") $
   mapM_ (\(name,args,expectReduction) -> reduceSpec name (appise (stripComments inputExpr : args)) expectReduction ppExpr ppType) reductions
   where
     reduceSpec
@@ -86,7 +87,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppMatchArg = d
       -> Spec
     reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case reduce underTypeCtx expr of
       Left exprErr
-        -> expectationFailure . Text.unpack . render . ppError ppMatchArg ppType $ exprErr
+        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType $ exprErr
 
       Right redExpr
         -> if redExpr == eqExpr
@@ -98,7 +99,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppMatchArg = d
                     Left eqExprErr
                       -> expectationFailure . Text.unpack . render $ mconcat
                            [ text "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
-                           , ppError ppMatchArg ppType eqExprErr
+                           , ppError ppPattern ppType eqExprErr
                            ]
 
                     Right redEqExpr

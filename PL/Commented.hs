@@ -43,13 +43,13 @@ module PL.Commented
   -- Aliases in the CommentedPhase
   , CommentedExpr
   , CommentedType
-  , CommentedMatchArg
+  , CommentedPattern
 
   -- Expressions, types and matchargs are extended with the possibility for an
   -- associated comment
   , pattern CommentedExpr
   , pattern CommentedType
-  , pattern CommentedMatchArg
+  , pattern CommentedPattern
 
   -- Convert a commented expression into an expression in the DefaultPhase
   -- with comments removed.
@@ -58,7 +58,7 @@ module PL.Commented
   , stripCaseComments
   , stripCaseBranchesComments
   , stripCaseBranchComments
-  , stripMatchArgComments
+  , stripPatternComments
 
   -- Convert a DefaultPhase expression into one that can be decorated with
   -- comments
@@ -67,7 +67,7 @@ module PL.Commented
   , addCaseComments
   , addCaseBranchesComments
   , addCaseBranchComments
-  , addMatchArgComments
+  , addPatternComments
   )
   where
 
@@ -80,6 +80,7 @@ import PL.TyVar
 import PL.Name
 import PL.Kind
 import PL.FixPhase
+import PL.Pattern
 
 import Data.Text
 import qualified Data.Text as Text
@@ -145,16 +146,16 @@ type instance BigAppExtension CommentedPhase = Void
 -- constructor which may recursively contain expressions wrapped in comments
 type instance ExprExtension CommentedPhase = Commented (ExprFor CommentedPhase)
 
--- No extensions to MatchArg level constructors
-type instance MatchSumExtension CommentedPhase = Void
-type instance MatchProductExtension CommentedPhase = Void
-type instance MatchUnionExtension CommentedPhase = Void
-type instance MatchBindingExtension CommentedPhase = Void
+-- No extensions to Pattern level constructors
+type instance SumPatternExtension CommentedPhase = Void
+type instance ProductPatternExtension CommentedPhase = Void
+type instance UnionPatternExtension CommentedPhase = Void
+type instance BindingPatternExtension CommentedPhase = Void
 type instance BindExtension CommentedPhase = Void
 
--- | A MatchArg is in the commented phase when it has an additional
--- constructor which may recursively contain MatchArgs wrapped in comments
-type instance MatchArgExtension CommentedPhase = Commented (MatchArgFor CommentedPhase)
+-- | A Pattern is in the commented phase when it has an additional
+-- constructor which may recursively contain Patterns wrapped in comments
+type instance PatternExtension CommentedPhase = Commented (PatternFor CommentedPhase)
 
 -- The commented phase uses variables and types for bindings and abstractions
 type instance BindingFor     CommentedPhase = Var
@@ -163,7 +164,7 @@ type instance AbstractionFor CommentedPhase = TypeFor CommentedPhase
 
 type CommentedExpr     = ExprFor     CommentedPhase
 type CommentedType     = TypeFor     CommentedPhase
-type CommentedMatchArg = MatchArgFor CommentedPhase
+type CommentedPattern = PatternFor CommentedPhase
 
 -- Pattern synonyms
 
@@ -175,9 +176,9 @@ pattern CommentedExpr :: Comment -> CommentedExpr -> CommentedExpr
 pattern CommentedExpr comment expr <- FixPhase (ExprExtensionF (Commented comment expr))
   where CommentedExpr comment expr =  FixPhase (ExprExtensionF (Commented comment expr))
 
-pattern CommentedMatchArg :: Comment -> CommentedMatchArg -> CommentedMatchArg
-pattern CommentedMatchArg comment commentedMatchArg <- FixPhase (MatchArgExtensionF (Commented comment commentedMatchArg))
-  where CommentedMatchArg comment commentedMatchArg =  FixPhase (MatchArgExtensionF (Commented comment commentedMatchArg))
+pattern CommentedPattern :: Comment -> CommentedPattern -> CommentedPattern
+pattern CommentedPattern comment commentedPattern <- FixPhase (PatternExtensionF (Commented comment commentedPattern))
+  where CommentedPattern comment commentedPattern =  FixPhase (PatternExtensionF (Commented comment commentedPattern))
 
 pattern CommentedType :: Comment -> CommentedType -> CommentedType
 pattern CommentedType comment commentedType <- FixPhase (TypeExtensionF (Commented comment commentedType))
@@ -259,13 +260,13 @@ stripTypeComments = \case
   _ -> error "Non-exhaustive pattern in stripTypeComments"
 
 stripCaseComments
-  :: Case (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
-  -> Case (ExprFor DefaultPhase)   (MatchArgFor DefaultPhase)
+  :: Case (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+  -> Case (ExprFor DefaultPhase)   (PatternFor DefaultPhase)
 stripCaseComments (Case expr branches) = Case (stripComments expr) (stripCaseBranchesComments branches)
 
 stripCaseBranchesComments
-  :: CaseBranches (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
-  -> CaseBranches (ExprFor DefaultPhase)   (MatchArgFor DefaultPhase)
+  :: CaseBranches (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+  -> CaseBranches (ExprFor DefaultPhase)   (PatternFor DefaultPhase)
 stripCaseBranchesComments = \case
   DefaultOnly expr
     -> DefaultOnly (stripComments expr)
@@ -274,31 +275,31 @@ stripCaseBranchesComments = \case
     -> CaseBranches (fmap stripCaseBranchComments neBranches) (fmap stripComments mDefault)
 
 stripCaseBranchComments
-  :: CaseBranch (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
-  -> CaseBranch (ExprFor DefaultPhase)   (MatchArgFor DefaultPhase)
-stripCaseBranchComments (CaseBranch match result) = CaseBranch (stripMatchArgComments match) (stripComments result)
+  :: CaseBranch (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+  -> CaseBranch (ExprFor DefaultPhase)   (PatternFor DefaultPhase)
+stripCaseBranchComments (CaseBranch match result) = CaseBranch (stripPatternComments match) (stripComments result)
 
-stripMatchArgComments
-  :: MatchArgFor CommentedPhase
-  -> MatchArgFor DefaultPhase
-stripMatchArgComments = \case
+stripPatternComments
+  :: PatternFor CommentedPhase
+  -> PatternFor DefaultPhase
+stripPatternComments = \case
   Bind
     -> Bind
 
-  MatchBinding b
-    -> MatchBinding b
+  BindingPattern b
+    -> BindingPattern b
 
-  MatchSum sumIndex nestedMatchArg
-    -> MatchSum sumIndex (stripMatchArgComments nestedMatchArg)
+  SumPattern sumIndex nestedPattern
+    -> SumPattern sumIndex (stripPatternComments nestedPattern)
 
-  MatchProduct nestedMatchArgs
-    -> MatchProduct (fmap stripMatchArgComments nestedMatchArgs)
+  ProductPattern nestedPatterns
+    -> ProductPattern (fmap stripPatternComments nestedPatterns)
 
-  MatchUnion unionIndexTy nestedMatchArg
-    -> MatchUnion (stripTypeComments unionIndexTy) (stripMatchArgComments nestedMatchArg)
+  UnionPattern unionIndexTy nestedPattern
+    -> UnionPattern (stripTypeComments unionIndexTy) (stripPatternComments nestedPattern)
 
-  CommentedMatchArg _comment commentedMatchArg
-    -> stripMatchArgComments commentedMatchArg
+  CommentedPattern _comment commentedPattern
+    -> stripPatternComments commentedPattern
 
   _ -> error "Non-exhaustive pattern match when stripping comments from match statement"
 
@@ -369,13 +370,13 @@ addTypeComments = \case
   _ -> error "Non-exhaustive pattern in addTypeComments"
 
 addCaseComments
-  :: Case (ExprFor DefaultPhase) (MatchArgFor DefaultPhase)
-  -> Case (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
+  :: Case (ExprFor DefaultPhase) (PatternFor DefaultPhase)
+  -> Case (ExprFor CommentedPhase) (PatternFor CommentedPhase)
 addCaseComments (Case expr branches) = Case (addComments expr) (addCaseBranchesComments branches)
 
 addCaseBranchesComments
-  :: CaseBranches (ExprFor DefaultPhase) (MatchArgFor DefaultPhase)
-  -> CaseBranches (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
+  :: CaseBranches (ExprFor DefaultPhase) (PatternFor DefaultPhase)
+  -> CaseBranches (ExprFor CommentedPhase) (PatternFor CommentedPhase)
 addCaseBranchesComments = \case
   DefaultOnly expr
     -> DefaultOnly (addComments expr)
@@ -384,33 +385,30 @@ addCaseBranchesComments = \case
     -> CaseBranches (fmap addCaseBranchComments neBranches) (fmap addComments mDefault)
 
 addCaseBranchComments
-  :: CaseBranch (ExprFor DefaultPhase) (MatchArgFor DefaultPhase)
-  -> CaseBranch (ExprFor CommentedPhase) (MatchArgFor CommentedPhase)
-addCaseBranchComments (CaseBranch match result) = CaseBranch (addMatchArgComments match) (addComments result)
+  :: CaseBranch (ExprFor DefaultPhase) (PatternFor DefaultPhase)
+  -> CaseBranch (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+addCaseBranchComments (CaseBranch match result) = CaseBranch (addPatternComments match) (addComments result)
 
-addMatchArgComments
-  :: MatchArgFor DefaultPhase
-  -> MatchArgFor CommentedPhase
-addMatchArgComments = \case
+addPatternComments
+  :: PatternFor DefaultPhase
+  -> PatternFor CommentedPhase
+addPatternComments = \case
   Bind
     -> Bind
 
-  MatchBinding b
-    -> MatchBinding b
+  BindingPattern b
+    -> BindingPattern b
 
-  MatchSum sumIndex nestedMatchArg
-    -> MatchSum sumIndex (addMatchArgComments nestedMatchArg)
+  SumPattern sumIndex nestedPattern
+    -> SumPattern sumIndex (addPatternComments nestedPattern)
 
-  MatchProduct nestedMatchArgs
-    -> MatchProduct (fmap addMatchArgComments nestedMatchArgs)
+  ProductPattern nestedPatterns
+    -> ProductPattern (fmap addPatternComments nestedPatterns)
 
-  MatchUnion unionIndexTy nestedMatchArg
-    -> MatchUnion (addTypeComments unionIndexTy) (addMatchArgComments nestedMatchArg)
+  UnionPattern unionIndexTy nestedPattern
+    -> UnionPattern (addTypeComments unionIndexTy) (addPatternComments nestedPattern)
 
   _ -> error "Non-exhaustive pattern match when add comments from match statement"
-
-
-  _ -> error "Non-exhaustive pattern in stripComments"
 
 -- stripComments commentedExpr == strippedExpr
 commentedExpr :: ExprFor CommentedPhase

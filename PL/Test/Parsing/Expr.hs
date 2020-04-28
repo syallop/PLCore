@@ -21,6 +21,7 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.Pattern
 import PL.Var
 import PL.Bindings
 
@@ -51,9 +52,9 @@ import PL.Test.Util
 -- order to produce the intended expression.
 parsesToSpec
   :: Map.Map Text.Text ExprTestCase
-  -> (Source -> Either (Error Type MatchArg) (ExprFor CommentedPhase, Source))
+  -> (Source -> Either (Error Type Pattern) (ExprFor CommentedPhase, Source))
   -> (ExprFor DefaultPhase -> Doc)
-  -> (Error Type MatchArg -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
 parsesToSpec testCases parseExpression ppExpr ppError
   = describe "All example programs can be parsed by some parser and some source"
@@ -64,12 +65,12 @@ parsesToSpec testCases parseExpression ppExpr ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended expression.
 parseToSpec
-  :: (Source -> Either (Error Type MatchArg) (ExprFor CommentedPhase,Source))
+  :: (Source -> Either (Error Type Pattern) (ExprFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> ExprFor CommentedPhase
   -> (ExprFor DefaultPhase -> Doc)
-  -> (Error Type MatchArg -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
 parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseExpression inputSource of
   Left err

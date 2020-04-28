@@ -20,7 +20,7 @@ library
                      , PL.Commented
                      , PL.Error
                      , PL.Expr
-                     , PL.MatchArg
+                     , PL.Pattern
                      , PL.FixPhase
                      , PL.ExprLike
                      , PL.Kind
@@ -36,7 +36,7 @@ library
 
                      , PL.Test.ExprTestCase
                      , PL.Test.TypeTestCase
-                     , PL.Test.MatchArgTestCase
+                     , PL.Test.PatternTestCase
                      , PL.Test.Shared
 
                      , PL.Test.Expr
@@ -53,24 +53,24 @@ library
                      , PL.Test.Type
                      , PL.Test.Type.Named
 
-                     , PL.Test.MatchArg
-                     , PL.Test.MatchArg.Bind
-                     , PL.Test.MatchArg.Binding
-                     , PL.Test.MatchArg.Product
-                     , PL.Test.MatchArg.Sum
-                     , PL.Test.MatchArg.Union
+                     , PL.Test.Pattern
+                     , PL.Test.Pattern.Bind
+                     , PL.Test.Pattern.Binding
+                     , PL.Test.Pattern.Product
+                     , PL.Test.Pattern.Sum
+                     , PL.Test.Pattern.Union
 
                      , PL.Test.Parsing.Expr
                      , PL.Test.Parsing.Type
-                     , PL.Test.Parsing.MatchArg
+                     , PL.Test.Parsing.Pattern
 
                      , PL.Test.TypeChecking.Expr
                      , PL.Test.TypeChecking.Type
-                     , PL.Test.TypeChecking.MatchArg
+                     , PL.Test.TypeChecking.Pattern
 
                      , PL.Test.Reducing.Expr
                      , PL.Test.Reducing.Type
-                     , PL.Test.Reducing.MatchArg
+                     , PL.Test.Reducing.Pattern
 
                      , PL.Test.Source
                      , PL.Test.Util
@@ -108,8 +108,8 @@ test-suite hspec
   hs-source-dirs:    Test
 
   other-modules:     PL.Test.ExprSpec
-                   , PL.Test.MatchArgSpec
-                  , PL.Test.TypeSpec
+                   , PL.Test.PatternSpec
+                   , PL.Test.TypeSpec
 
   build-depends:     base >=4.7
                    , PL

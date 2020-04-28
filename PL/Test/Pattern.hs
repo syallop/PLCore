@@ -3,51 +3,51 @@
   , OverloadedStrings
   #-}
 {-|
-Module      : PL.Test.MatchArg
+Module      : PL.Test.Pattern
 Copyright   : (c) Samuel A. Yallop, 2017
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
-HSpec tests for PL.Expr's MatchArg
+HSpec tests for PL.Expr's Pattern
 -}
-module PL.Test.MatchArg
+module PL.Test.Pattern
   (
   -- Construct test case input
-    TestMatchArgSources (..)
-  , mkMatchArgTestCases
+    TestPatternSources (..)
+  , mkPatternTestCases
 
   -- Test parsing
-  , parsesToMatchArgsSpec
-  , parseToMatchArgSpec
+  , parsesToPatternsSpec
+  , parseToPatternSpec
 
   -- Test Type checking
-  , typeChecksMatchArgsSpec
-  , typeCheckMatchArgSpec
+  , typeChecksPatternsSpec
+  , typeCheckPatternSpec
 
   -- Test Reduction
-  , reducesMatchArgsToSpec
-  , reduceMatchArgToSpec
+  , reducesPatternsToSpec
+  , reducePatternToSpec
 
   -- Misc
   , typeCtx
   )
   where
 
--- Abstracts the pattern of testing MatchArg parsing and typechecking.
-import PL.Test.MatchArgTestCase
+-- Abstracts the pattern of testing Pattern parsing and typechecking.
+import PL.Test.PatternTestCase
 
--- Some specific MatchArg tests
-import PL.Test.MatchArg.Bind
-import PL.Test.MatchArg.Binding
-import PL.Test.MatchArg.Product
-import PL.Test.MatchArg.Sum
-import PL.Test.MatchArg.Union
+-- Some specific Pattern tests
+import PL.Test.Pattern.Bind
+import PL.Test.Pattern.Binding
+import PL.Test.Pattern.Product
+import PL.Test.Pattern.Sum
+import PL.Test.Pattern.Union
 
 import PL.Test.Shared
 
-import PL.Test.Parsing.MatchArg
-import PL.Test.TypeChecking.MatchArg
-import PL.Test.Reducing.MatchArg
+import PL.Test.Parsing.Pattern
+import PL.Test.TypeChecking.Pattern
+import PL.Test.Reducing.Pattern
 
 import PL.Bindings
 import PL.Binds
@@ -77,8 +77,8 @@ import qualified Data.Map as Map
 import Test.Hspec
 import PL.Test.Source
 
--- | A record of the sources required to run all of the MatchArg tests.
-data TestMatchArgSources = TestMatchArgSources
+-- | A record of the sources required to run all of the Pattern tests.
+data TestPatternSources = TestPatternSources
   { _bindTestCases    :: TestBindSources
   , _sumTestCases     :: TestSumSources
   , _productTestCases :: TestProductSources
@@ -88,10 +88,10 @@ data TestMatchArgSources = TestMatchArgSources
 
 -- | Given a collection of test sources, we can produce a list mapping their names
 -- to their defined testcases.
-mkMatchArgTestCases
-  :: TestMatchArgSources
-  -> Map.Map Text.Text MatchArgTestCase
-mkMatchArgTestCases t = Map.fromList . mconcat $
+mkPatternTestCases
+  :: TestPatternSources
+  -> Map.Map Text.Text PatternTestCase
+mkPatternTestCases t = Map.fromList . mconcat $
   [ bindTestCases    . _bindTestCases    $ t
   , sumTestCases     . _sumTestCases     $ t
   , productTestCases . _productTestCases $ t

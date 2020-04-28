@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : PL.Test.MatchArg.Product
+Module      : PL.Test.Pattern.Union
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module PL.Test.MatchArg.Product
-  ( TestProductSources (..)
-  , productTestCases
+module PL.Test.Pattern.Union
+  (TestUnionSources (..)
+  , unionTestCases
   )
   where
 
@@ -25,40 +25,42 @@ import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+import PL.Pattern
 
-import Data.Text (Text)
 import Data.Maybe (fromJust)
+import Data.Text (Text)
 
-import PL.Test.MatchArgTestCase
+import qualified Data.Set as Set
+
+import PL.Test.PatternTestCase
 
 import PL.Test.Expr.Boolean
 import PL.Test.Source
 
-data TestProductSources = TestProductSources
-  { _productTestCase :: Source
+data TestUnionSources = TestUnionSources
+  { _unionTestCase :: Source
   }
 
--- Test the product constructor of MatchArgs.
-productTestCases
-  :: TestProductSources
-  -> [(Text, MatchArgTestCase)]
-productTestCases t =
-  [("Empty product", productMatchArgTestCase . _productTestCase $ t)
+-- Test the union constructor of Patterns.
+unionTestCases
+  :: TestUnionSources
+  -> [(Text, PatternTestCase)]
+unionTestCases t =
+  [("Single union", unionPatternTestCase . _unionTestCase $ t)
   ]
 
--- The simplest MatchArg on a product constructor is the empty product.
--- Intended to be used in
--- more complex test cases by field substitution.
-defaultProductMatchArgTestCase
+-- A simple Pattern on a union constructor.
+-- Intended to be used in more complex test cases by field substitution.
+defaultUnionPatternTestCase
   :: Source
-  -> MatchArgTestCase
-defaultProductMatchArgTestCase src
-  = MatchArgTestCase
+  -> PatternTestCase
+defaultUnionPatternTestCase src
+  = PatternTestCase
       {_underTypeCtx         = typeCtx
       ,_underExprBindCtx     = exprBindCtx
       ,_underTypeBindCtx     = typeBindCtx
       ,_underTypeBindings    = typeBindings
-      ,_isMatchArg           = isMatchArg
+      ,_isPattern           = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
@@ -69,14 +71,14 @@ defaultProductMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
 
-    isMatchArg           = MatchEmptyProduct
-    typed                = EmptyProductT
+    isPattern           = UnionPattern EmptyProductT EmptyProductPattern
+    typed                = UnionT $ Set.fromList $ [EmptyProductT]
     checkMatchWithResult = Right []
     parsesFrom           = src
 
-productMatchArgTestCase
+unionPatternTestCase
   :: Source
-  -> MatchArgTestCase
-productMatchArgTestCase
-  = defaultProductMatchArgTestCase
+  -> PatternTestCase
+unionPatternTestCase
+  = defaultUnionPatternTestCase
 

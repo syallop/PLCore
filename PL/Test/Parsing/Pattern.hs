@@ -3,9 +3,9 @@
   , OverloadedStrings
   , RankNTypes
   #-}
-module PL.Test.Parsing.MatchArg
-  ( parsesToMatchArgsSpec
-  , parseToMatchArgSpec
+module PL.Test.Parsing.Pattern
+  ( parsesToPatternsSpec
+  , parseToPatternSpec
   )
   where
 
@@ -20,11 +20,12 @@ import PL.Expr
 import PL.Type
 import PL.Name
 import PL.Type.Eq
+import PL.Pattern
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
 
-import PL.Test.MatchArgTestCase
+import PL.Test.PatternTestCase
 
 import PLGrammar
 import PLPrinter
@@ -48,36 +49,36 @@ import PL.Test.Util
 
 
 -- Test that for each test case, a parser consumes all of some source input in
--- order to produce the intended MatchArg.
-parsesToMatchArgsSpec
-  :: Map.Map Text.Text MatchArgTestCase
-  -> (Source -> Either (Error Type MatchArg) (MatchArgFor CommentedPhase, Source))
-  -> (MatchArgFor DefaultPhase -> Doc)
-  -> (Error Type MatchArg -> Doc)
+-- order to produce the intended Pattern.
+parsesToPatternsSpec
+  :: Map.Map Text.Text PatternTestCase
+  -> (Source -> Either (Error Type Pattern) (PatternFor CommentedPhase, Source))
+  -> (PatternFor DefaultPhase -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
-parsesToMatchArgsSpec testCases parseMatchArg ppMatchArg ppError
-  = describe "All example matchargs can be parsed by some parser and some source"
-  . mapM_ (\(name,testCase) -> parseToMatchArgSpec parseMatchArg name (_parsesFrom testCase) (_isMatchArg testCase) ppMatchArg ppError)
+parsesToPatternsSpec testCases parsePattern ppPattern ppError
+  = describe "All example patterns can be parsed by some parser and some source"
+  . mapM_ (\(name,testCase) -> parseToPatternSpec parsePattern name (_parsesFrom testCase) (_isPattern testCase) ppPattern ppError)
   . Map.toList
   $ testCases
 
 -- | Test that a parser consumes all of some source input in order to produce
--- the intended matcharg.
-parseToMatchArgSpec
-  :: (Source -> Either (Error Type MatchArg) (MatchArgFor CommentedPhase,Source))
+-- the intended pattern.
+parseToPatternSpec
+  :: (Source -> Either (Error Type Pattern) (PatternFor CommentedPhase,Source))
   -> Text.Text
   -> Source
-  -> MatchArgFor CommentedPhase
-  -> (MatchArgFor DefaultPhase -> Doc)
-  -> (Error Type MatchArg -> Doc)
+  -> PatternFor CommentedPhase
+  -> (PatternFor DefaultPhase -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
-parseToMatchArgSpec parseMatchArg name inputSource expectedMatchArg ppMatchArg ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseMatchArg inputSource of
+parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parsePattern inputSource of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 
   -- No leftovers are allowed and the parsed expression must equal the expected
-  -- matcharg.
-  Right (parsedMatchArg, leftovers)
+  -- pattern.
+  Right (parsedPattern, leftovers)
     | not (Text.null leftovers)
     -> expectationFailure . Text.unpack . render . document . mconcat $
          [ text "Unexpected leftovers:"
@@ -86,22 +87,22 @@ parseToMatchArgSpec parseMatchArg name inputSource expectedMatchArg ppMatchArg p
          , lineBreak
          , text "After parsing:"
          , lineBreak
-         , indent1 . ppMatchArg . stripMatchArgComments $ parsedMatchArg
+         , indent1 . ppPattern . stripPatternComments $ parsedPattern
          , lineBreak
          , text "when we expected: "
          , lineBreak
-         , indent1 . ppMatchArg . stripMatchArgComments $ expectedMatchArg
+         , indent1 . ppPattern . stripPatternComments $ expectedPattern
          ]
 
-    | parsedMatchArg /= expectedMatchArg
+    | parsedPattern /= expectedPattern
     -> expectationFailure . Text.unpack . render . document . mconcat $
-         [ text "Successfully parsed without leftovers an unexpected matcharg. Got:"
+         [ text "Successfully parsed without leftovers an unexpected pattern. Got:"
          , lineBreak
-         , indent1 . ppMatchArg . stripMatchArgComments $ parsedMatchArg
+         , indent1 . ppPattern . stripPatternComments $ parsedPattern
          , lineBreak
          , text "But we expected:"
          , lineBreak
-         , indent1 . ppMatchArg .stripMatchArgComments $ expectedMatchArg
+         , indent1 . ppPattern .stripPatternComments $ expectedPattern
          ]
 
     | otherwise

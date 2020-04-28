@@ -28,6 +28,7 @@ import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+import PL.Pattern
 
 import Data.Maybe
 import Data.Monoid
@@ -75,9 +76,9 @@ unionTwoExprTestCase src =
     e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
             CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --
-                (CaseBranch (MatchUnion natTypeName   zPat)      falseTerm      -- Nat | Z    -> False
-                 :| [CaseBranch (MatchUnion natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
-                    ,CaseBranch (MatchUnion boolTypeName  truePat)   trueTerm   -- Bool| True -> True
+                (CaseBranch (UnionPattern natTypeName   zPat)      falseTerm      -- Nat | Z    -> False
+                 :| [CaseBranch (UnionPattern natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
+                    ,CaseBranch (UnionPattern boolTypeName  truePat)   trueTerm   -- Bool| True -> True
                     ]                                                           --
                 )                                                               --
                 (Just                                                           --

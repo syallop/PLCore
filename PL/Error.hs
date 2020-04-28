@@ -29,7 +29,7 @@ import Data.Text
 import Data.List.NonEmpty
 import qualified Data.List.NonEmpty as NE
 
-data Error typ matchArg
+data Error typ pattern
 
   -- | Generic error
   = EMsg Doc
@@ -61,38 +61,38 @@ data Error typ matchArg
   -- | A given reduction limit has been exceeded when trying to reduce a type.
   | ETypeReductionLimitReached typ
 
-  -- | A case is matching on an expression with one type but the MatchArg
+  -- | A case is matching on an expression with one type but the Pattern
   -- pattern has another.
-  | EPatternMismatch typ matchArg
+  | EPatternMismatch typ pattern
 
 deriving instance
   (Eq typ
-  ,Eq matchArg
+  ,Eq pattern
   )
-  => Eq (Error typ matchArg)
+  => Eq (Error typ pattern)
 
 deriving instance
   (Ord typ
-  ,Ord matchArg
+  ,Ord pattern
   )
-  => Ord (Error typ matchArg)
+  => Ord (Error typ pattern)
 
 deriving instance
   (Show typ
-  ,Show matchArg
+  ,Show pattern
   )
-  => Show (Error typ matchArg)
+  => Show (Error typ pattern)
 
 
 -- | We can pretty-print an error provided we're told how to pretty print
 -- contained:
--- - MatchArgs
+-- - Patterns
 -- - Types
 ppError
-  :: (matchArg -> Doc)
+  :: (pattern -> Doc)
   -> (typ -> Doc)
-  -> Error typ matchArg -> Doc
-ppError ppMatchArg ppType = \case
+  -> Error typ pattern -> Doc
+ppError ppPattern ppType = \case
   EMsg doc
     -> doc
 
@@ -159,7 +159,7 @@ ppError ppMatchArg ppType = \case
     -> mconcat [ text "in a case analysis the scrutinee expression had type: "
                , ppType expectedTy
                , text " but this type is not matched by a given pattern: "
-               , ppMatchArg gotPattern
+               , ppPattern gotPattern
                ]
 
   ETypeReductionLimitReached typ
@@ -168,7 +168,7 @@ ppError ppMatchArg ppType = \case
                , ppType typ
                ]
 
-instance (Document typ, Document matchArg) => Document (Error typ matchArg) where
+instance (Document typ, Document pattern) => Document (Error typ pattern) where
   document e = text "ERROR: " <> case e of
     EMsg doc
       -> doc

@@ -4,9 +4,9 @@
   , GADTs
   , RankNTypes
   #-}
-module PL.Test.TypeChecking.MatchArg
-  ( typeChecksMatchArgsSpec
-  , typeCheckMatchArgSpec
+module PL.Test.TypeChecking.Pattern
+  ( typeChecksPatternsSpec
+  , typeCheckPatternSpec
   )
   where
 
@@ -24,8 +24,9 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
+import PL.Pattern
 
-import PL.Test.MatchArgTestCase
+import PL.Test.PatternTestCase
 
 import PLGrammar
 import PLPrinter
@@ -52,30 +53,30 @@ import PL.Test.Util
 -- first class more easily.
 
 
-typeChecksMatchArgsSpec
-  :: Map.Map Text.Text MatchArgTestCase
+typeChecksPatternsSpec
+  :: Map.Map Text.Text PatternTestCase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Type MatchArg -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
-typeChecksMatchArgsSpec testCases ppType ppError =
-  describe "All example matchargs type check"
-  . mapM_ (\(name,testCase) -> typeCheckMatchArgSpec name (_isMatchArg testCase) (_underTypeCtx testCase) (_typed testCase) ppType ppError)
+typeChecksPatternsSpec testCases ppType ppError =
+  describe "All example patterns type check"
+  . mapM_ (\(name,testCase) -> typeCheckPatternSpec name (_isPattern testCase) (_underTypeCtx testCase) (_typed testCase) ppType ppError)
   . Map.toList
   $ testCases
 
--- TODO: Decide what it means to type-check a matcharg
+-- TODO: Decide what it means to type-check a pattern
 -- Either:
 -- - This is meaningless and should be removed
--- - A matcharg is typed like a lambda, but just has the side effect of pattern maching and binding things
--- - A matcharg requires a unique type. This might be interesting for passing around patterns as first class things.
+-- - A pattern is typed like a lambda, but just has the side effect of pattern maching and binding things
+-- - A pattern requires a unique type. This might be interesting for passing around patterns as first class things.
 
-typeCheckMatchArgSpec
+typeCheckPatternSpec
   :: Text.Text
-  -> MatchArgFor CommentedPhase
+  -> PatternFor CommentedPhase
   -> TypeCtx phase
   -> TypeFor phase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Type MatchArg -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
-typeCheckMatchArgSpec name inputMatchArg underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ pendingWith "There is no defined notion of typechecking for a matcharg (yet)"
+typeCheckPatternSpec name inputPattern underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ pendingWith "There is no defined notion of typechecking for a pattern (yet)"
 

@@ -81,6 +81,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.Pattern
 import PL.Var
 
 import Data.Maybe
@@ -161,19 +162,19 @@ trueTerm = Sum EmptyProduct 1 boolSumType
 
 -- | Pattern that matches the False value of Bool.
 falsePat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
+  :: (SumPatternExtension phase     ~ Void
+     ,ProductPatternExtension phase ~ Void
      )
-  => MatchArgFor phase
-falsePat = MatchSum 0 MatchEmptyProduct
+  => PatternFor phase
+falsePat = SumPattern 0 EmptyProductPattern
 
 -- | Pattern that matches the True value of Bool.
 truePat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
+  :: (SumPatternExtension phase     ~ Void
+     ,ProductPatternExtension phase ~ Void
      )
-  => MatchArgFor phase
-truePat = MatchSum 1 MatchEmptyProduct
+  => PatternFor phase
+truePat = SumPattern 1 EmptyProductPattern
 
 {- Naturals -}
 
@@ -231,17 +232,17 @@ sTerm
 sTerm = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
 
 zPat
-  :: (MatchSumExtension     phase ~ Void
-     ,MatchProductExtension phase ~ Void
+  :: (SumPatternExtension     phase ~ Void
+     ,ProductPatternExtension phase ~ Void
      )
-  => MatchArgFor phase
-zPat = MatchSum 0 MatchEmptyProduct
+  => PatternFor phase
+zPat = SumPattern 0 EmptyProductPattern
 
 sPat
-  :: (MatchSumExtension phase ~ Void)
-  => MatchArgFor phase
-  -> MatchArgFor phase
-sPat = MatchSum 1
+  :: (SumPatternExtension phase ~ Void)
+  => PatternFor phase
+  -> PatternFor phase
+sPat = SumPattern 1
 
 type SucConstraints phase =
   (AppExtension      phase ~ Void
@@ -300,9 +301,9 @@ unitTerm = EmptyProduct
 
 -- | Pattern that matches the Unit value of Unit.
 unitPat
-  :: MatchProductExtension phase ~ Void
-  => MatchArgFor phase
-unitPat = MatchEmptyProduct
+  :: ProductPatternExtension phase ~ Void
+  => PatternFor phase
+unitPat = EmptyProductPattern
 
 {- Maybe -}
 
@@ -368,18 +369,18 @@ justTerm
 justTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Sum (Binding $ VZ) 1 $ NE.fromList [EmptyProductT, (TypeBinding $ TyVar VZ)]
 
 nothingPat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
+  :: (SumPatternExtension phase     ~ Void
+     ,ProductPatternExtension phase ~ Void
      )
-  => MatchArgFor phase
-nothingPat = MatchSum 0 MatchEmptyProduct
+  => PatternFor phase
+nothingPat = SumPattern 0 EmptyProductPattern
 
 justPat
-  :: (MatchSumExtension phase ~ Void
+  :: (SumPatternExtension phase ~ Void
      ,BindExtension phase ~ Void
      )
-  => MatchArgFor phase
-justPat = MatchSum 1 Bind
+  => PatternFor phase
+justPat = SumPattern 1 Bind
 
 
 {- Lists -}
@@ -459,16 +460,16 @@ consTerm
 consTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ, Binding VZ]) 1 listSumType
 
 emptyPat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
+  :: (SumPatternExtension phase     ~ Void
+     ,ProductPatternExtension phase ~ Void
      )
-  => MatchArgFor phase
-emptyPat = MatchSum 0 MatchEmptyProduct
+  => PatternFor phase
+emptyPat = SumPattern 0 EmptyProductPattern
 
 consPat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
+  :: (SumPatternExtension phase     ~ Void
+     ,ProductPatternExtension phase ~ Void
      ,BindExtension phase ~ Void
      )
-  => MatchArgFor phase
-consPat = MatchSum 1 (MatchProduct [Bind,Bind])
+  => PatternFor phase
+consPat = SumPattern 1 (ProductPattern [Bind,Bind])

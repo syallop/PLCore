@@ -72,7 +72,6 @@ import Control.Applicative
 import Control.Monad
 import Data.List
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe
 import Data.Monoid hiding (Product,Sum)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map

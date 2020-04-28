@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-module PL.Test.MatchArgSpec where
+module PL.Test.PatternSpec where
 
 import PL
 import PL.Case
@@ -10,10 +10,11 @@ import PL.Kind
 import PL.TyVar
 import PL.Type
 import PL.Var
+import PL.Pattern
 
-import PL.Test.MatchArgTestCase
-import PL.Test.Parsing.MatchArg
-import PL.Test.MatchArg
+import PL.Test.PatternTestCase
+import PL.Test.Parsing.Pattern
+import PL.Test.Pattern
 import PL.Test.Source
 
 import PLGrammar
@@ -35,12 +36,12 @@ import Test.Hspec
 spec
   :: Spec
 spec = do
-  describe "MatchArgs" $ do
-    describe "Type check" $ typeChecksMatchArgsSpec matchArgTestCases ppType (ppError ppMatchArg ppType)
-    describe "Reduce"     $ reducesMatchArgsToSpec  matchArgTestCases ppType ppMatchArg
+  describe "Patterns" $ do
+    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppType (ppError ppPattern ppType)
+    describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppType ppPattern
   where
-    matchArgTestCases :: Map.Map Text MatchArgTestCase
-    matchArgTestCases = mkMatchArgTestCases $ TestMatchArgSources {}
+    patternTestCases :: Map.Map Text PatternTestCase
+    patternTestCases = mkPatternTestCases $ TestPatternSources {}
 
     ppExpr :: ExprFor DefaultPhase -> Doc
     ppExpr = text . Text.pack . show
@@ -48,6 +49,6 @@ spec = do
     ppType :: TypeFor DefaultPhase -> Doc
     ppType = text . Text.pack . show
 
-    ppMatchArg :: MatchArgFor DefaultPhase -> Doc
-    ppMatchArg = text . Text.pack . show
+    ppPattern :: PatternFor DefaultPhase -> Doc
+    ppPattern = text . Text.pack . show
 

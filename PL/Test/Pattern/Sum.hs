@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : PL.Test.MatchArg.Sum
+Module      : PL.Test.Pattern.Sum
 Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 HSpec tests for PL.Expr using 'function' types.
 -}
-module PL.Test.MatchArg.Sum
+module PL.Test.Pattern.Sum
   ( TestSumSources (..)
   , sumTestCases
   )
@@ -25,12 +25,13 @@ import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+import PL.Pattern
 
 import Data.Text (Text)
 import Data.Maybe (fromJust)
 import qualified Data.List.NonEmpty as NE
 
-import PL.Test.MatchArgTestCase
+import PL.Test.PatternTestCase
 
 import PL.Test.Expr.Boolean
 import PL.Test.Source
@@ -39,26 +40,26 @@ data TestSumSources = TestSumSources
   { _sumTestCase :: Source
   }
 
--- Test the sum constructor of MatchArgs.
+-- Test the sum constructor of Patterns.
 sumTestCases
   :: TestSumSources
-  -> [(Text,MatchArgTestCase)]
+  -> [(Text,PatternTestCase)]
 sumTestCases t =
-  [("Empty sum", sumMatchArgTestCase . _sumTestCase $ t)
+  [("Empty sum", sumPatternTestCase . _sumTestCase $ t)
   ]
 
--- (One of) the simplest MatchArgs on a sum constructor. Intended to be used in
+-- (One of) the simplest Patterns on a sum constructor. Intended to be used in
 -- more complex test cases by field substitution.
-defaultSumMatchArgTestCase
+defaultSumPatternTestCase
   :: Source
-  -> MatchArgTestCase
-defaultSumMatchArgTestCase src
-  = MatchArgTestCase
+  -> PatternTestCase
+defaultSumPatternTestCase src
+  = PatternTestCase
       {_underTypeCtx         = typeCtx
       ,_underExprBindCtx     = exprBindCtx
       ,_underTypeBindCtx     = typeBindCtx
       ,_underTypeBindings    = typeBindings
-      ,_isMatchArg           = isMatchArg
+      ,_isPattern           = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
@@ -69,17 +70,17 @@ defaultSumMatchArgTestCase src
     typeBindCtx          = emptyCtx
     typeBindings         = emptyBindings
 
-    -- MatchArg might not support matching on empty sums.
+    -- Pattern might not support matching on empty sums.
     -- One of the simplest patterns is therefore a single sum of an empty
     -- product.
-    isMatchArg           = MatchSum 0 MatchEmptyProduct
+    isPattern           = SumPattern 0 EmptyProductPattern
     typed                = SumT $ NE.fromList [EmptyProductT]
     checkMatchWithResult = Right []
     parsesFrom           = src
 
-sumMatchArgTestCase
+sumPatternTestCase
   :: Source
-  -> MatchArgTestCase
-sumMatchArgTestCase
-  = defaultSumMatchArgTestCase
+  -> PatternTestCase
+sumPatternTestCase
+  = defaultSumPatternTestCase
 

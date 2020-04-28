@@ -22,6 +22,7 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
+import PL.Pattern
 
 import PL.Test.TypeTestCase
 
@@ -49,9 +50,9 @@ import PL.Test.Util
 -- order to produce the intended type.
 parsesToTypesSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (Source -> Either (Error CommentedType CommentedMatchArg) (TypeFor CommentedPhase, Source))
-  -> (forall phase. TypeFor phase -> Doc)
-  -> (Error CommentedType CommentedMatchArg -> Doc)
+  -> (Source -> Either (Error Type Pattern) (TypeFor CommentedPhase, Source))
+  -> (TypeFor DefaultPhase -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
 parsesToTypesSpec testCases parseType ppType ppError
   = describe "All example types can be parsed by some parser and some source"
@@ -62,12 +63,12 @@ parsesToTypesSpec testCases parseType ppType ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended type.
 parseToTypeSpec
-  :: (Source -> Either (Error CommentedType CommentedMatchArg) (TypeFor CommentedPhase,Source))
+  :: (Source -> Either (Error Type Pattern) (TypeFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> TypeFor CommentedPhase
-  -> (forall phase. TypeFor phase -> Doc)
-  -> (Error CommentedType CommentedMatchArg -> Doc)
+  -> (TypeFor DefaultPhase -> Doc)
+  -> (Error Type Pattern -> Doc)
   -> Spec
 parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseType inputSource of
   Left err
@@ -84,22 +85,22 @@ parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Tex
          , lineBreak
          , text "After parsing:"
          , lineBreak
-         , indent1 $ ppType parsedType
+         , indent1 . ppType . stripTypeComments $ parsedType
          , lineBreak
          , text "when we expected: "
          , lineBreak
-         , indent1 $ ppType expectedType
+         , indent1 . ppType . stripTypeComments $ expectedType
          ]
 
     | parsedType /= expectedType
     -> expectationFailure . Text.unpack . render . document . mconcat $
          [ text "Successfully parsed without leftovers an unexpected type. Got:"
          , lineBreak
-         , indent1 $ ppType parsedType
+         , indent1 . ppType . stripTypeComments $ parsedType
          , lineBreak
          , text "But we expected:"
          , lineBreak
-         , indent1 $ ppType expectedType
+         , indent1 . ppType . stripTypeComments $ expectedType
          ]
 
     | otherwise

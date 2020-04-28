@@ -44,6 +44,7 @@ import PL.Var
 import PL.TyVar
 import PL.TypeCtx
 import PL.ReduceType
+import PL.Pattern
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -86,7 +87,7 @@ import PLPrinter
 reduce
   :: TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error Type MatchArg) Expr
+  -> Either (Error Type Pattern) Expr
 reduce typeCtx expr = reduceWith emptyBindings emptyBindings typeCtx (Just 100) expr
 
 -- | 'reduce' with a collection of initial bindings as if Expressions and Types
@@ -97,7 +98,7 @@ reduceWith
   -> TypeCtx DefaultPhase
   -> Maybe Int
   -> Expr
-  -> Either (Error Type MatchArg) Expr
+  -> Either (Error Type Pattern) Expr
 reduceWith bindings typeBindings typeCtx reductionLimit initialExpr
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -126,7 +127,7 @@ reduceStep
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error Type MatchArg) Expr
+  -> Either (Error Type Pattern) Expr
 reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
   -- TODO: Consider whether/ where we should reduce types.
 
@@ -290,8 +291,8 @@ reducePossibleCaseRHSStep
   :: Bindings Expr
   -> Bindings Type
   -> TypeCtx DefaultPhase
-  -> CaseBranches Expr MatchArg
-  -> Either (Error Type MatchArg) (CaseBranches Expr MatchArg)
+  -> CaseBranches Expr Pattern
+  -> Either (Error Type Pattern) (CaseBranches Expr Pattern)
 reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings typeBindings typeCtx)
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
@@ -304,8 +305,8 @@ reducePossibleCaseBranchesStep
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> Expr
-  -> CaseBranches Expr MatchArg
-  -> Either (Error Type MatchArg) Expr
+  -> CaseBranches Expr Pattern
+  -> Either (Error Type Pattern) Expr
 reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \case
   -- With only a default branch there is no need to bind the matched value as it
   -- should be accessible in the outer scope.
@@ -351,7 +352,7 @@ tryBranches
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> Expr
-  -> NonEmpty (CaseBranch Expr MatchArg)
+  -> NonEmpty (CaseBranch Expr Pattern)
   -> Maybe ([Expr],Expr)
 tryBranches bindings typeBindings typeCtx caseScrutinee branches = firstMatch $ tryBranch bindings typeBindings typeCtx caseScrutinee <$> branches
   where
@@ -374,10 +375,10 @@ tryBranch
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> Expr
-  -> CaseBranch Expr MatchArg
+  -> CaseBranch Expr Pattern
   -> Maybe ([Expr],Expr)
-tryBranch bindings typeBindings typeCtx caseScrutinee (CaseBranch matchArg rhsExpr) =
-  (,rhsExpr) <$> patternBinding bindings typeBindings typeCtx caseScrutinee matchArg
+tryBranch bindings typeBindings typeCtx caseScrutinee (CaseBranch pattern rhsExpr) =
+  (,rhsExpr) <$> patternBinding bindings typeBindings typeCtx caseScrutinee pattern
 
 -- | Given a scrutinee expression and a pattern, if the pattern matches,
 -- return the list of expressions that should be bound under the RHS.
@@ -386,13 +387,13 @@ patternBinding
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> Expr
-  -> MatchArg
+  -> Pattern
   -> Maybe [Expr]
-patternBinding bindings typeBindings typeCtx caseScrutinee matchArg = case (caseScrutinee,matchArg) of
+patternBinding bindings typeBindings typeCtx caseScrutinee pattern = case (caseScrutinee,pattern) of
 
   -- This pattern matches when the scrutinee expression is equal to the
   -- expression referenced by a binding.
-  (expr,MatchBinding b)
+  (expr,BindingPattern b)
     -> case index (Proxy :: Proxy Var) bindings (bindDepth b) of
            -- There is a difference between unknown if matching and not matching
            -- that is not being captured here
@@ -426,27 +427,27 @@ patternBinding bindings typeBindings typeCtx caseScrutinee matchArg = case (case
 
   -- Sum patterns begin matching when paired with a sum expression with the same
   -- index.
-  (Sum sumExpr sumIx sumTys, MatchSum ix matchArg)
+  (Sum sumExpr sumIx sumTys, SumPattern ix pattern)
     -- This index matches. Attempt to match further.
     | sumIx == ix
-     -> patternBinding bindings typeBindings typeCtx sumExpr matchArg
+     -> patternBinding bindings typeBindings typeCtx sumExpr pattern
 
     -- Indexes are different.
     | otherwise
      -> Nothing
 
   -- Product patterns match when each constituent expression matches.
-  (Product productExprs, MatchProduct matchArgs)
-    -> patternBindings bindings typeBindings typeCtx productExprs matchArgs
+  (Product productExprs, ProductPattern patterns)
+    -> patternBindings bindings typeBindings typeCtx productExprs patterns
 
   -- Union patterns begin matching when paired with a union expression with the
   -- same type index.
-  (Union unionExpr unionTyIx unionTy, MatchUnion ty matchArg)
+  (Union unionExpr unionTyIx unionTy, UnionPattern ty pattern)
     -- If the type matches attempt to match further.
     -- TODO: Consider using typeEq to determine matches. Currently types which
     -- would reduce to the same type do not match.
     | unionTyIx == ty
-      -> patternBinding bindings typeBindings typeCtx unionExpr matchArg
+      -> patternBinding bindings typeBindings typeCtx unionExpr pattern
 
     -- Type indexes are different.
     | otherwise
@@ -461,10 +462,10 @@ patternBinding bindings typeBindings typeCtx caseScrutinee matchArg = case (case
     -> Just [expr]
 
   -- Either:
-  -- - We've extended the MatchArg type and missed a case - it's unfortunate GHC
+  -- - We've extended the Pattern type and missed a case - it's unfortunate GHC
   --   has exhaustiveness checking problems with patterns which make catching
   --   this harder.
-  -- - Or we've been passed a scrutinee and MatchArg pattern that have different
+  -- - Or we've been passed a scrutinee and Pattern pattern that have different
   --   types. This should have been caught by a type-checking phase.
   _ -> error "Failed to match an expression to a pattern. Either a type-mismatch has been missed or the implementation has forgotten to cover a case!"
 
@@ -481,15 +482,15 @@ patternBindings
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> [Expr]
-  -> [MatchArg]
+  -> [Pattern]
   -> Maybe [Expr]
-patternBindings bindings typeBindings typeCtx exprs matchArgs
+patternBindings bindings typeBindings typeCtx exprs patterns
   -- Sanity check that we have the same number of expressions and patterns
-  | length exprs /= length matchArgs
+  | length exprs /= length patterns
    = error "Cannot decide whether a list of expressions and patterns match as there are differing amounts. This indicates the input has not been correctly type-checked."
 
   | otherwise
-   = concat <$> zipWithM (patternBinding bindings typeBindings typeCtx) exprs matchArgs
+   = concat <$> zipWithM (patternBinding bindings typeBindings typeCtx) exprs patterns
 
 -- | Test whether two expressions are equal under the same bindings.
 -- Expressions are equal when they reduce to the same form as well as when they
@@ -500,7 +501,7 @@ exprEq
   -> TypeCtx DefaultPhase
   -> Expr
   -> Expr
-  -> Either (Error Type MatchArg) Bool
+  -> Either (Error Type Pattern) Bool
 exprEq bindings typeBindings typeCtx e0 e1 = do
   redE0 <- reduceWith bindings typeBindings typeCtx (Just 100) e0
   redE1 <- reduceWith bindings typeBindings typeCtx (Just 100) e1

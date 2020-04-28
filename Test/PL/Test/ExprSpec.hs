@@ -10,6 +10,7 @@ import PL.Kind
 import PL.TyVar
 import PL.Type
 import PL.Var
+import PL.Pattern
 
 import PL.Test.ExprTestCase
 import PL.Test.Parsing.Expr
@@ -45,8 +46,8 @@ spec
   :: Spec
 spec = do
   describe "Expressions" $ do
-    describe "Type check" $ typeChecksSpec exprTestCases ppType (ppError ppMatchArg ppType)
-    describe "Reduce"     $ reducesToSpec  exprTestCases ppExpr ppType ppMatchArg
+    describe "Type check" $ typeChecksSpec exprTestCases ppType (ppError ppPattern ppType)
+    describe "Reduce"     $ reducesToSpec  exprTestCases ppExpr ppType ppPattern
   where
     exprTestCases :: Map.Map Text ExprTestCase
     exprTestCases = mkTestCases $ TestExprSources {}
@@ -57,6 +58,6 @@ spec = do
     ppType :: TypeFor DefaultPhase -> Doc
     ppType = text . Text.pack . show
 
-    ppMatchArg :: MatchArgFor DefaultPhase -> Doc
-    ppMatchArg = text . Text.pack . show
+    ppPattern :: PatternFor DefaultPhase -> Doc
+    ppPattern = text . Text.pack . show
 

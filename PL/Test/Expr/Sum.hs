@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.Pattern
 import PL.Var
 
 import Data.Text (Text)
@@ -73,12 +74,12 @@ sumThreeExprTestCase src =
     e   = Lam (SumT $ NE.fromList [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat|Bool|Nat ->
             CaseAnalysis $ Case (Binding VZ)                                          -- case x of
               $ CaseBranches                                                          --
-                (CaseBranch (MatchSum 0 $ sPat Bind) (Binding VZ)                     --  0| S n   -> n
-                 :| [CaseBranch (MatchSum 0   zPat)      zTerm                        --  0| Z     -> Z
-                    ,CaseBranch (MatchSum 1   falsePat)  zTerm                        --  1| False -> Z
-                    ,CaseBranch (MatchSum 1   truePat)   (App sTerm zTerm)            --  1| True  -> S Z
-                    ,CaseBranch (MatchSum 2 $ sPat Bind) zTerm                        --  2| S n   -> Z
-                    ,CaseBranch (MatchSum 2   zPat)      (App sTerm zTerm)            --  2| Z     -> S Z
+                (CaseBranch (SumPattern 0 $ sPat Bind) (Binding VZ)                     --  0| S n   -> n
+                 :| [CaseBranch (SumPattern 0   zPat)      zTerm                        --  0| Z     -> Z
+                    ,CaseBranch (SumPattern 1   falsePat)  zTerm                        --  1| False -> Z
+                    ,CaseBranch (SumPattern 1   truePat)   (App sTerm zTerm)            --  1| True  -> S Z
+                    ,CaseBranch (SumPattern 2 $ sPat Bind) zTerm                        --  2| S n   -> Z
+                    ,CaseBranch (SumPattern 2   zPat)      (App sTerm zTerm)            --  2| Z     -> S Z
                     ]
                 )
                 Nothing

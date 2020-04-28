@@ -44,6 +44,7 @@ import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
+import PL.Pattern
 import PL.TypeCtx
 import PL.Var
 

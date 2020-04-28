@@ -28,6 +28,7 @@ import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+import PL.Pattern
 
 import Data.Text (Text)
 import Data.Maybe
@@ -71,8 +72,8 @@ productThreeExprTestCase src
     e   = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
       CaseAnalysis $ Case (Binding VZ)                                      -- case x of
         $ CaseBranches                                                                --
-          (CaseBranch (MatchProduct [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
-           :| [CaseBranch (MatchProduct [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
+          (CaseBranch (ProductPattern [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
+           :| [CaseBranch (ProductPattern [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
           )                                                                 --
           (Just                                                             --
               falseTerm                                                     -- _ -> False

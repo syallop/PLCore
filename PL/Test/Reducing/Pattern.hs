@@ -4,9 +4,9 @@
   , GADTs
   , RankNTypes
   #-}
-module PL.Test.Reducing.MatchArg
-  ( reducesMatchArgsToSpec
-  , reduceMatchArgToSpec
+module PL.Test.Reducing.Pattern
+  ( reducesPatternsToSpec
+  , reducePatternToSpec
   )
   where
 
@@ -22,10 +22,11 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.Pattern
 import PL.Var
 import PL.Bindings
 
-import PL.Test.MatchArgTestCase
+import PL.Test.PatternTestCase
 
 import PLGrammar
 import PLPrinter
@@ -48,46 +49,46 @@ import Test.Hspec
 import PL.Test.Source
 import PL.Test.Util
 
--- | Test each matcharg reduces to expected results.
-reducesMatchArgsToSpec
-  :: Map.Map Text.Text MatchArgTestCase
+-- | Test each pattern reduces to expected results.
+reducesPatternsToSpec
+  :: Map.Map Text.Text PatternTestCase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (MatchArgFor DefaultPhase -> Doc)
+  -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reducesMatchArgsToSpec testCases ppType ppMatchArg =
-  describe "All example matcharg programs reduce as expected"
-    . mapM_ (\(name,testCase) -> reduceMatchArgToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (stripMatchArgComments $ _isMatchArg testCase) (_typed testCase) (_checkMatchWithResult testCase) ppType ppMatchArg)
+reducesPatternsToSpec testCases ppType ppPattern =
+  describe "All example pattern programs reduce as expected"
+    . mapM_ (\(name,testCase) -> reducePatternToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (stripPatternComments $ _isPattern testCase) (_typed testCase) (_checkMatchWithResult testCase) ppType ppPattern)
     . Map.toList
     $ testCases
 
--- | Test whether a matcharg reduces to bind the expected values.
-reduceMatchArgToSpec
+-- | Test whether a pattern reduces to bind the expected values.
+reducePatternToSpec
   :: Text.Text
   -> TypeCtx DefaultPhase
   -> BindCtx (BindingFor DefaultPhase) (AbstractionFor DefaultPhase)
   -> BindCtx (TypeBindingFor DefaultPhase) Kind
   -> Bindings (TypeFor DefaultPhase)
-  -> MatchArgFor DefaultPhase
+  -> PatternFor DefaultPhase
   -> Type
-  -> Either (Error (TypeFor DefaultPhase) (MatchArgFor DefaultPhase)) [TypeFor DefaultPhase]
+  -> Either (Error (TypeFor DefaultPhase) (PatternFor DefaultPhase)) [TypeFor DefaultPhase]
   -> (TypeFor DefaultPhase -> Doc)
-  -> (MatchArgFor DefaultPhase -> Doc)
+  -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reduceMatchArgToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testMatchArg expectTy expect ppType ppMatchArg =
-  it (Text.unpack name <> " reduces as expected") $ isExpected (checkMatchWith testMatchArg expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
+reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPattern expectTy expect ppType ppPattern =
+  it (Text.unpack name <> " reduces as expected") $ isExpected (checkWithPattern testPattern expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
     isExpected
-      :: Either (Error Type MatchArg) [TypeFor DefaultPhase]
-      -> Either (Error Type MatchArg) [TypeFor DefaultPhase]
+      :: Either (Error Type Pattern) [TypeFor DefaultPhase]
+      -> Either (Error Type Pattern) [TypeFor DefaultPhase]
       -> Expectation
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()
         | otherwise  -> expectationFailure $ Text.unpack $ render $ mconcat
-            [ text "MatchArg expected error:"
-            , ppError ppMatchArg ppType expectedErr
+            [ text "Pattern expected error:"
+            , ppError ppPattern ppType expectedErr
             , text "but got:"
-            , ppError ppMatchArg ppType resultErr
+            , ppError ppPattern ppType resultErr
             ]
 
       (Right resultTys, Right expectedTys)
@@ -97,7 +98,7 @@ reduceMatchArgToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testMatch
 
         | otherwise
           -> expectationFailure $ Text.unpack $ render $ mconcat
-               [ text "MatchArg expected to bind:"
+               [ text "Pattern expected to bind:"
                , foldr ((<>) . ppType) mempty expectedTys
                , text "but bound:"
                , foldr ((<>) . ppType) mempty resultTys
@@ -105,18 +106,18 @@ reduceMatchArgToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testMatch
 
       (Right resultTys, Left expectedErr)
         -> expectationFailure $ Text.unpack $ render $ mconcat
-             [ text "MatchArg expected error:"
-             , ppError ppMatchArg ppType expectedErr
+             [ text "Pattern expected error:"
+             , ppError ppPattern ppType expectedErr
              , text "but got successful result, binding types:"
              , foldr ((<>) . ppType) mempty resultTys
              ]
 
       (Left resultErr, Right expectedTys)
         -> expectationFailure $ Text.unpack $ render $ mconcat
-             [ text "MatchArg expected to bind:"
+             [ text "Pattern expected to bind:"
              , foldr ((<>) . ppType) mempty expectedTys
              , text "but got error:"
-             , ppError ppMatchArg ppType resultErr
+             , ppError ppPattern ppType resultErr
              ]
 
     fromRight :: b -> Either a b -> b

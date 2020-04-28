@@ -86,7 +86,7 @@ import PLPrinter
 reduce
   :: TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error DefaultPhase) Expr
+  -> Either (Error Type MatchArg) Expr
 reduce typeCtx expr = reduceWith emptyBindings emptyBindings typeCtx (Just 100) expr
 
 -- | 'reduce' with a collection of initial bindings as if Expressions and Types
@@ -97,7 +97,7 @@ reduceWith
   -> TypeCtx DefaultPhase
   -> Maybe Int
   -> Expr
-  -> Either (Error DefaultPhase) Expr
+  -> Either (Error Type MatchArg) Expr
 reduceWith bindings typeBindings typeCtx reductionLimit initialExpr
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -126,7 +126,7 @@ reduceStep
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error DefaultPhase) Expr
+  -> Either (Error Type MatchArg) Expr
 reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
   -- TODO: Consider whether/ where we should reduce types.
 
@@ -291,7 +291,7 @@ reducePossibleCaseRHSStep
   -> Bindings Type
   -> TypeCtx DefaultPhase
   -> CaseBranches Expr MatchArg
-  -> Either (Error DefaultPhase) (CaseBranches Expr MatchArg)
+  -> Either (Error Type MatchArg) (CaseBranches Expr MatchArg)
 reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings typeBindings typeCtx)
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
@@ -305,7 +305,7 @@ reducePossibleCaseBranchesStep
   -> TypeCtx DefaultPhase
   -> Expr
   -> CaseBranches Expr MatchArg
-  -> Either (Error DefaultPhase) Expr
+  -> Either (Error Type MatchArg) Expr
 reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \case
   -- With only a default branch there is no need to bind the matched value as it
   -- should be accessible in the outer scope.
@@ -500,7 +500,7 @@ exprEq
   -> TypeCtx DefaultPhase
   -> Expr
   -> Expr
-  -> Either (Error DefaultPhase) Bool
+  -> Either (Error Type MatchArg) Bool
 exprEq bindings typeBindings typeCtx e0 e1 = do
   redE0 <- reduceWith bindings typeBindings typeCtx (Just 100) e0
   redE1 <- reduceWith bindings typeBindings typeCtx (Just 100) e1

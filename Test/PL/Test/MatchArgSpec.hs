@@ -36,8 +36,8 @@ spec
   :: Spec
 spec = do
   describe "MatchArgs" $ do
-    describe "Type check" $ typeChecksMatchArgsSpec matchArgTestCases ppType (ppError ppType)
-    describe "Reduce"     $ reducesMatchArgsToSpec  matchArgTestCases ppType
+    describe "Type check" $ typeChecksMatchArgsSpec matchArgTestCases ppType (ppError ppMatchArg ppType)
+    describe "Reduce"     $ reducesMatchArgsToSpec  matchArgTestCases ppType ppMatchArg
   where
     matchArgTestCases :: Map.Map Text MatchArgTestCase
     matchArgTestCases = mkMatchArgTestCases $ TestMatchArgSources {}
@@ -47,4 +47,7 @@ spec = do
 
     ppType :: TypeFor DefaultPhase -> Doc
     ppType = text . Text.pack . show
+
+    ppMatchArg :: MatchArgFor DefaultPhase -> Doc
+    ppMatchArg = text . Text.pack . show
 

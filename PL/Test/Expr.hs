@@ -29,7 +29,7 @@ module PL.Test.Expr
   , reduceToSpec
 
   -- Misc
-  , typeCtx
+  , sharedTypeCtx
   )
   where
 
@@ -110,13 +110,5 @@ mkTestCases t = Map.fromList . mconcat $
   , unionTestCases    . _unionTestCases    $ t
   , functionTestCases . _functionTestCases $ t
   , listTestCases     . _listTestCases     $ t
-  ]
-
--- | A test type context contains bools, nats and lists.
-typeCtx :: TypeCtx DefaultPhase
-typeCtx = foldr unionTypeCtx emptyTypeCtx
-  [ boolTypeCtx
-  , natTypeCtx
-  , listTypeCtx
   ]
 

@@ -47,6 +47,16 @@ module PL.Test.Shared
   , unitTerm
   , unitPat
 
+   -- Maybe
+  , maybeTypeCtx
+  , maybeTypeName
+  , maybeType
+  , maybeSumType
+  , nothingTerm
+  , justTerm
+  , nothingPat
+  , justPat
+
     -- List
   , listTypeCtx
   , listTypeName
@@ -90,7 +100,13 @@ sharedTypeCtx
      ,TypeAppExtension phase  ~ Void
      )
   => TypeCtx phase
-sharedTypeCtx = natTypeCtx <> boolTypeCtx <> unitTypeCtx <> listTypeCtx
+sharedTypeCtx = mconcat
+  [ natTypeCtx
+  , boolTypeCtx
+  , unitTypeCtx
+  , maybeTypeCtx
+  , listTypeCtx
+  ]
 
 {- Booleans -}
 
@@ -287,6 +303,84 @@ unitPat
   :: MatchProductExtension phase ~ Void
   => MatchArgFor phase
 unitPat = MatchEmptyProduct
+
+{- Maybe -}
+
+maybeTypeCtx
+  :: (TypeLamExtension phase ~ Void
+     ,SumTExtension phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor phase ~ TyVar
+     )
+  => TypeCtx phase
+maybeTypeCtx = fromJust $ insertType "Maybe" maybeType emptyTypeCtx
+
+maybeTypeName
+  :: NamedExtension phase ~ Void
+  => TypeFor phase
+maybeTypeName = Named "Maybe"
+
+maybeType
+  :: (TypeLamExtension phase ~ Void
+     ,SumTExtension phase ~ Void
+     ,ProductTExtension phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor phase ~ TyVar
+     )
+  => TypeFor phase
+maybeType = TypeLam Kind $ SumT maybeSumType
+
+maybeSumType
+  :: (ProductTExtension phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor phase ~ TyVar
+     )
+  => NonEmpty (TypeFor phase)
+maybeSumType = NE.fromList
+  [ EmptyProductT
+  , TypeBinding $ TyVar VZ
+  ]
+
+nothingTerm
+  :: (BigLamExtension phase ~ Void
+     ,SumExtension phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor phase ~ TyVar
+     ,ProductExtension phase ~ Void
+     ,ProductTExtension phase ~ Void
+     )
+  => ExprFor phase
+nothingTerm = BigLam Kind $ Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, (TypeBinding $ TyVar VZ)]
+
+justTerm
+  :: (BigLamExtension phase ~ Void
+     ,LamExtension phase ~ Void
+     ,TypeBindingExtension phase ~ Void
+     ,TypeBindingFor phase ~ TyVar
+     ,SumExtension phase ~ Void
+     ,BindingExtension phase ~ Void
+     ,BindingFor phase ~ Var
+     ,AbstractionFor phase ~ TypeFor phase
+     ,ProductTExtension phase ~ Void
+     )
+  => ExprFor phase
+justTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Sum (Binding $ VZ) 1 $ NE.fromList [EmptyProductT, (TypeBinding $ TyVar VZ)]
+
+nothingPat
+  :: (MatchSumExtension phase     ~ Void
+     ,MatchProductExtension phase ~ Void
+     )
+  => MatchArgFor phase
+nothingPat = MatchSum 0 MatchEmptyProduct
+
+justPat
+  :: (MatchSumExtension phase ~ Void
+     ,BindExtension phase ~ Void
+     )
+  => MatchArgFor phase
+justPat = MatchSum 1 Bind
+
 
 {- Lists -}
 -- TODO: Unfinished/ untested.

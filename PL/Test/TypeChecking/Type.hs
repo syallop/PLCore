@@ -20,6 +20,7 @@ import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.Name
+import PL.MatchArg
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -52,7 +53,7 @@ import PL.Test.Util
 typeChecksTypesSpec
   :: Map.Map Text.Text TypeTestCase
   -> (Kind -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Error Type MatchArg -> Doc)
   -> Spec
 typeChecksTypesSpec testCases ppKind ppError =
   describe "All example types type(kind) check"
@@ -68,7 +69,7 @@ typeCheckTypeSpec
   -> TypeCtx DefaultPhase
   -> Kind
   -> (Kind -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Error Type MatchArg -> Doc)
   -> Spec
 typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name <> " kind checks as expected") $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
   Left err

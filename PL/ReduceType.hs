@@ -57,7 +57,7 @@ import qualified Data.Text as Text
 reduceType
   :: TypeCtx DefaultPhase
   -> TypeFor DefaultPhase
-  -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
+  -> Either (Error Type matchArg) (TypeFor DefaultPhase)
 reduceType typeCtx typ = reduceTypeWith emptyBindings typeCtx (Just 100) typ
 
 -- | 'reduceType' with a collection of initial bindings as if Types have already
@@ -67,7 +67,7 @@ reduceTypeWith
   -> TypeCtx DefaultPhase
   -> Maybe Int
   -> TypeFor DefaultPhase
-  -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
+  -> Either (Error Type matchArg) (TypeFor DefaultPhase)
 reduceTypeWith bindings typeNameCtx reductionLimit ty
   | reductionLimit == Just 0
    = Left . ETypeReductionLimitReached $ ty
@@ -92,7 +92,7 @@ reduceTypeStep
   :: Bindings (TypeFor DefaultPhase)
   -> TypeCtx DefaultPhase
   -> TypeFor DefaultPhase
-  -> Either (Error DefaultPhase) (TypeFor DefaultPhase)
+  -> Either (Error Type matchArg) (TypeFor DefaultPhase)
 reduceTypeStep bindings typeNameCtx ty = case ty of
 
   -- TypeBindings are substituted if they have been bound.

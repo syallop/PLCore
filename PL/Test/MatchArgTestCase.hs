@@ -21,6 +21,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.MatchArg
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
@@ -54,7 +55,7 @@ data MatchArgTestCase = MatchArgTestCase
   ,_underTypeBindings    :: Bindings (TypeFor DefaultPhase)
   ,_isMatchArg           :: MatchArgFor CommentedPhase -- ^ A MatchArg
   ,_typed                :: Type                        -- ^ Has this type
-  ,_checkMatchWithResult :: Either (Error DefaultPhase) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
+  ,_checkMatchWithResult :: Either (Error Type MatchArg) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
   ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 

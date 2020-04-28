@@ -173,10 +173,16 @@ resolveTypeInfo t ctx = case t of
 
 -- If a Named type, then recursively lookup the associated TypeInfo.
 -- otherwise generate it.
-resolveTypeInitialInfo :: TypeFor phase -> TypeCtx phase -> Maybe (TypeInfo phase)
+resolveTypeInitialInfo :: TypeFor phase -> TypeCtx phase -> Either TypeName (TypeInfo phase)
 resolveTypeInitialInfo t ctx = case t of
-  NamedExt _ n -> lookupTypeNameInitialInfo n ctx
-  t       -> Just . mkTypeInfo t $ ctx
+  NamedExt _ n
+    -> case lookupTypeNameInitialInfo n ctx of
+         Nothing
+           -> Left n
+         Just i
+           -> Right i
+
+  t -> Right . mkTypeInfo t $ ctx
 
 
 

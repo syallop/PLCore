@@ -51,9 +51,9 @@ import PL.Test.Util
 -- order to produce the intended MatchArg.
 parsesToMatchArgsSpec
   :: Map.Map Text.Text MatchArgTestCase
-  -> (Source -> Either (Error DefaultPhase) (MatchArgFor CommentedPhase, Source))
+  -> (Source -> Either (Error Type MatchArg) (MatchArgFor CommentedPhase, Source))
   -> (MatchArgFor DefaultPhase -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Error Type MatchArg -> Doc)
   -> Spec
 parsesToMatchArgsSpec testCases parseMatchArg ppMatchArg ppError
   = describe "All example matchargs can be parsed by some parser and some source"
@@ -64,12 +64,12 @@ parsesToMatchArgsSpec testCases parseMatchArg ppMatchArg ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended matcharg.
 parseToMatchArgSpec
-  :: (Source -> Either (Error DefaultPhase) (MatchArgFor CommentedPhase,Source))
+  :: (Source -> Either (Error Type MatchArg) (MatchArgFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> MatchArgFor CommentedPhase
   -> (MatchArgFor DefaultPhase -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Error Type MatchArg -> Doc)
   -> Spec
 parseToMatchArgSpec parseMatchArg name inputSource expectedMatchArg ppMatchArg ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseMatchArg inputSource of
   Left err

@@ -49,9 +49,9 @@ import PL.Test.Util
 -- order to produce the intended type.
 parsesToTypesSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (Source -> Either (Error CommentedPhase) (TypeFor CommentedPhase, Source))
+  -> (Source -> Either (Error CommentedType CommentedMatchArg) (TypeFor CommentedPhase, Source))
   -> (forall phase. TypeFor phase -> Doc)
-  -> (forall phase. Error phase -> Doc)
+  -> (Error CommentedType CommentedMatchArg -> Doc)
   -> Spec
 parsesToTypesSpec testCases parseType ppType ppError
   = describe "All example types can be parsed by some parser and some source"
@@ -62,12 +62,12 @@ parsesToTypesSpec testCases parseType ppType ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended type.
 parseToTypeSpec
-  :: (Source -> Either (Error CommentedPhase) (TypeFor CommentedPhase,Source))
+  :: (Source -> Either (Error CommentedType CommentedMatchArg) (TypeFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> TypeFor CommentedPhase
   -> (forall phase. TypeFor phase -> Doc)
-  -> (forall phase. Error phase -> Doc)
+  -> (Error CommentedType CommentedMatchArg -> Doc)
   -> Spec
 parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseType inputSource of
   Left err

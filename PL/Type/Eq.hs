@@ -36,7 +36,7 @@ import Debug.Trace
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
 typeEq
-  :: forall phase
+  :: forall phase matchArgFor
    . (
      --, Binds (TypeBindingFor phase) Kind
        HasBinding (TypeFor phase) (TypeBindingFor phase)
@@ -47,7 +47,7 @@ typeEq
   -> TypeCtx phase
   -> TypeFor phase
   -> TypeFor phase
-  -> Either (Error phase) Bool
+  -> Either (Error Type matchArgFor) Bool
 typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (t0, t1) of
 
   -- Named Types are ONLY equal if they have the same name.
@@ -161,14 +161,14 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (t0, t1) of
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs
-  :: forall phase
+  :: forall phase matchArgFor
    . phase ~ DefaultPhase
   => BindCtx (TypeBindingFor phase) Kind
   -> Bindings (TypeFor phase)
   -> TypeCtx phase
   -> [TypeFor phase]
   -> [TypeFor phase]
-  -> Either (Error phase) Bool
+  -> Either (Error (TypeFor phase) matchArgFor) Bool
 typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
   | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEq typeBindCtx typeBindings typeNameCtx) ts0 ts1
                                   in case mEq of
@@ -185,7 +185,7 @@ typeKind
   => BindCtx (TypeBindingFor phase) Kind
   -> TypeCtx phase
   -> TypeFor phase
-  -> Either (Error phase) Kind
+  -> Either (Error (TypeFor phase) matchArgFor) Kind
 typeKind typeBindCtx typeCtx ty = case ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.

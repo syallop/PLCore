@@ -20,6 +20,7 @@ library
                      , PL.Commented
                      , PL.Error
                      , PL.Expr
+                     , PL.MatchArg
                      , PL.FixPhase
                      , PL.ExprLike
                      , PL.Kind
@@ -108,7 +109,7 @@ test-suite hspec
 
   other-modules:     PL.Test.ExprSpec
                    , PL.Test.MatchArgSpec
-                   , PL.Test.TypeSpec
+                  , PL.Test.TypeSpec
 
   build-depends:     base >=4.7
                    , PL

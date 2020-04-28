@@ -19,6 +19,7 @@ import PL.Reduce
 import PL.ReduceType
 import PL.TyVar
 import PL.Type
+import PL.MatchArg
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
@@ -53,10 +54,11 @@ import PL.Test.Util
 reducesTypesToSpec
   :: Map.Map Text.Text TypeTestCase
   -> (TypeFor DefaultPhase -> Doc)
+  -> (MatchArgFor DefaultPhase -> Doc)
   -> Spec
-reducesTypesToSpec testCases ppType =
+reducesTypesToSpec testCases ppType ppMatchArg =
   describe "All example types reduce as expected"
-    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], _reducesTo testCase) : _reducesToWhenApplied testCase) ppType)
+    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], _reducesTo testCase) : _reducesToWhenApplied testCase) ppType ppMatchArg)
     . Map.toList
     $ testCases
 
@@ -69,8 +71,9 @@ reduceTypeToSpec
   -> TypeFor CommentedPhase
   -> [(Text.Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase], TypeFor DefaultPhase)]
   -> (TypeFor DefaultPhase -> Doc)
+  -> (MatchArgFor DefaultPhase -> Doc)
   -> Spec
-reduceTypeToSpec name inputType reductions ppType = describe (Text.unpack name <> " reduces as expected") $
+reduceTypeToSpec name inputType reductions ppType ppMatchArg = describe (Text.unpack name <> " reduces as expected") $
   mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (appise (stripTypeComments inputType : args)) expectReduction ppType) reductions
   where
     reduceSpec
@@ -82,7 +85,7 @@ reduceTypeToSpec name inputType reductions ppType = describe (Text.unpack name <
       -> Spec
     reduceSpec name underCtx typ eqType ppType = it (Text.unpack name) $ case reduceType underCtx typ of
       Left typErr
-        -> expectationFailure . Text.unpack . render . ppError ppType $ typErr
+        -> expectationFailure . Text.unpack . render . ppError ppMatchArg ppType  $ typErr
 
       Right redType
         -> if redType == eqType
@@ -94,7 +97,7 @@ reduceTypeToSpec name inputType reductions ppType = describe (Text.unpack name <
                     Left eqTypeErr
                       -> expectationFailure . Text.unpack . render $ mconcat
                            [ text "target type reduces, doesnt match the expected type AND the expected type fails to reduce itself:"
-                           , ppError ppType eqTypeErr
+                           , ppError ppMatchArg ppType eqTypeErr
                            ]
 
                     Right redEqType

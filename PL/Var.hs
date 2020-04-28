@@ -70,3 +70,4 @@ instance BindingIx Var where
   buryBinding v 0 = v
   buryBinding v n = buryBinding (VS v) (n-1)
 
+type family BindingFor     phase

@@ -55,7 +55,7 @@ import PL.Test.Util
 typeChecksMatchArgsSpec
   :: Map.Map Text.Text MatchArgTestCase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Error Type MatchArg -> Doc)
   -> Spec
 typeChecksMatchArgsSpec testCases ppType ppError =
   describe "All example matchargs type check"
@@ -75,7 +75,7 @@ typeCheckMatchArgSpec
   -> TypeCtx phase
   -> TypeFor phase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (Error DefaultPhase -> Doc)
+  -> (Error Type MatchArg -> Doc)
   -> Spec
 typeCheckMatchArgSpec name inputMatchArg underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ pendingWith "There is no defined notion of typechecking for a matcharg (yet)"
 

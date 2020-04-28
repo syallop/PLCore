@@ -5,6 +5,8 @@
   , StandaloneDeriving
   , LambdaCase
   , RankNTypes
+  , KindSignatures
+  , PolyKinds
   #-}
 {-|
 Module      : PL.Error
@@ -19,7 +21,6 @@ module PL.Error where
 
 import PL.Kind
 import PL.Name
-import PL.Type
 
 import PLPrinter
 
@@ -28,7 +29,7 @@ import Data.Text
 import Data.List.NonEmpty
 import qualified Data.List.NonEmpty as NE
 
-data Error phase
+data Error typ matchArg
 
   -- | Generic error
   = EMsg Doc
@@ -38,76 +39,60 @@ data Error phase
   | ETermNotDefined TermName -- ^ No such term
 
   -- | Two typed things cannot be applied to each other
-  | EAppMismatch (TypeFor phase) (TypeFor phase) --
+  | EAppMismatch typ typ --
 
   -- | Something with type cannot be big-applied to something with kind
-  | EBigAppMismatch (TypeFor phase) Kind
+  | EBigAppMismatch typ Kind
 
   -- | Something with kind cannot be type-applied to something with kind
   | ETypeAppMismatch !Kind !Kind
 
   -- | A Type app must apply a type lambda.
-  | ETypeAppLambda (TypeFor phase)
+  | ETypeAppLambda typ
 
   -- | An expression had a type, and claimed to have the type indexed within a
   -- sum type but doesnt.
-  | ESumMismatch (TypeFor phase) Int (NonEmpty (TypeFor phase))
+  | ESumMismatch typ Int (NonEmpty typ)
 
   -- | The default branch and the first branch of a case statement have
   -- different types.
-  | ECaseDefaultMismatch (TypeFor phase) (TypeFor phase)
+  | ECaseDefaultMismatch typ typ
 
   -- | A given reduction limit has been exceeded when trying to reduce a type.
-  | ETypeReductionLimitReached (TypeFor phase)
+  | ETypeReductionLimitReached typ
+
+  -- | A case is matching on an expression with one type but the MatchArg
+  -- pattern has another.
+  | EPatternMismatch typ matchArg
 
 deriving instance
-  (Eq (NamedExtension phase)
-  ,Eq (ArrowExtension phase)
-  ,Eq (SumTExtension phase)
-  ,Eq (ProductTExtension phase)
-  ,Eq (UnionTExtension phase)
-  ,Eq (BigArrowExtension phase)
-  ,Eq (TypeLamExtension phase)
-  ,Eq (TypeAppExtension phase)
-  ,Eq (TypeBindingExtension phase)
-  ,Eq (TypeExtension phase)
-  ,Eq (TypeBindingFor phase)
+  (Eq typ
+  ,Eq matchArg
   )
-  => Eq (Error phase)
+  => Eq (Error typ matchArg)
 
 deriving instance
-  (Ord (NamedExtension phase)
-  ,Ord (ArrowExtension phase)
-  ,Ord (SumTExtension phase)
-  ,Ord (ProductTExtension phase)
-  ,Ord (UnionTExtension phase)
-  ,Ord (BigArrowExtension phase)
-  ,Ord (TypeLamExtension phase)
-  ,Ord (TypeAppExtension phase)
-  ,Ord (TypeBindingExtension phase)
-  ,Ord (TypeExtension phase)
-  ,Ord (TypeBindingFor phase)
+  (Ord typ
+  ,Ord matchArg
   )
-  => Ord (Error phase)
+  => Ord (Error typ matchArg)
 
 deriving instance
-  (Show (NamedExtension phase)
-  ,Show (ArrowExtension phase)
-  ,Show (SumTExtension phase)
-  ,Show (ProductTExtension phase)
-  ,Show (UnionTExtension phase)
-  ,Show (BigArrowExtension phase)
-  ,Show (TypeLamExtension phase)
-  ,Show (TypeAppExtension phase)
-  ,Show (TypeBindingExtension phase)
-  ,Show (TypeExtension phase)
-  ,Show (TypeBindingFor phase)
+  (Show typ
+  ,Show matchArg
   )
-  => Show (Error phase)
+  => Show (Error typ matchArg)
 
 
-ppError :: (TypeFor phase -> Doc) -> Error phase -> Doc
-ppError ppType = \case
+-- | We can pretty-print an error provided we're told how to pretty print
+-- contained:
+-- - MatchArgs
+-- - Types
+ppError
+  :: (matchArg -> Doc)
+  -> (typ -> Doc)
+  -> Error typ matchArg -> Doc
+ppError ppMatchArg ppType = \case
   EMsg doc
     -> doc
 
@@ -170,13 +155,20 @@ ppError ppType = \case
                , text " but branches must have the same type."
                ]
 
+  EPatternMismatch expectedTy gotPattern
+    -> mconcat [ text "in a case analysis the scrutinee expression had type: "
+               , ppType expectedTy
+               , text " but this type is not matched by a given pattern: "
+               , ppMatchArg gotPattern
+               ]
+
   ETypeReductionLimitReached typ
     -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
                , lineBreak
                , ppType typ
                ]
 
-instance (Document (TypeFor phase)) => Document (Error phase) where
+instance (Document typ, Document matchArg) => Document (Error typ matchArg) where
   document e = text "ERROR: " <> case e of
     EMsg doc
       -> doc
@@ -235,9 +227,16 @@ instance (Document (TypeFor phase)) => Document (Error phase) where
     ECaseDefaultMismatch defaultTy firstBranchTy
       -> mconcat [ text "In a case statement the default branch had type: "
                  , document defaultTy
-                 , text "whereas the first branch had type: "
+                 , text " whereas the first branch had type: "
                  , document firstBranchTy
                  , text " but branches must have the same type."
+                 ]
+
+    EPatternMismatch expectedTy gotPattern
+      -> mconcat [ text "in a case analysis the scrutinee expression had type: "
+                 , document expectedTy
+                 , text " but this type is not matched by a given pattern: "
+                 , document gotPattern
                  ]
 
     ETypeReductionLimitReached typ

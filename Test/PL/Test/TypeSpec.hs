@@ -11,6 +11,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.TyVar
+import PL.MatchArg
 import PL.Type
 import PL.Var
 
@@ -39,8 +40,8 @@ spec
   :: Spec
 spec = do
   describe "Types" $ do
-    describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppType)
-    describe "Reduce"            $ reducesTypesToSpec  typeTestCases ppType
+    describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppMatchArg ppType )
+    describe "Reduce"            $ reducesTypesToSpec  typeTestCases ppType ppMatchArg
   where
     typeTestCases :: Map.Map Text TypeTestCase
     typeTestCases = mkTypeTestCases $ TestTypeSources {}
@@ -53,3 +54,6 @@ spec = do
 
     ppKind :: Kind -> Doc
     ppKind = text . Text.pack . show
+
+    ppMatchArg :: MatchArg -> Doc
+    ppMatchArg = text . Text.pack . show

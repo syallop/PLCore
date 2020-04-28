@@ -36,6 +36,7 @@ library
                      , PL.Test.ExprTestCase
                      , PL.Test.TypeTestCase
                      , PL.Test.MatchArgTestCase
+                     , PL.Test.Shared
 
                      , PL.Test.Expr
                      , PL.Test.Expr.BigLam

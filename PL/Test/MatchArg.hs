@@ -43,9 +43,7 @@ import PL.Test.MatchArg.Product
 import PL.Test.MatchArg.Sum
 import PL.Test.MatchArg.Union
 
-import PL.Test.Expr.Boolean
-import PL.Test.Expr.Natural
-import PL.Test.Expr.List
+import PL.Test.Shared
 
 import PL.Test.Parsing.MatchArg
 import PL.Test.TypeChecking.MatchArg

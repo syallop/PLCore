@@ -41,6 +41,7 @@ import PL.Test.Expr.Natural
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
+import PL.Test.Shared
 
 data TestUnionSources = TestUnionSources
   { _unionTwoTestCase :: Source

@@ -32,7 +32,7 @@ import qualified Data.List.NonEmpty as NE
 
 import PL.Test.MatchArgTestCase
 
-import PL.Test.Expr.Boolean
+import PL.Test.Shared
 import PL.Test.Source
 
 data TestBindSources = TestBindSources

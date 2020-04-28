@@ -57,6 +57,7 @@ import Data.Monoid ((<>))
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
+import PL.Test.Shared
 
 data TestNaturalSources = TestNaturalSources
   { _subTwoTestCase :: Source
@@ -68,98 +69,6 @@ naturalTestCases
 naturalTestCases t =
   [ ("subtract two", subTwoExprTestCase . _subTwoTestCase $ t)
   ]
-
-
-natTypeCtx
-  :: (SumTExtension phase ~ Void
-     ,ProductTExtension phase ~ Void
-     ,NamedExtension    phase ~ Void
-     )
-  => TypeCtx phase
-natTypeCtx = fromJust $ insertRecType "Nat" natType emptyTypeCtx
-
-natTypeName
-  :: NamedExtension phase ~ Void
-  => TypeFor phase
-natTypeName = Named "Nat"
-
-natType
-  :: (SumTExtension     phase ~ Void
-     ,ProductTExtension phase ~ Void
-     ,NamedExtension    phase ~ Void
-     )
-  => TypeFor phase
-natType = SumT natSumType
-
-natSumType
-  :: (ProductTExtension phase ~ Void
-     ,NamedExtension    phase ~ Void
-     )
-  => NonEmpty (TypeFor phase)
-natSumType = NE.fromList $
-  [ProductT []
-  ,Named "Nat"
-  ]
-
-zTerm
-  :: (SumExtension      phase ~ Void
-     ,ProductExtension  phase ~ Void
-     ,ProductTExtension phase ~ Void
-     ,NamedExtension phase ~ Void
-     )
-  => ExprFor phase
-zTerm = Sum (Product []) 0 natSumType
-
-sTerm
-  :: (SumExtension      phase ~ Void
-     ,ProductExtension  phase ~ Void
-     ,ProductTExtension phase ~ Void
-     ,LamExtension      phase ~ Void
-     ,BindingFor        phase ~ Var
-     ,AbstractionFor    phase ~ TypeFor phase
-     ,BindingExtension  phase ~ Void
-     ,NamedExtension    phase ~ Void
-     )
-  => ExprFor phase
-sTerm = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
-
-zPat
-  :: (MatchSumExtension     phase ~ Void
-     ,MatchProductExtension phase ~ Void
-     )
-  => MatchArgFor phase
-zPat = MatchSum 0 (MatchProduct [])
-
-sPat
-  :: (MatchSumExtension phase ~ Void)
-  => MatchArgFor phase
-  -> MatchArgFor phase
-sPat = MatchSum 1
-
-type SucConstraints phase =
-  (AppExtension      phase ~ Void
-  ,BindingExtension  phase ~ Void
-  ,AbstractionFor    phase ~ TypeFor phase
-  ,BindingFor        phase ~ Var
-  ,LamExtension      phase ~ Void
-  ,ProductExtension  phase ~ Void
-  ,ProductTExtension phase ~ Void
-  ,SumExtension      phase ~ Void
-  ,NamedExtension    phase ~ Void
-  )
-
-suc
-  :: SucConstraints phase
-  => ExprFor phase
-  -> ExprFor phase
-suc n = App sTerm (n)
-
-zero, one, two, three, four :: SucConstraints phase => ExprFor phase
-zero  = zTerm
-one   = suc zero
-two   = suc one
-three = suc two
-four  = suc three
 
 -- Test nested pattern matching
 -- n > 2     ~> n-2

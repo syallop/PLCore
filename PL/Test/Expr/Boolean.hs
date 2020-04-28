@@ -9,19 +9,9 @@ Stability   : experimental
 HSpec tests for PL.Expr using a 'Boolean' type.
 -}
 module PL.Test.Expr.Boolean
-  ( boolTypeCtx
-  , boolTypeName
-  , boolType
-  , boolSumType
-  , falseTerm
-  , trueTerm
-  , falsePat
-  , truePat
-
-  , andExprTestCase
-
-  , TestBooleanSources (..)
+  ( TestBooleanSources (..)
   , booleanTestCases
+  , andExprTestCase
   )
   where
 
@@ -48,6 +38,7 @@ import qualified Data.List.NonEmpty as NE
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
+import PL.Test.Shared
 
 data TestBooleanSources = TestBooleanSources
   { _andTestCase :: Source
@@ -59,63 +50,6 @@ booleanTestCases
 booleanTestCases t =
   [("and", andExprTestCase . _andTestCase $ t)
   ]
-
-boolTypeCtx
-  :: (SumTExtension     phase ~ Void
-     ,ProductTExtension phase ~ Void
-     )
-  => TypeCtx phase
-boolTypeCtx = fromJust $ insertType "Bool" boolType emptyTypeCtx
-
-boolTypeName
-  :: NamedExtension phase ~ Void
-  => TypeFor phase
-boolTypeName = Named "Bool"
-
-boolType
-  :: (SumTExtension phase ~ Void, ProductTExtension phase ~ Void)
-  => TypeFor phase
-boolType = SumT boolSumType
-
-boolSumType
-  :: (SumTExtension phase ~ Void, ProductTExtension phase ~ Void)
-  => NonEmpty (TypeFor phase)
-boolSumType = NE.fromList $
-  [ ProductT []
-  , ProductT []
-  ]
-
-falseTerm
-  :: (SumExtension      phase ~ Void
-     ,ProductExtension  phase ~ Void
-     ,SumTExtension     phase ~ Void
-     ,ProductTExtension phase ~ Void
-     )
-  => ExprFor phase
-falseTerm = Sum (Product []) 0 boolSumType
-
-trueTerm
-  :: (SumExtension      phase ~ Void
-     ,ProductExtension  phase ~ Void
-     ,SumTExtension     phase ~ Void
-     ,ProductTExtension phase ~ Void
-     )
-  => ExprFor phase
-trueTerm = Sum (Product []) 1 boolSumType
-
-falsePat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
-     )
-  => MatchArgFor phase
-falsePat = MatchSum 0 (MatchProduct [])
-
-truePat
-  :: (MatchSumExtension phase     ~ Void
-     ,MatchProductExtension phase ~ Void
-     )
-  => MatchArgFor phase
-truePat = MatchSum 1 (MatchProduct [])
 
 -- Boolean and
 andExprTestCase

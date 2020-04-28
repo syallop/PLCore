@@ -52,9 +52,7 @@ import PL.Var
 import PL.Test.Type.Named
 -- TODO: Add more type tests here
 
-import PL.Test.Expr.Boolean (boolTypeCtx)
-import PL.Test.Expr.Natural (natTypeCtx)
-import PL.Test.Expr.List    (listTypeCtx)
+import PL.Test.Shared
 
 import PL.Test.Parsing.Type
 import PL.Test.Reducing.Type

@@ -8,8 +8,7 @@ Stability   : experimental
 HSpec tests for PL.Expr using the 'Lam' constructor.
 -}
 module PL.Test.Expr.Lam
-  ( lamTypeCtx
-  , lamTestCases
+  ( lamTestCases
   , TestLamSources (..)
   )
   where
@@ -37,6 +36,7 @@ import qualified Data.List.NonEmpty as NE
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
+import PL.Test.Shared
 
 -- A record of the sources required to run all the TestLamSources tests.
 data TestLamSources = TestLamSources
@@ -54,22 +54,6 @@ lamTestCases t =
   {-,("Chained lambda", chainedLamTestCase)-} -- TODO: Re-enable chaining
   ]
 
-lamTypeCtx
-  = insertType "Foo" fooType
-  . fromJust
-  . insertType "Bar" barType
-  . fromJust
-  . insertType "Baz" bazType
-  $ emptyTypeCtx
-fooTypeName = Named "Foo"
-fooType     = SumT $ NE.fromList [ProductT []]
-barTypeName = Named "Bar"
-barType     = SumT $ NE.fromList [ProductT []]
-bazTypeName = Named "Baz"
-bazType     = SumT $ NE.fromList [ProductT []]
-
-
--- \() -> ()
 -- Test a single lambda that takes and returns a specific named type.
 -- (Specialised id).
 singleLamTestCase
@@ -86,14 +70,14 @@ singleLamTestCase src
   ,_reducesToWhenApplied = reduces
   }
   where
-    ctx = fromJust lamTypeCtx
-    e   = Lam fooTypeName $ Binding VZ
-    ty  = Arrow fooType fooType
+    ctx = boolTypeCtx <> natTypeCtx
+    e   = Lam boolTypeName $ Binding VZ
+    ty  = Arrow boolType boolType
 
     -- TODO
     reduces = []
 
--- \Foo -> \Bar -> Foo
+-- \Bool -> \Nat -> Bool
 -- Test a nested lambda that takes two different named types and returns the first.
 -- (Specialised const).
 nestedLamTestCase
@@ -110,14 +94,14 @@ nestedLamTestCase src
       ,_reducesToWhenApplied = reduces
       }
   where
-    ctx = fromJust lamTypeCtx
-    e   = Lam fooTypeName . Lam barTypeName . Binding . VS $ VZ
-    ty  = Arrow fooType (Arrow barType fooType)
+    ctx = boolTypeCtx <> natTypeCtx
+    e   = Lam boolTypeName . Lam natTypeName . Binding . VS $ VZ
+    ty  = Arrow boolType (Arrow natType boolType)
 
     -- TODO
     reduces = []
 
--- \Foo Bar -> Foo
+-- \Bool Nat -> Unit
 -- Test a chained lambda that takes two different named types in succession and
 -- returns the first.
 -- (Specialised const2).
@@ -135,18 +119,18 @@ chainedLamTestCase src
       ,_reducesToWhenApplied = reduces
       }
   where
-    ctx = fromJust lamTypeCtx
-    e   = Lam fooTypeName
-        . Lam barTypeName
-        . Lam bazTypeName
+    ctx = boolTypeCtx <> natTypeCtx
+    e   = Lam boolTypeName
+        . Lam natTypeName
+        . Lam unitTypeName
         . Binding
         . VS
         . VS
         $ VZ
-    ty  = Arrow fooType
-        . Arrow barType
-        . Arrow bazType
-        $ fooType
+    ty  = Arrow boolType
+        . Arrow natType
+        . Arrow unitType
+        $ boolType
 
     -- TODO
     reduces = []

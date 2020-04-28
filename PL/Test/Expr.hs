@@ -60,6 +60,8 @@ import PL.Test.Expr.Product
 import PL.Test.Expr.Sum
 import PL.Test.Expr.Union
 
+import PL.Test.Shared
+
 import PL.Test.Parsing.Expr
 import PL.Test.TypeChecking.Expr
 import PL.Test.Reducing.Expr

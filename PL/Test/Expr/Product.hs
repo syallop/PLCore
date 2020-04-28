@@ -40,6 +40,7 @@ import PL.Test.Expr.Boolean
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
+import PL.Test.Shared
 
 data TestProductSources = TestProductSources
   { _productThreeTestCase :: Source

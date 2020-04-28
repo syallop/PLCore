@@ -746,7 +746,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
     -> do fTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx f -- Both f and x must type check
           xTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx x
 
-          resFTy <- maybe (Left $ EMsg $ text "Unknown named type in function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- either (\name -> Left $ ETypeNotDefined name "function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           let errAppMismatch = Left $ EAppMismatch resFTy xTy
           case resFTy of
@@ -898,7 +898,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
           -- TODO maybe verify the xTy we've been given to apply?
 
-          resFTy <- maybe (Left $ EMsg $ text "Unknown named type in Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- either (\name -> Left $ ETypeNotDefined name "Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           case resFTy of
             -- Regular big application attempt
@@ -936,7 +936,7 @@ checkMatchWith
   -> TypeCtx DefaultPhase
   -> Either (Error DefaultPhase) [Type]
 checkMatchWith match expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
-  rExpectTy <- maybe (Left $ EMsg $ text "The expected type in a pattern is a type name with no definition.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
+  rExpectTy <- either (\name -> Left $ ETypeNotDefined name "expected type in a pattern.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
   case match of
 
     -- Bind the value

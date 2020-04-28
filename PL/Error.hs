@@ -33,8 +33,8 @@ data Error phase
   -- | Generic error
   = EMsg Doc
 
-  -- No such name
-  | ETypeNotDefined TypeName -- ^ No such type
+  -- No such name in some context
+  | ETypeNotDefined TypeName Text -- ^ No such type
   | ETermNotDefined TermName -- ^ No such term
 
   -- | Two typed things cannot be applied to each other
@@ -111,10 +111,11 @@ ppError ppType = \case
   EMsg doc
     -> doc
 
-  ETypeNotDefined name
+  ETypeNotDefined name context
     -> mconcat [ text "Type named '"
                , document name
-               , text "' is not defined."
+               , text "' is not defined in the context: "
+               , text context
                ]
 
   ETermNotDefined name
@@ -180,10 +181,11 @@ instance (Document (TypeFor phase)) => Document (Error phase) where
     EMsg doc
       -> doc
 
-    ETypeNotDefined name
+    ETypeNotDefined name context
       -> mconcat [ text "Type named '"
                  , document name
-                 , text "' is not defined."
+                 , text "' is not defined in the context: "
+                 , text context
                  ]
 
     ETermNotDefined name

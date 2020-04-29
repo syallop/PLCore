@@ -56,7 +56,7 @@ reducesPatternsToSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reducesPatternsToSpec testCases ppType ppPattern =
-  describe "All example pattern programs reduce as expected"
+  describe "All example patterns"
     . mapM_ (\(name,testCase) -> reducePatternToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (stripPatternComments $ _isPattern testCase) (_typed testCase) (_checkMatchWithResult testCase) ppType ppPattern)
     . Map.toList
     $ testCases
@@ -75,7 +75,7 @@ reducePatternToSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPattern expectTy expect ppType ppPattern =
-  it (Text.unpack name <> " reduces as expected") $ isExpected (checkWithPattern testPattern expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
+  it (Text.unpack name) $ isExpected (checkWithPattern testPattern expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
     isExpected
       :: Either (Error Type Pattern) [TypeFor DefaultPhase]

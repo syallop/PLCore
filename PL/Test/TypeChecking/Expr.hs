@@ -55,7 +55,7 @@ typeChecksSpec
   -> (Error Type Pattern -> Doc)
   -> Spec
 typeChecksSpec testCases ppType ppError
-  = describe "All example programs type check as expected"
+  = describe "All example programs"
   . mapM_ (\(name,testCase) -> typeCheckSpec name (_isExpr testCase) (_underTypeCtx testCase) (_typed testCase) ppType ppError)
   . Map.toList
   $ testCases
@@ -69,7 +69,7 @@ typeCheckSpec
   -> (TypeFor DefaultPhase -> Doc)
   -> (Error Type Pattern -> Doc)
   -> Spec
-typeCheckSpec name inputExpr underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ case topExprType underTypeCtx (stripComments inputExpr) of
+typeCheckSpec name inputExpr underTypeCtx expectedType ppType ppError = it (Text.unpack name) $ case topExprType underTypeCtx (stripComments inputExpr) of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

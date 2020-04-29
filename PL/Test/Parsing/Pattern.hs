@@ -57,7 +57,7 @@ parsesToPatternsSpec
   -> (Error Type Pattern -> Doc)
   -> Spec
 parsesToPatternsSpec testCases parsePattern ppPattern ppError
-  = describe "All example patterns can be parsed by some parser and some source"
+  = describe "All example patterns"
   . mapM_ (\(name,testCase) -> parseToPatternSpec parsePattern name (_parsesFrom testCase) (_isPattern testCase) ppPattern ppError)
   . Map.toList
   $ testCases
@@ -72,7 +72,7 @@ parseToPatternSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> (Error Type Pattern -> Doc)
   -> Spec
-parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parsePattern inputSource of
+parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppError = it (Text.unpack name) $ case parsePattern inputSource of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

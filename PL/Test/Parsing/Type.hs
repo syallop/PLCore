@@ -55,7 +55,7 @@ parsesToTypesSpec
   -> (Error Type Pattern -> Doc)
   -> Spec
 parsesToTypesSpec testCases parseType ppType ppError
-  = describe "All example types can be parsed by some parser and some source"
+  = describe "All example types"
   . mapM_ (\(name,testCase) -> parseToTypeSpec parseType name (_parsesFrom testCase) (_isType testCase) ppType ppError)
   . Map.toList
   $ testCases
@@ -70,7 +70,7 @@ parseToTypeSpec
   -> (TypeFor DefaultPhase -> Doc)
   -> (Error Type Pattern -> Doc)
   -> Spec
-parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseType inputSource of
+parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name) $ case parseType inputSource of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

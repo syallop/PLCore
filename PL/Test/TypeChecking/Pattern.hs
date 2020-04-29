@@ -59,7 +59,7 @@ typeChecksPatternsSpec
   -> (Error Type Pattern -> Doc)
   -> Spec
 typeChecksPatternsSpec testCases ppType ppError =
-  describe "All example patterns type check"
+  describe "All example patterns"
   . mapM_ (\(name,testCase) -> typeCheckPatternSpec name (_isPattern testCase) (_underTypeCtx testCase) (_typed testCase) ppType ppError)
   . Map.toList
   $ testCases
@@ -78,5 +78,5 @@ typeCheckPatternSpec
   -> (TypeFor DefaultPhase -> Doc)
   -> (Error Type Pattern -> Doc)
   -> Spec
-typeCheckPatternSpec name inputPattern underTypeCtx expectedType ppType ppError = it (Text.unpack name <> " type checks as expected") $ pendingWith "There is no defined notion of typechecking for a pattern (yet)"
+typeCheckPatternSpec name inputPattern underTypeCtx expectedType ppType ppError = it (Text.unpack name) $ pendingWith "There is no defined notion of typechecking for a pattern (yet)"
 

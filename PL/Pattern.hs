@@ -289,6 +289,8 @@ checkWithPattern
   -> TypeCtx DefaultPhase
   -> Either (Error Type (PatternFor DefaultPhase)) [Type]
 checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
+  -- If we've been given a named type, substitute it with its info, then ensure
+  -- the type is reduced.
   rExpectTy <- either (\name -> Left $ ETypeNotDefined name "expected type in a pattern.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
 
   case pat of

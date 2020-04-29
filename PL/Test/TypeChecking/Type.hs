@@ -56,7 +56,7 @@ typeChecksTypesSpec
   -> (Error Type Pattern -> Doc)
   -> Spec
 typeChecksTypesSpec testCases ppKind ppError =
-  describe "All example types type(kind) check"
+  describe "All example types"
   . mapM_ (\(name,testCase) -> typeCheckTypeSpec name (_isType testCase) (_underTypeBindCtx testCase) (_underTypeCtx testCase) (_hasKind testCase) ppKind ppError)
   . Map.toList
   $ testCases
@@ -71,7 +71,7 @@ typeCheckTypeSpec
   -> (Kind -> Doc)
   -> (Error Type Pattern -> Doc)
   -> Spec
-typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name <> " kind checks as expected") $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
+typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

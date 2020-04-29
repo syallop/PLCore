@@ -57,7 +57,7 @@ reducesToSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reducesToSpec testCases ppExpr ppType ppPattern =
-  describe "All example programs reduce as expected"
+  describe "All example programs"
     . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],_reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
     . Map.toList
     $ testCases
@@ -75,7 +75,7 @@ reduceToSpec
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = describe (Text.unpack name <> " reduces as expected") $
+reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
   mapM_ (\(name,args,expectReduction) -> reduceSpec name (appise (stripComments inputExpr : args)) expectReduction ppExpr ppType) reductions
   where
     reduceSpec

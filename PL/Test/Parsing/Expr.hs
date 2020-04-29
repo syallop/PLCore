@@ -57,7 +57,7 @@ parsesToSpec
   -> (Error Type Pattern -> Doc)
   -> Spec
 parsesToSpec testCases parseExpression ppExpr ppError
-  = describe "All example programs can be parsed by some parser and some source"
+  = describe "All example programs"
   . mapM_ (\(name,testCase) -> parseToSpec parseExpression name (_parsesFrom testCase) (_isExpr testCase) ppExpr ppError)
   . Map.toList
   $ testCases
@@ -72,7 +72,7 @@ parseToSpec
   -> (ExprFor DefaultPhase -> Doc)
   -> (Error Type Pattern -> Doc)
   -> Spec
-parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (Text.unpack name <> " can be parsed by some parser and some source") $ case parseExpression inputSource of
+parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (Text.unpack name) $ case parseExpression inputSource of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

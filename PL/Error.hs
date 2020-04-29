@@ -97,75 +97,99 @@ ppError ppPattern ppType = \case
     -> doc
 
   ETypeNotDefined name context
-    -> mconcat [ text "Type named '"
-               , document name
-               , text "' is not defined in the context: "
-               , text context
+    -> mconcat [ text "Type named:"
+               , lineBreak
+               , indent1 $ document name
+               , lineBreak
+               , text "is not defined in the context: "
+               , lineBreak
+               , indent1 $ text context
                ]
 
   ETermNotDefined name
-    -> mconcat [ text "Term named '"
-               , document name
-               , text "' is not defined."
+    -> mconcat [ text "Term named:"
+               , lineBreak
+               , indent1 $ document name
+               , lineBreak
+               , text "is not defined."
                ]
 
   EAppMismatch fTy xTy
-    -> mconcat [ text "Cannot apply expression typed: '"
-               , ppType fTy
-               , text "' to expression typed: '"
-               , ppType xTy
-               , text "'."
+    -> mconcat [ text "Cannot apply expression typed:"
+               , lineBreak
+               , indent1 $ ppType fTy
+               , lineBreak
+               , text "to expression typed: "
+               , lineBreak
+               , indent1 $ ppType xTy
                ]
 
   EBigAppMismatch fTy xKy
-    -> mconcat [ text "Cannot big-apply expression typed: '"
-               , ppType fTy
-               , text "' to type kinded: '"
-               , document xKy
-               , text "'."
+    -> mconcat [ text "Cannot big-apply expression typed: "
+               , lineBreak
+               , indent1 $ ppType fTy
+               , lineBreak
+               , indent1 $ text "to type kinded:"
+               , lineBreak
+               , indent1 $ document xKy
                ]
 
   ETypeAppMismatch fKy xKy
-    -> mconcat [ text "Cannot type-apply type kinded: '"
-               , document fKy
-               , text "' to type kinded: '"
-               , document xKy
-               , text "'."
+    -> mconcat [ text "Cannot type-apply type kinded:"
+               , lineBreak
+               , indent1 $ document fKy
+               , lineBreak
+               , text "to type kinded: "
+               , lineBreak
+               , indent1 $ document xKy
                ]
 
   ETypeAppLambda fTy
     -> mconcat [ text "Cannot type-apply a non type-lam: "
-               , ppType fTy
+               , lineBreak
+               , indent1 $ ppType fTy
                ]
 
   ESumMismatch actualType index sumTys
     -> mconcat [ text "Expression had type: "
-               , ppType actualType
-               , text "and claimed to be contained within the sum"
-               , mconcat . NE.toList . fmap ppType $ sumTys
-               , text "at index"
-               , document index
+               , lineBreak
+               , indent1 $ ppType actualType
+               , lineBreak
+               , text "and claimed to be contained within the sum:"
+               , lineBreak
+               , indent1 $ mconcat . NE.toList . fmap ppType $ sumTys
+               , lineBreak
+               , text "at index:"
+               , lineBreak
+               , indent1 $ document index
                ]
 
   ECaseDefaultMismatch defaultTy firstBranchTy
     -> mconcat [ text "In a case statement the default branch had type: "
-               , ppType defaultTy
-               , text "whereas the first branch had type: "
-               , ppType firstBranchTy
-               , text " but branches must have the same type."
+               , lineBreak
+               , indent1 $ ppType defaultTy
+               , lineBreak
+               , text "Whereas the first branch had type: "
+               , lineBreak
+               , indent1 $ ppType firstBranchTy
+               , lineBreak
+               , text "But branches must have the same type."
                ]
 
   EPatternMismatch expectedTy gotPattern
-    -> mconcat [ text "in a case analysis the scrutinee expression had type: "
-               , ppType expectedTy
-               , text " but this type is not matched by a given pattern: "
-               , ppPattern gotPattern
+    -> mconcat [ text "In a case analysis the scrutinee expression had type: "
+               , lineBreak
+               , indent1 $ ppType expectedTy
+               , lineBreak
+               , text "but this type is not matched by a given pattern: "
+               , lineBreak
+               , indent1 $ ppPattern gotPattern
                ]
 
   ETypeReductionLimitReached typ
     -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
                , lineBreak
-               , ppType typ
+               , indent1 $ ppType typ
                ]
 
 instance (Document typ, Document pattern) => Document (Error typ pattern) where
@@ -174,74 +198,97 @@ instance (Document typ, Document pattern) => Document (Error typ pattern) where
       -> doc
 
     ETypeNotDefined name context
-      -> mconcat [ text "Type named '"
-                 , document name
-                 , text "' is not defined in the context: "
-                 , text context
+      -> mconcat [ text "Type named:"
+                 , lineBreak
+                 , indent1 $ document name
+                 , lineBreak
+                 , text "is not defined in the context: "
+                 , lineBreak
+                 , indent1 $ text context
                  ]
 
     ETermNotDefined name
-      -> mconcat [ text "Term named '"
-                 , document name
-                 , text "' is not defined."
+      -> mconcat [ text "Term named:"
+                 , lineBreak
+                 , indent1 $ document name
+                 , lineBreak
+                 , text "is not defined."
                  ]
 
     EAppMismatch fTy xTy
-      -> mconcat [ text "Cannot apply expression typed: '"
-                 , document fTy
-                 , text "' to expression typed: '"
-                 , document xTy
-                 , text "'."
+      -> mconcat [ text "Cannot apply expression typed:"
+                 , lineBreak
+                 , indent1 $ document fTy
+                 , lineBreak
+                 , text "to expression typed:"
+                 , lineBreak
+                 , indent1 $ document xTy
                  ]
 
     EBigAppMismatch fTy xKy
-      -> mconcat [ text "Cannot big-apply expression typed: '"
-                 , document fTy
-                 , text "' to type kinded: '"
-                 , document xKy
-                 , text "'."
+      -> mconcat [ text "Cannot big-apply expression typed:"
+                 , lineBreak
+                 , indent1 $ document fTy
+                 , lineBreak
+                 , text "to type kinded:"
+                 , lineBreak
+                 , indent1 $ document xKy
                  ]
 
     ETypeAppMismatch fKy xKy
-      -> mconcat [ text "Cannot type-apply type kinded: '"
-                 , document fKy
-                 , text "' to type kinded: '"
-                 , document xKy
-                 , text "'."
+      -> mconcat [ text "Cannot type-apply type kinded"
+                 , lineBreak
+                 , indent1 $ document fKy
+                 , lineBreak
+                 , text "to type kinded:"
+                 , lineBreak
+                 , indent1 $ document xKy
                  ]
 
     ETypeAppLambda fTy
       -> mconcat [ text "Cannot type-apply a non type-lam: "
-                 , document fTy
+                 , lineBreak
+                 , indent1 $ document fTy
                  ]
 
     ESumMismatch actualType index sumTys
       -> mconcat [ text "Expression had type: "
-                 , document actualType
-                 , text "and claimed to be contained within the sum"
-                 , mconcat . NE.toList . fmap document $ sumTys
-                 , text "at index"
-                 , document index
+                 , lineBreak
+                 , indent1 $ document actualType
+                 , lineBreak
+                 , text "and claimed to be contained within the sum:"
+                 , indent1 $ mconcat . NE.toList . fmap document $ sumTys
+                 , lineBreak
+                 , text "at index:"
+                 , lineBreak
+                 , indent1 $ document index
                  ]
 
     ECaseDefaultMismatch defaultTy firstBranchTy
       -> mconcat [ text "In a case statement the default branch had type: "
-                 , document defaultTy
-                 , text " whereas the first branch had type: "
-                 , document firstBranchTy
-                 , text " but branches must have the same type."
+                 , lineBreak
+                 , indent1 $ document defaultTy
+                 , lineBreak
+                 , indent1 $ text "whereas the first branch had type: "
+                 , lineBreak
+                 , indent1 $ document firstBranchTy
+                 , lineBreak
+                 , text "but branches must have the same type."
                  ]
 
     EPatternMismatch expectedTy gotPattern
       -> mconcat [ text "in a case analysis the scrutinee expression had type: "
-                 , document expectedTy
-                 , text " but this type is not matched by a given pattern: "
-                 , document gotPattern
+                 , lineBreak
+                 , indent1 $ document expectedTy
+                 , lineBreak
+                 , text "but this type is not matched by a given pattern: "
+                 , lineBreak
+                 , indent1 $ document gotPattern
                  ]
 
     ETypeReductionLimitReached typ
       -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
                  , lineBreak
-                 , document typ
+                 , indent1 $ document typ
                  ]
 

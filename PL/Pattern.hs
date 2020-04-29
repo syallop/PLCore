@@ -68,6 +68,7 @@ import PL.Var
 import PL.Binds
 import PL.Type.Eq
 import PL.Error
+import PL.ReduceType
 import PL.Case
 
 import PLPrinter
@@ -122,7 +123,7 @@ data PatternF phase pat
       { _patternExtension :: !(PatternExtension phase)
       }
 
-deriving instance
+instance
   (Show (SumPatternExtension phase)
   ,Show (ProductPatternExtension phase)
   ,Show (UnionPatternExtension phase)
@@ -133,7 +134,20 @@ deriving instance
   ,Show (BindingFor phase)
   ,Show pat
   )
-  => Show (PatternF phase pat)
+  => Show (PatternF phase pat) where
+  show p = mconcat $ case p of
+    SumPatternF ext ix p
+      -> ["{Sum ", show ext, " ", show ix ," ", show p, "}"]
+    ProductPatternF ext ps
+      -> ["{Product ", show ext, " ", show ps, "}"]
+    UnionPatternF ext tyIx p
+      -> ["{Union ", show ext, " ", show tyIx, " ", show p, "}"]
+    BindingPatternF ext b
+      -> ["{Binding ", show ext, " ", show b, "}"]
+    BindF ext
+      -> ["{Bind ", show ext, "}"]
+    PatternExtensionF ext
+      -> ["{Extension ", show ext, "}"]
 
 deriving instance
   (Eq (SumPatternExtension phase)
@@ -286,13 +300,19 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
       -> do -- the type of the binding
             bTy <- maybe (Left $ EMsg $ text "pattern pattern on a non-existant binding") Right $ lookupBindingTy b exprBindCtx
             case typeEq typeBindCtx typeBindings typeCtx bTy expectTy of
-                Left err         -> Left err
-                Right isSameType -> if isSameType then pure [] else Left $ EMsg $ text "pattern pattern on a binding from a different type"
+                Left err
+                  -> Left err
+
+                Right isSameType
+                  -> if isSameType
+                       then pure []
+                       else Left $ EMsg $ text "pattern pattern on a binding from a different type"
 
     SumPattern sumIndex nestedPattern
       -> do sumTypes <- case rExpectTy of
-                      SumT sumTypes -> Right sumTypes
-                      _             -> Left . EPatternMismatch rExpectTy $ pat
+                      SumT sumTypes
+                        -> Right sumTypes
+                      _ -> Left . EPatternMismatch rExpectTy $ pat
 
             -- index must be within the number of alternative in the sum type
             patternedTy <- if NE.length sumTypes <= sumIndex
@@ -306,17 +326,20 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
       -> do prodTypes <- case rExpectTy of
                              ProductT prodTypes
                                -> Right prodTypes
-                             _ -> Left $ EMsg $ text "Expected product type in pattern"
+                             _ -> Left . EPatternMismatch rExpectTy $ pat
 
             checkWithPatterns nestedPatterns prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
 
     UnionPattern unionIndexTy nestedPattern
       -> do unionTypes <- case rExpectTy of
-                        UnionT unionTypes -> Right unionTypes
-                        _                 -> Left $ EMsg $ text "Expected union type in pattern"
+                        UnionT unionTypes
+                          -> Right unionTypes
+                        _ -> Left . EPatternMismatch rExpectTy $ pat
 
             -- type index must be a member of the union alternatives
-            _ <- if Set.member unionIndexTy unionTypes then Right () else Left $ EMsg $ text "Matching on a type which isnt a member of the union"
+            _ <- if Set.member unionIndexTy unionTypes
+                   then Right ()
+                   else Left . EPatternMismatch rExpectTy $ pat
 
             -- must actually pattern on the expected type
             checkWithPattern nestedPattern unionIndexTy exprBindCtx typeBindCtx typeBindings typeCtx

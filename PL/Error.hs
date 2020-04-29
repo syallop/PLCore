@@ -65,6 +65,9 @@ data Error typ pattern
   -- pattern has another.
   | EPatternMismatch typ pattern
 
+  -- | An error is a context for some deeper error.
+  | EContext (Error typ pattern) (Error typ pattern)
+
 deriving instance
   (Eq typ
   ,Eq pattern
@@ -192,6 +195,16 @@ ppError ppPattern ppType = \case
                , indent1 $ ppType typ
                ]
 
+  EContext context err
+    -> mconcat [ text "Encountered error with context: "
+               , lineBreak
+               , indent1 $ ppError ppPattern ppType context
+               , lineBreak
+               , text "And the specific error: "
+               , lineBreak
+               , indent1 $ ppError ppPattern ppType err
+               ]
+
 instance (Document typ, Document pattern) => Document (Error typ pattern) where
   document e = text "ERROR: " <> case e of
     EMsg doc
@@ -290,5 +303,15 @@ instance (Document typ, Document pattern) => Document (Error typ pattern) where
       -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
                  , lineBreak
                  , indent1 $ document typ
+                 ]
+
+    EContext context err
+      -> mconcat [ text "Encountered error with context: "
+                 , lineBreak
+                 , indent1 $ document context
+                 , lineBreak
+                 , text "And the specific error: "
+                 , lineBreak
+                 , indent1 $ document err
                  ]
 

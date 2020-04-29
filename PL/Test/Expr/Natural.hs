@@ -104,17 +104,17 @@ subTwoExprTestCase src
 
     reduces =
       [ ("3 - 2 = 1"
-        ,[three]
+        ,[(`App` three)]
         ,one
         )
 
       , ( "2 -2 = 0"
-        ,[two]
+        ,[(`App` two)]
         ,zero
         )
 
       , ( "1 - 2 = 0"
-        ,[one]
+        ,[(`App` one)]
         ,zero
         )
       ]

@@ -70,13 +70,13 @@ reduceToSpec
   :: Text.Text
   -> TypeCtx DefaultPhase
   -> ExprFor CommentedPhase
-  -> [(Text.Text, [ExprFor DefaultPhase], ExprFor DefaultPhase)]
+  -> [(Text.Text, [ExprFor DefaultPhase -> ExprFor DefaultPhase], ExprFor DefaultPhase)]
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(name,args,expectReduction) -> reduceSpec name (appise (stripComments inputExpr : args)) expectReduction ppExpr ppType) reductions
+  mapM_ (\(name,args,expectReduction) -> reduceSpec name (apply (stripComments inputExpr) args) expectReduction ppExpr ppType) reductions
   where
     reduceSpec
       :: Text.Text
@@ -107,3 +107,5 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = de
                            then return ()
                            else expectationFailure "target and expected expression both reduce BUT they are not equal"
 
+apply :: Expr -> [Expr -> Expr] -> Expr
+apply e fs = foldr (\f -> f) e fs

@@ -88,17 +88,17 @@ unionTwoExprTestCase src =
 
     reduces =
       [("∪ 1 Nat Nat Bool"
-       ,[Union one natTypeName  $ Set.fromList [natTypeName,boolTypeName]]
+       ,[(`App` (Union one natTypeName $ Set.fromList [natTypeName,boolTypeName]))]
        ,trueTerm
        )
 
       ,("∪ False Bool Nat Bool"
-       ,[Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]]
+       ,[(`App` (Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]))]
        ,falseTerm
        )
 
       ,("∪ True Bool Bool Nat"
-       ,[Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]]
+       ,[(`App` (Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]))]
        ,falseTerm
        )
       ]

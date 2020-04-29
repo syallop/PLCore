@@ -63,6 +63,6 @@ data ExprTestCase = ExprTestCase
   ,_parsesFrom   :: Text                   -- ^ And also parses from this textual representation
 
   ,_reducesTo :: ExprFor DefaultPhase      -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
-  ,_reducesToWhenApplied :: [(Text,[ExprFor DefaultPhase],ExprFor DefaultPhase)] -- When applied to a list of arguments, reduces to some result
+  ,_reducesToWhenApplied :: [(Text,[ExprFor DefaultPhase -> ExprFor DefaultPhase],ExprFor DefaultPhase)] -- When modified by a list of functions, reduces to some result
   }
 

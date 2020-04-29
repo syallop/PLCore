@@ -105,6 +105,7 @@ import PL.Type.Eq
 import PL.TypeCtx
 
 import PL.Var
+import PL.ReduceType
 import PL.TyVar
 import PL.Pattern
 
@@ -688,6 +689,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   CaseAnalysis c
     -> do -- scrutinee should be well typed
           scrutineeTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx $ _caseScrutinee c
+          scrutineeTy <- reduceTypeWith typeBindings typeCtx (Just 100) scrutineeTy
 
           case _caseCaseBranches c of
 

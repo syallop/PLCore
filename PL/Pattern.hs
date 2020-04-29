@@ -293,13 +293,14 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   -- the type is reduced.
   rExpectTy <- either (\name -> Left $ ETypeNotDefined name "expected type in a pattern.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
 
-  case pat of
+  case (pat,rExpectTy) of
 
-    -- Bind the value
-    Bind
+    -- Bindings always match and bind the value.
+    (Bind, expectTy)
       -> Right [expectTy]
 
-    BindingPattern b
+    -- BindingPatterns match when the binding is bound and has the same type.
+    (BindingPattern b, expectTy)
       -> do -- the type of the binding
             bTy <- maybe (Left $ EMsg $ text "pattern pattern on a non-existant binding") Right $ lookupBindingTy b exprBindCtx
             case typeEq typeBindCtx typeBindings typeCtx bTy expectTy of
@@ -311,13 +312,8 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                        then pure []
                        else Left $ EMsg $ text "pattern pattern on a binding from a different type"
 
-    SumPattern sumIndex nestedPattern
-      -> do sumTypes <- case rExpectTy of
-                      SumT sumTypes
-                        -> Right sumTypes
-                      _ -> Left . EPatternMismatch rExpectTy $ pat
-
-            -- index must be within the number of alternative in the sum type
+    (SumPattern sumIndex nestedPattern, SumT sumTypes)
+      -> do -- index must be within the number of alternative in the sum type
             patternedTy <- if NE.length sumTypes <= sumIndex
                            then Left $ EMsg $ text "patterning on a larger sum index than the sum type contains"
                            else Right (sumTypes NE.!! sumIndex)
@@ -325,29 +321,53 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
             -- must have the expected index type
             checkWithPattern nestedPattern patternedTy exprBindCtx typeBindCtx typeBindings typeCtx
 
-    ProductPattern nestedPatterns
-      -> do prodTypes <- case rExpectTy of
-                             ProductT prodTypes
-                               -> Right prodTypes
-                             _ -> Left . EPatternMismatch rExpectTy $ pat
+    (ProductPattern nestedPatterns, ProductT prodTypes)
+      -> checkWithPatterns nestedPatterns prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
 
-            checkWithPatterns nestedPatterns prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
+    -- Type index must be equal to exactly one of the alternatives.
+    (UnionPattern unionIndexTy nestedPattern, UnionT unionTypes)
+      -> do -- Search through the set of possible types collecting:
+            -- - Matching types
+            -- - Or any errors when checking type equality
+            let searchResult = Set.foldr (\unionTy accResult -> case accResult of
+                                            -- Errors short-circuit the search.
+                                            Left err
+                                              -> Left err
+                                            Right s
+                                              -> case typeEq typeBindCtx typeBindings typeCtx unionIndexTy unionTy of
+                                                   Left err
+                                                     -> (Left err)
 
-    UnionPattern unionIndexTy nestedPattern
-      -> do unionTypes <- case rExpectTy of
-                        UnionT unionTypes
-                          -> Right unionTypes
-                        _ -> Left . EPatternMismatch rExpectTy $ pat
+                                                   Right False
+                                                     -> Right s
 
-            -- type index must be a member of the union alternatives
-            _ <- if Set.member unionIndexTy unionTypes
-                   then Right ()
-                   else Left . EPatternMismatch rExpectTy $ pat
+                                                   Right True
+                                                     -> Right (Set.insert unionTy s)
+                                          )
+                                          (Right Set.empty)
+                                          unionTypes
+            -- If we encountered an error checking any two types, report it,
+            -- otherwise enforce that exactly one match was made.
+            () <- case searchResult of
+              Left err
+                -> Left . EContext (EPatternMismatch rExpectTy pat) $ err
+
+              Right matches
+                -> case Set.toList matches of
+                     []
+                       -> Left  . EContext (EPatternMismatch rExpectTy pat) . EMsg . text $ "Zero types matched"
+
+                     [_]
+                       -> Right ()
+
+                     matches
+                       -> Left . EContext (EPatternMismatch rExpectTy pat) $ EMultipleMatchesInUnion matches
 
             -- must actually pattern on the expected type
             checkWithPattern nestedPattern unionIndexTy exprBindCtx typeBindCtx typeBindings typeCtx
 
-    _ -> error "Non-exhaustive pattern when checking pattern statement"
+    (pat,expectTy)
+      -> Left . EPatternMismatch expectTy $ pat
 
 checkWithPatterns
   :: (BindingFor DefaultPhase ~ Var)

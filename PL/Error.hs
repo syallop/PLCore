@@ -65,6 +65,9 @@ data Error typ pattern
   -- pattern has another.
   | EPatternMismatch typ pattern
 
+  -- | A Union pattern should only match a single typ.
+  | EMultipleMatchesInUnion [typ]
+
   -- | An error is a context for some deeper error.
   | EContext (Error typ pattern) (Error typ pattern)
 
@@ -195,6 +198,12 @@ ppError ppPattern ppType = \case
                , indent1 $ ppType typ
                ]
 
+  EMultipleMatchesInUnion typs
+    -> mconcat [ text "Exactly one match is expected, but matched types:"
+               , lineBreak
+               , indent1 $ mconcat $ fmap ppType typs
+               ]
+
   EContext context err
     -> mconcat [ text "Encountered error with context: "
                , lineBreak
@@ -304,6 +313,13 @@ instance (Document typ, Document pattern) => Document (Error typ pattern) where
                  , lineBreak
                  , indent1 $ document typ
                  ]
+
+    EMultipleMatchesInUnion typs
+      -> mconcat [ text "Exactly one match is expected, but matched types:"
+                 , lineBreak
+                 , indent1 $ mconcat $ fmap document typs
+                 ]
+
 
     EContext context err
       -> mconcat [ text "Encountered error with context: "

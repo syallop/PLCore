@@ -289,7 +289,7 @@ deriving instance
   )
   => Ord (TypeF phase typ)
 
-deriving instance
+instance
   (Show (NamedExtension phase)
   ,Show (ArrowExtension phase)
   ,Show (SumTExtension phase)
@@ -303,7 +303,37 @@ deriving instance
   ,Show (TypeBindingFor phase)
   ,Show typ
   )
-  => Show (TypeF phase typ)
+  => Show (TypeF phase typ) where
+    show t = mconcat $ case t of
+      NamedF ext t
+        -> ["{Named ", show ext, " ", show t, "}"]
+
+      ArrowF ext from to
+        -> ["{Arrow ", show ext, " ", show from, " ", show to, "}"]
+
+      SumTF ext tys
+        -> ["{SumT ", show ext, " ", show tys, "}"]
+
+      ProductTF ext tys
+        -> ["{ProductT ", show ext, " ", show tys, "}"]
+
+      UnionTF ext tys
+        -> ["{UnionT ", show ext, " ", show tys, "}"]
+
+      BigArrowF ext absKind ty
+        -> ["{ArrowT ", show ext, " ", show absKind, " ", show ty, "}"]
+
+      TypeLamF ext absKind ty
+        -> ["{TypeLam ", show ext, " ", show absKind, " ", show ty, "}"]
+
+      TypeAppF ext fTy xTy
+        -> ["{TypeApp ", show ext, " ", show fTy, " ", show xTy, "}"]
+
+      TypeBindingF ext b
+        -> ["{TypeBinding ", show ext, " ", show b, "}"]
+
+      TypeExtensionF ext
+        -> ["{TypeExtension ", show ext, "}"]
 
 
 -- The type families below allow adding new parameters to each of the base
@@ -327,7 +357,7 @@ type family TypeBindingFor phase
 data Void
 
 instance Show Void where
-  show _ = "Void"
+  show _ = ""
 
 instance Eq Void where
   _ == _ = True

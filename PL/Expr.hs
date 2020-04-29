@@ -314,7 +314,7 @@ deriving instance
   )
   => Eq (ExprF phase expr)
 
-deriving instance
+instance
   (Show (LamExtension phase)
   ,Show (AppExtension phase)
   ,Show (BindingExtension phase)
@@ -332,7 +332,37 @@ deriving instance
   ,Show (PatternFor phase)
   ,Show expr
   )
-  => Show (ExprF phase expr)
+  => Show (ExprF phase expr) where
+  show e = mconcat $ case e of
+    LamF ext take expr
+      -> ["{Lam ", show ext, " ", show take, " ", show expr, "}"]
+
+    AppF ext f x
+      -> ["{App ", show ext, " ", show f, " ", show x, "}"]
+
+    BindingF ext b
+      -> ["{Binding ", show ext, " ", show b, "}"]
+
+    CaseAnalysisF ext c
+      -> ["{CaseAnalysis ", show ext, " ", show c, "}"]
+
+    SumF ext x ix ty
+      -> ["{Sum ", show ext, " ", show x, " ", show ix, " ", show ty, "}"]
+
+    ProductF ext exprs
+      -> ["{Product ", show ext, " ", show exprs, "}"]
+
+    UnionF ext e tyIx ty
+      -> ["{Union ", show ext, " ", show e, " ", show tyIx, " ", show ty , "}"]
+
+    BigLamF ext ty expr
+      -> ["{BigLam ", show ext, " ", show ty, " ", show expr, "}"]
+
+    BigAppF ext f xTy
+      -> ["{BigApp ", show ext, " ", show f, " ", show xTy, "}"]
+
+    ExprExtensionF ext
+      -> ["{ExprExtension ", show ext, "}"]
 
 -- The type families below allow adding new parameters to each of the
 -- base constructors of an expression which depend upon the phase

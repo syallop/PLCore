@@ -28,10 +28,12 @@ import PLPrinter.Doc
 newtype FixPhase phase f
   = FixPhase {_unFixPhase :: f phase (FixPhase phase f)}
 
-deriving instance Show (f phase (FixPhase phase f)) => Show (FixPhase phase f)
 deriving instance Eq (f phase (FixPhase phase f)) => Eq (FixPhase phase f)
 deriving instance Ord (f phase (FixPhase phase f)) => Ord (FixPhase phase f)
 deriving instance Document (f phase (FixPhase phase f)) => Document (FixPhase phase f)
+
+instance Show (f phase (FixPhase phase f)) => Show (FixPhase phase f) where
+  show (FixPhase f) = show f
 
 unfixPhase
   :: FixPhase phase f

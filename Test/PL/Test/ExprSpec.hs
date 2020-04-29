@@ -16,6 +16,7 @@ import PL.Test.ExprTestCase
 import PL.Test.Parsing.Expr
 import PL.Test.Expr
 import PL.Test.Expr.BigLam
+import PL.Test.Expr.Maybe
 import PL.Test.Expr.Boolean
 import PL.Test.Expr.Function
 import PL.Test.Expr.Lam

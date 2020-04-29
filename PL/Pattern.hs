@@ -290,6 +290,7 @@ checkWithPattern
   -> Either (Error Type (PatternFor DefaultPhase)) [Type]
 checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   rExpectTy <- either (\name -> Left $ ETypeNotDefined name "expected type in a pattern.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
+
   case pat of
 
     -- Bind the value

@@ -43,6 +43,7 @@ library
                      , PL.Test.Expr.BigLam
                      , PL.Test.Expr.Boolean
                      , PL.Test.Expr.Function
+                     , PL.Test.Expr.Maybe
                      , PL.Test.Expr.Lam
                      , PL.Test.Expr.List
                      , PL.Test.Expr.Natural

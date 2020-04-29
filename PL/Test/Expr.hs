@@ -53,6 +53,7 @@ import PL.Var
 import PL.Test.Expr.BigLam
 import PL.Test.Expr.Boolean
 import PL.Test.Expr.Function
+import PL.Test.Expr.Maybe
 import PL.Test.Expr.Lam
 import PL.Test.Expr.List
 import PL.Test.Expr.Natural
@@ -91,6 +92,7 @@ data TestExprSources = TestExprSources
   , _productTestCases  :: TestProductSources
   , _unionTestCases    :: TestUnionSources
   , _functionTestCases :: TestFunctionSources
+  , _maybeTestCases    :: TestMaybeSources
   , _listTestCases     :: TestListSources
   }
 
@@ -108,6 +110,7 @@ mkTestCases t = Map.fromList . mconcat $
   , productTestCases  . _productTestCases  $ t
   , unionTestCases    . _unionTestCases    $ t
   , functionTestCases . _functionTestCases $ t
+  , maybeTestCases    . _maybeTestCases    $ t
   , listTestCases     . _listTestCases     $ t
   ]
 

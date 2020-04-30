@@ -52,6 +52,7 @@ import PL.Var
 -- Some specific ExprSpec tests
 import PL.Test.Expr.BigLam
 import PL.Test.Expr.Boolean
+import PL.Test.Expr.Binding
 import PL.Test.Expr.Function
 import PL.Test.Expr.Maybe
 import PL.Test.Expr.Lam
@@ -87,6 +88,7 @@ data TestExprSources = TestExprSources
   { _lamTestCases      :: TestLamSources
   , _bigLamTestCases   :: TestBigLamSources
   , _booleanTestCases  :: TestBooleanSources
+  , _bindingTestCases  :: TestBindingSources
   , _naturalTestCases  :: TestNaturalSources
   , _sumTestCases      :: TestSumSources
   , _productTestCases  :: TestProductSources
@@ -105,6 +107,7 @@ mkTestCases t = Map.fromList . mconcat $
   [ lamTestCases      . _lamTestCases      $ t
   , bigLamTestCases   . _bigLamTestCases   $ t
   , booleanTestCases  . _booleanTestCases  $ t
+  , bindingTestCases  . _bindingTestCases  $ t
   , naturalTestCases  . _naturalTestCases  $ t
   , sumTestCases      . _sumTestCases      $ t
   , productTestCases  . _productTestCases  $ t

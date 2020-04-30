@@ -41,11 +41,12 @@ library
 
                      , PL.Test.Expr
                      , PL.Test.Expr.BigLam
+                     , PL.Test.Expr.Binding
                      , PL.Test.Expr.Boolean
                      , PL.Test.Expr.Function
-                     , PL.Test.Expr.Maybe
                      , PL.Test.Expr.Lam
                      , PL.Test.Expr.List
+                     , PL.Test.Expr.Maybe
                      , PL.Test.Expr.Natural
                      , PL.Test.Expr.Product
                      , PL.Test.Expr.Sum

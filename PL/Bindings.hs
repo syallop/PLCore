@@ -135,14 +135,22 @@ safeIndex bindType bs ix
   where
   safeIndex' :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => BuryDepth -> Bindings e -> Int -> Maybe (Binding e)
   safeIndex' buryDepth bs ix = case (bs,ix) of
+    -- We don't have any more bindings and so we've failed to lookup.
     (EmptyBindings, _)
       -> Nothing
 
+    -- We've found the binding.
     (ConsBinding b _, 0)
       -> case b of
-           Unbound -> Just Unbound
-           Bound e -> Just $ Bound $ buryBy bindType e buryDepth
+           -- But it hasn't been bound.
+           Unbound
+             -> Just Unbound
 
+           -- It's been bound. Adjust.
+           Bound e
+             -> Just $ Bound $ buryBy bindType e buryDepth
+
+    -- At least one more away
     (ConsBinding _ bs', _)
       -> safeIndex' buryDepth bs' (ix-1)
 

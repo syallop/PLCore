@@ -8,8 +8,7 @@ Stability   : experimental
 HSpec tests for PL.Expr using the 'BigLam' constructor.
 -}
 module PL.Test.Expr.BigLam
-  ( bigLamTypeCtx
-  , bigLamTestCases
+  ( bigLamTestCases
   , TestBigLamSources (..)
   )
   where
@@ -36,12 +35,11 @@ import Data.List.NonEmpty (NonEmpty(..))
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
+import PL.Test.Shared
 
 data TestBigLamSources = TestBigLamSources
   { _singleBigLamTestCase :: Source
   }
-
-bigLamTypeCtx = emptyTypeCtx
 
 bigLamTestCases
   :: TestBigLamSources
@@ -64,19 +62,34 @@ singleBigLamTestCase src
       , _parsesFrom   = src
 
       ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = []
+      ,_reducesToWhenApplied = reduces
       }
   where
-    ctx = bigLamTypeCtx
+    ctx = boolTypeCtx
+
+    -- /\a. \(x:a). x
     e   = BigLam Kind
             (Lam (TypeBinding . TyVar $ VZ)
-                           (Binding VZ)
+                 (Binding VZ)
             )
 
-    -- forall k. (a :: k) -> (a :: k)
+    -- forall (a :: Kind). a -> a
     ty  = BigArrow
             Kind
             (Arrow (TypeBinding . TyVar $ VZ)
-                             (TypeBinding . TyVar $ VZ)
+                   (TypeBinding . TyVar $ VZ)
             )
 
+    reduces =
+      [ ("Can be applied to types"
+        , [(`BigApp` boolTypeName)
+          ]
+        , Lam boolTypeName $ Binding $ VZ
+        )
+      , ("Can be used to specify types for lambdas"
+        , [(`BigApp` boolTypeName)
+          ,(`App` trueTerm)
+          ]
+        , trueTerm
+        )
+      ]

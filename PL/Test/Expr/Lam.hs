@@ -74,8 +74,18 @@ singleLamTestCase src
     e   = Lam boolTypeName $ Binding VZ
     ty  = Arrow boolType boolType
 
-    -- TODO
-    reduces = []
+    reduces =
+      [ ( "true ~> true"
+        , [(`App` trueTerm)
+          ]
+        , trueTerm
+        )
+      , ( "false ~> false"
+        , [(`App` falseTerm)
+          ]
+        , falseTerm
+        )
+      ]
 
 -- \Bool -> \Nat -> Bool
 -- Test a nested lambda that takes two different named types and returns the first.
@@ -98,8 +108,20 @@ nestedLamTestCase src
     e   = Lam boolTypeName . Lam natTypeName . Binding . VS $ VZ
     ty  = Arrow boolType (Arrow natType boolType)
 
-    -- TODO
-    reduces = []
+    reduces =
+      [ ("Reduce to outer value"
+        , [ (`App` trueTerm)
+          , (`App` zero)
+          ]
+        , trueTerm
+        )
+
+      , ("Reduce under lambda"
+        , [ (`App` trueTerm)
+          ]
+        , Lam natTypeName trueTerm
+        )
+      ]
 
 -- \Bool Nat -> Unit
 -- Test a chained lambda that takes two different named types in succession and

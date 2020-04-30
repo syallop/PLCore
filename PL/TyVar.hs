@@ -24,7 +24,10 @@ import Data.Coerce
 import Data.Monoid
 
 newtype TyVar = TyVar {_unTyVar :: Var}
-  deriving (Eq,Ord,Enum,Show,Document)
+  deriving (Eq,Ord,Enum,Document)
+
+instance Show TyVar where
+  show (TyVar v) = show v
 
 mkTyVar :: Int -> TyVar
 mkTyVar = TyVar . mkVar

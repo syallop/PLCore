@@ -23,7 +23,10 @@ import Data.Monoid
 -- | Debrujn index for referencing variables.
 -- A positive integer describing how many abstractions deep the var is found.
 data Var = VZ | VS Var
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Var where
+  show = show . bindDepth
 
 instance Document Var where
   document = int . bindDepth

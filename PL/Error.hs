@@ -223,19 +223,19 @@ ppError ppPattern ppType ppExpr = \case
                , lineBreak
                , indent1 $ int ix
                , lineBreak
-               , text "In context:"
+               , text "In bindings:"
                , lineBreak
                , ppBindingsTree ppExpr bindings
                ]
 
   EContext context err
-    -> mconcat [ text "Encountered error with context: "
-               , lineBreak
-               , indent1 $ ppError ppPattern ppType ppExpr context
-               , lineBreak
-               , text "And the specific error: "
+    -> mconcat [ text "Error:"
                , lineBreak
                , indent1 $ ppError ppPattern ppType ppExpr err
+               , lineBreak
+               , text "In context:"
+               , lineBreak
+               , indent1 $ ppError ppPattern ppType ppExpr context
                ]
 
 instance (Document expr, Document typ, Document pattern) => Document (Error expr typ pattern) where
@@ -349,18 +349,19 @@ instance (Document expr, Document typ, Document pattern) => Document (Error expr
                  , lineBreak
                  , indent1 $ int ix
                  , lineBreak
-                 , text "In context:"
+                 , text "In bindings:"
                  , lineBreak
                  , document bindings
                  ]
 
     EContext context err
-      -> mconcat [ text "Encountered error with context: "
-                 , lineBreak
-                 , indent1 $ document context
-                 , lineBreak
-                 , text "And the specific error: "
+      -> mconcat [ text "Error: "
                  , lineBreak
                  , indent1 $ document err
+                 , lineBreak
+
+                 , text "In context:"
+                 , lineBreak
+                 , indent1 $ document context
                  ]
 

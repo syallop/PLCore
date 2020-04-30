@@ -84,12 +84,12 @@ singleBigLamTestCase src
       [ ("Can be applied to types"
         , [(`BigApp` boolTypeName)
           ]
-        , Lam boolTypeName $ Binding $ VZ
+        , Just $ Lam boolTypeName $ Binding $ VZ
         )
       , ("Can be used to specify types for lambdas"
         , [(`BigApp` boolTypeName)
           ,(`App` trueTerm)
           ]
-        , trueTerm
+        , Just $ trueTerm
         )
       ]

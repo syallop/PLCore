@@ -85,7 +85,7 @@ subTwoExprTestCase src
       , _parsesFrom   = src
 
       , _reducesTo = stripComments e
-      ,_reducesToWhenApplied = reduces
+      , _reducesToWhenApplied = reduces
       }
   where
     ctx = natTypeCtx
@@ -103,19 +103,19 @@ subTwoExprTestCase src
     ty = Arrow natType natType
 
     reduces =
-      [ ("3 - 2 = 1"
-        ,[(`App` three)]
-        ,one
+      [ ( "3 - 2 = 1"
+        , [(`App` three)]
+        , Just one
         )
 
       , ( "2 -2 = 0"
-        ,[(`App` two)]
-        ,zero
+        , [(`App` two)]
+        , Just zero
         )
 
       , ( "1 - 2 = 0"
-        ,[(`App` one)]
-        ,zero
+        , [(`App` one)]
+        , Just zero
         )
       ]
 

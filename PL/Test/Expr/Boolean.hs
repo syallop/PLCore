@@ -87,19 +87,19 @@ andExprTestCase src
     reductions =
       [ ("true"
         , [(`App` trueTerm)]
-        , Lam (Named "Bool") $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+        , Just $ Lam (Named "Bool") $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
             (CaseBranch falsePat falseTerm :| [])
             (Just trueTerm)
         )
 
       , ("false true"
         , [(`App` falseTerm), (`App` trueTerm)]
-        , falseTerm
+        , Just falseTerm
         )
 
       , ("true true"
         , [(`App` trueTerm), (`App` trueTerm)]
-        , trueTerm
+        , Just trueTerm
         )
       ]
 

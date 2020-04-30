@@ -83,22 +83,22 @@ productThreeExprTestCase src
     reduces =
       [("1 True 0"
        ,[(`App` Product [one,trueTerm,zero])]
-       ,trueTerm
+       ,Just trueTerm
        )
 
       ,("1 False 0"
        , [(`App` Product [one,falseTerm,zero])]
-       , falseTerm
+       , Just falseTerm
        )
 
       , ("1 True 1"
         ,[(`App` Product [one,trueTerm,one])]
-        ,falseTerm
+        ,Just falseTerm
         )
 
       , ("4 False 1"
         ,[(`App` Product [four,falseTerm,one])]
-        ,falseTerm
+        ,Just falseTerm
         )
       ]
 

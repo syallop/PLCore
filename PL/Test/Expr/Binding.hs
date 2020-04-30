@@ -75,12 +75,12 @@ bindingTestCase src
     reductions =
       [ ("Unbound"
         , []
-        , Lam (Named "Unit") $ Binding VZ
+        , Just $ Lam (Named "Unit") $ Binding VZ
         )
 
       , ("Bound"
         , [(`App` unitTerm)]
-        , unitTerm
+        , Just unitTerm
         )
       ]
 
@@ -116,14 +116,14 @@ buriedBindingTestCase src
       [
        ( "Bindings are adjusted correctly when buried under lambdas"
        , []
-       , Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VZ -- Note the original binding should have been increased from 1 to 2 as it's application moved its binding further away.
+       , Just $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VZ -- Note the original binding should have been increased from 1 to 2 as it's application moved its binding further away.
        )
 
       ,( "Buried bindings reduce to the correct value"
        , [(`App` trueTerm)
          ,(`App` falseTerm)
          ]
-       , Lam boolTypeName $ trueTerm
+       , Just $ Lam boolTypeName $ trueTerm
        )
       ]
 
@@ -160,7 +160,7 @@ doubleBuriedBindingTestCase src
       [
        ( "Bindings are adjusted correctly when buried under lambdas"
        , []
-       , Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VS $ VZ
+       , Just $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VS $ VZ
        )
 
       ,( "Buried bindings reduce to the correct value"
@@ -168,7 +168,7 @@ doubleBuriedBindingTestCase src
          ,(`App` falseTerm)
          ,(`App` falseTerm)
          ]
-       , Lam boolTypeName $ trueTerm
+       , Just $ Lam boolTypeName $ trueTerm
        )
       ]
 

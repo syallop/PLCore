@@ -87,7 +87,7 @@ emptyListTestCase src
     reduces = [("[] : [Nat]"
                , [(`BigApp` natTypeName)
                  ]
-               , Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
+               , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
                )
 
               -- TODO

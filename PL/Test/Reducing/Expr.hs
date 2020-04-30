@@ -58,7 +58,7 @@ reducesToSpec
   -> Spec
 reducesToSpec testCases ppExpr ppType ppPattern =
   describe "All example programs"
-    . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],_reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
+    . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],Just . _reducesTo $ testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
     . Map.toList
     $ testCases
 
@@ -70,7 +70,7 @@ reduceToSpec
   :: Text.Text
   -> TypeCtx DefaultPhase
   -> ExprFor CommentedPhase
-  -> [(Text.Text, [ExprFor DefaultPhase -> ExprFor DefaultPhase], ExprFor DefaultPhase)]
+  -> [ReductionTestCase]
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
@@ -81,45 +81,68 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = de
     reduceSpec
       :: Text.Text
       -> ExprFor DefaultPhase
-      -> ExprFor DefaultPhase
+      -> Maybe (ExprFor DefaultPhase)
       -> (ExprFor DefaultPhase -> Doc)
       -> (TypeFor DefaultPhase -> Doc)
       -> Spec
-    reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case reduce underTypeCtx expr of
-      Left exprErr
-        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType ppExpr $ exprErr
+    reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case (reduce underTypeCtx expr, eqExpr) of
+      (Left exprErr, Just expectedExpr)
+        -> expectationFailure . Text.unpack . render $ mconcat
+             [ text "Could not reduce:"
+             , lineBreak
+             , indent1 $ ppExpr expr
+             , lineBreak
+             , text "With error:"
+             , lineBreak
+             , ppError ppPattern ppType ppExpr $ exprErr
+             , lineBreak
+             , text "Expected:"
+             , ppExpr expectedExpr
+             ]
 
-      Right redExpr
-        -> if redExpr == eqExpr
-             then return ()
+      -- We expected _some_ error and got _some_.
+      (Left _exprErr, Nothing)
+        -> pure ()
 
-             -- Doesnt equal initial expression.
-             -- reduce that expression and check once more
-             else case reduce underTypeCtx eqExpr of
-                    Left eqExprErr
-                      -> expectationFailure . Text.unpack . render $ mconcat
-                           [ text "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
-                           , ppError ppPattern ppType ppExpr eqExprErr
-                           ]
+      (Right redExpr, Nothing)
+        -> expectationFailure . Text.unpack . render $ mconcat
+             [ text "Expression reduced to:"
+             , lineBreak
+             , indent1 $ ppExpr redExpr
+             , lineBreak
+             , text "But we expected the reducation to fail."
+             ]
 
-                    Right redEqExpr
-                      -> case exprEq emptyBindings emptyBindings underTypeCtx redExpr redEqExpr of
-                           Left err
-                             -> expectationFailure . Text.unpack . render . ppError ppPattern ppType ppExpr $ err
+      (Right redExpr, Just expectedExpr)
+        -> case exprEq emptyBindings emptyBindings underTypeCtx redExpr expectedExpr of
+             Left err
+               -> expectationFailure . Text.unpack . render $ mconcat
+                    [ text "The expression reduced to:"
+                    , lineBreak
+                    , indent1 $ ppExpr redExpr
+                    , lineBreak
+                    , text "But failed to compare to the expected expression:"
+                    , lineBreak
+                    , indent1 $ ppExpr expectedExpr
+                    , lineBreak
+                    , text "Due to error:"
+                    , lineBreak
+                    , indent1 $ ppError ppPattern ppType ppExpr err
+                    ]
 
-                           Right False
-                             -> expectationFailure . Text.unpack . render . mconcat $
-                                  [ text "Target and expected expression both reduce BUT they are not equal. Got:"
-                                  , lineBreak
-                                  , indent1 $ ppExpr redExpr
-                                  , lineBreak
-                                  , text "But expected:"
-                                  , lineBreak
-                                  , indent1 $ ppExpr redEqExpr
-                                  ]
+             Right False
+               -> expectationFailure . Text.unpack . render . mconcat $
+                    [ text "The expression reduced to:"
+                    , lineBreak
+                    , indent1 $ ppExpr redExpr
+                    , lineBreak
+                    , text "But does not equal the expected expression:"
+                    , lineBreak
+                    , indent1 $ ppExpr expectedExpr
+                    ]
 
-                           Right True
-                             -> pure ()
+             Right True
+               -> pure ()
 
 apply :: Expr -> [Expr -> Expr] -> Expr
 apply e fs = foldl (\e f -> f e) e fs

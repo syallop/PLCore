@@ -14,6 +14,7 @@ Also exports 'ExprTestCase' which encapsulates an example which can have all of 
 -}
 module PL.Test.ExprTestCase
   ( ExprTestCase(..)
+  , ReductionTestCase
   )
   where
 
@@ -63,6 +64,11 @@ data ExprTestCase = ExprTestCase
   ,_parsesFrom   :: Text                   -- ^ And also parses from this textual representation
 
   ,_reducesTo :: ExprFor DefaultPhase      -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
-  ,_reducesToWhenApplied :: [(Text,[ExprFor DefaultPhase -> ExprFor DefaultPhase],ExprFor DefaultPhase)] -- When modified by a list of functions, reduces to some result
+
+  ,_reducesToWhenApplied :: [ReductionTestCase]
   }
+
+-- A Reduction test has a name, a list of transformations and is expected to
+-- fail or succeed with some reduced expression.
+type ReductionTestCase = (Text, [ExprFor DefaultPhase -> ExprFor DefaultPhase], Maybe (ExprFor DefaultPhase))
 

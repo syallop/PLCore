@@ -88,17 +88,17 @@ sumThreeExprTestCase src =
     reduces =
       [ ("+1 False"
         ,[(`App` (Sum falseTerm 1 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]))]
-        ,zero
+        ,Just zero
         )
 
       , ("+0 0"
         ,[(`App` (Sum zero 0 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]))]
-        ,zero
+        ,Just zero
         )
 
       , ("+2 0"
         ,[(`App` (Sum zero 2 $ NE.fromList $[natTypeName,boolTypeName,natTypeName]))]
-        ,one
+        ,Just one
         )
       ]
 

@@ -86,12 +86,12 @@ defaultNatTestCase src
     reductions =
       [ ( "Default to 0"
         , [(`App` (BigApp nothingTerm natType))]
-        , zero
+        , Just zero
         )
 
       , ( "Extract 1"
         , [(`App` (App (BigApp justTerm natType) one))]
-        , one
+        , Just one
         )
       ]
 

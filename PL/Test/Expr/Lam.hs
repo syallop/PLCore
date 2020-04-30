@@ -78,12 +78,12 @@ singleLamTestCase src
       [ ( "true ~> true"
         , [(`App` trueTerm)
           ]
-        , trueTerm
+        , Just trueTerm
         )
       , ( "false ~> false"
         , [(`App` falseTerm)
           ]
-        , falseTerm
+        , Just falseTerm
         )
       ]
 
@@ -113,13 +113,13 @@ nestedLamTestCase src
         , [ (`App` trueTerm)
           , (`App` zero)
           ]
-        , trueTerm
+        , Just trueTerm
         )
 
       , ("Reduce under lambda"
         , [ (`App` trueTerm)
           ]
-        , Lam natTypeName trueTerm
+        , Just $ Lam natTypeName trueTerm
         )
       ]
 

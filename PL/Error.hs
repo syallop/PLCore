@@ -225,7 +225,7 @@ ppError ppPattern ppType ppExpr = \case
                , lineBreak
                , text "In context:"
                , lineBreak
-               , ppBindings ppExpr bindings
+               , ppBindingsTree ppExpr bindings
                ]
 
   EContext context err

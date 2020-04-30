@@ -96,6 +96,7 @@ library
                      , quickcheck-instances
                      , semigroups
                      , text
+                     , pretty-tree
                      , ghc-prim
 
   -- hs-source-dirs:      

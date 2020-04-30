@@ -30,13 +30,18 @@ module PL.Bindings
 
   , ppBinding
   , ppBindings
+  , ppBindingsTree
   )
   where
 
 import Control.Applicative
 import Data.Maybe
 import Data.Proxy
+import Data.Text (Text,unpack,pack)
 import Data.Monoid
+
+import Data.Tree
+import Data.Tree.Pretty
 
 import PL.Binds
 import PL.Binds.Ix
@@ -147,4 +152,26 @@ safeIndex bindType bs ix
 -- | A 'safeIndex' assuming the index is contained in the bindings.
 index :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Binding e
 index bindType bs ix = fromMaybe (error "index: given ix is not contained in the bindings") $ safeIndex bindType bs ix
+
+ppBindingsTree
+  :: (e -> Doc)
+  -> Bindings e
+  -> Doc
+ppBindingsTree ppExpr bs = rawText $ pack $ drawVerticalTree $ ppBindingsTree' ppExpr bs
+ where
+   ppBindingsTree'
+     :: (e -> Doc)
+     -> Bindings e
+     -> Tree String
+   ppBindingsTree' ppExpr bs = case bs of
+     EmptyBindings
+       -> Node "Empty" []
+
+     ConsBinding b bs
+       -> Node "Cons" [ (Node "Binding" [Node (unpack . render . ppBinding ppExpr $ b) []])
+                      , ppBindingsTree' ppExpr bs
+                      ]
+
+     Buried bs
+       -> Node "Buried" [ppBindingsTree' ppExpr bs]
 

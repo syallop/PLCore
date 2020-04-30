@@ -18,7 +18,7 @@ module PL.Test.Expr.List
   , emptyTerm
   , consTerm
 
-  , listNatExprTestCase
+  , emptyListTestCase
 
   , TestListSources (..)
   , listTestCases
@@ -42,7 +42,7 @@ import PL.Var
 import Data.Text (Text)
 import Data.Monoid ((<>))
 import Data.Maybe
-import Data.List.NonEmpty (NonEmpty) 
+import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NE
 
 import PL.Test.Expr.Natural
@@ -51,21 +51,21 @@ import PL.Test.Source
 import PL.Test.Shared
 
 data TestListSources = TestListSources
-  { _listTestCase :: Source
+  { _emptyListTestCase     :: Source
   }
 
 listTestCases
   :: TestListSources
   -> [(Text, ExprTestCase)]
 listTestCases t =
-  [
+  [ ("empty list"    , emptyListTestCase . _emptyListTestCase $ t)
   ]
 
--- [0]
-listNatExprTestCase
+-- Empty lists can be instantiated with types.
+emptyListTestCase
   :: Source
   -> ExprTestCase
-listNatExprTestCase src
+emptyListTestCase src
   = ExprTestCase
       { _underTypeCtx = ctx
       , _isExpr       = e
@@ -77,9 +77,23 @@ listNatExprTestCase src
       }
   where
     ctx = listTypeCtx <> natTypeCtx
-    e   = App (App (BigApp consTerm natTypeName) zero) (BigApp emptyTerm natTypeName)
-    ty  = TypeApp listTypeName natType
 
-    -- TODO
-    reduces = []
+    -- [] :: forall a. [a]
+    e   = emptyTerm
+
+    ty :: Type
+    ty  = BigArrow Kind $ (SumT $ NE.fromList [EmptyProductT, ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]])
+
+    reduces = [("[] : [Nat]"
+               , [(`BigApp` natTypeName)
+                 ]
+               , Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
+               )
+
+              -- TODO
+              --,("[] : [[Bool]]"
+               --, [(`BigApp` (TypeApp listTypeName boolTypeName))]
+               --, Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
+               --)
+              ]
 

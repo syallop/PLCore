@@ -52,12 +52,13 @@ import PL.Test.Util
 -- | Test each pattern reduces to expected results.
 reducesPatternsToSpec
   :: Map.Map Text.Text PatternTestCase
+  -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reducesPatternsToSpec testCases ppType ppPattern =
+reducesPatternsToSpec testCases ppExpr ppType ppPattern =
   describe "All example patterns"
-    . mapM_ (\(name,testCase) -> reducePatternToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (stripPatternComments $ _isPattern testCase) (_typed testCase) (_checkMatchWithResult testCase) ppType ppPattern)
+    . mapM_ (\(name,testCase) -> reducePatternToSpec name (_underTypeCtx testCase) (_underExprBindCtx testCase) (_underTypeBindCtx testCase) (_underTypeBindings testCase) (stripPatternComments $ _isPattern testCase) (_typed testCase) (_checkMatchWithResult testCase) ppExpr ppType ppPattern)
     . Map.toList
     $ testCases
 
@@ -70,25 +71,26 @@ reducePatternToSpec
   -> Bindings (TypeFor DefaultPhase)
   -> PatternFor DefaultPhase
   -> Type
-  -> Either (Error (TypeFor DefaultPhase) (PatternFor DefaultPhase)) [TypeFor DefaultPhase]
+  -> Either (Error (ExprFor DefaultPhase) (TypeFor DefaultPhase) (PatternFor DefaultPhase)) [TypeFor DefaultPhase]
+  -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPattern expectTy expect ppType ppPattern =
+reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPattern expectTy expect ppExpr ppType ppPattern =
   it (Text.unpack name) $ isExpected (checkWithPattern testPattern expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
     isExpected
-      :: Either (Error Type Pattern) [TypeFor DefaultPhase]
-      -> Either (Error Type Pattern) [TypeFor DefaultPhase]
+      :: Either (Error Expr Type Pattern) [TypeFor DefaultPhase]
+      -> Either (Error Expr Type Pattern) [TypeFor DefaultPhase]
       -> Expectation
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()
         | otherwise  -> expectationFailure $ Text.unpack $ render $ mconcat
             [ text "Pattern expected error:"
-            , ppError ppPattern ppType expectedErr
+            , ppError ppPattern ppType ppExpr expectedErr
             , text "but got:"
-            , ppError ppPattern ppType resultErr
+            , ppError ppPattern ppType ppExpr resultErr
             ]
 
       (Right resultTys, Right expectedTys)
@@ -107,7 +109,7 @@ reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPatter
       (Right resultTys, Left expectedErr)
         -> expectationFailure $ Text.unpack $ render $ mconcat
              [ text "Pattern expected error:"
-             , ppError ppPattern ppType expectedErr
+             , ppError ppPattern ppType ppExpr expectedErr
              , text "but got successful result, binding types:"
              , foldr ((<>) . ppType) mempty resultTys
              ]
@@ -117,7 +119,7 @@ reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPatter
              [ text "Pattern expected to bind:"
              , foldr ((<>) . ppType) mempty expectedTys
              , text "but got error:"
-             , ppError ppPattern ppType resultErr
+             , ppError ppPattern ppType ppExpr resultErr
              ]
 
     fromRight :: b -> Either a b -> b

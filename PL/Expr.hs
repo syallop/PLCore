@@ -315,6 +315,27 @@ deriving instance
   )
   => Eq (ExprF phase expr)
 
+deriving instance
+  (Ord (LamExtension phase)
+  ,Ord (AppExtension phase)
+  ,Ord (BindingExtension phase)
+  ,Ord (CaseAnalysisExtension phase)
+  ,Ord (SumExtension phase)
+  ,Ord (ProductExtension phase)
+  ,Ord (UnionExtension phase)
+  ,Ord (BigLamExtension phase)
+  ,Ord (BigAppExtension phase)
+  ,Ord (ExprExtension phase)
+  ,Ord (AbstractionFor phase)
+  ,Ord (BindingFor phase)
+  ,Ord (TypeBindingFor phase)
+  ,Ord (TypeFor phase)
+  ,Ord (PatternFor phase)
+  ,Ord (Case expr (PatternFor phase))
+  ,Ord expr
+  )
+  => Ord (ExprF phase expr)
+
 instance
   (Show (LamExtension phase)
   ,Show (AppExtension phase)
@@ -564,7 +585,7 @@ mapSubExpressions f e = case e of
 topExprType
   :: TypeCtx DefaultPhase
   -> Expr
-  -> Either (Error Type Pattern) Type
+  -> Either (Error Expr Type Pattern) Type
 topExprType = exprType emptyCtx emptyCtx emptyBindings
 
 -- | Under a binding context, type check an expression.
@@ -574,7 +595,7 @@ exprType
   -> Bindings Type            -- Associate type bindings to their bound or unbound types
   -> TypeCtx DefaultPhase -- Associate Named types to their TypeInfo
   -> Expr                     -- Expression to type-check
-  -> Either (Error Type Pattern) Type
+  -> Either (Error Expr Type Pattern) Type
 exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
@@ -654,7 +675,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
           -- Type must be in the set somewhere...
           -- TODO
-          _ <- if Set.member (Right True :: Either (Error Type Pattern) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
+          _ <- if Set.member (Right True :: Either (Error Expr Type Pattern) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
                  then Right ()
                  else Left $ EMsg $ text "Expressions type is not within the union"
 

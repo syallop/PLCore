@@ -27,6 +27,9 @@ module PL.Bindings
   , bindFromList
 
   , buryBy
+
+  , ppBinding
+  , ppBindings
   )
   where
 
@@ -45,7 +48,7 @@ import PLPrinter.Doc
 data Binding e
   = Unbound -- No expression bound to this abstraction (/yet)
   | Bound e -- This expression is bound to the abstraction
-  deriving Show
+  deriving (Show,Eq,Ord)
 
 -- A context of bound things 'e' in which you may:
 -- - 'bind'    : E.G. when an expr is applied to a lambda abstraction
@@ -55,25 +58,39 @@ data Bindings e
   = EmptyBindings                        -- ^ No bindings
   | ConsBinding (Binding e) (Bindings e) -- ^ A new binding
   | Buried (Bindings e)                  -- ^ Bury many bindings beneath a lambda abstraction
-  deriving Show
+  deriving (Show,Eq,Ord)
 
 instance Document e
       => Document (Binding e) where
-  document b = case b of
-    Unbound -> text "U"
-    Bound b -> text "B:" <> document b
+  document = ppBinding document
 
 instance Document e
       => Document (Bindings e) where
-  document bs = between (char '[') (char ']') $ case bs of
-                  EmptyBindings
-                    -> emptyDoc
+  document = ppBindings document
 
-                  ConsBinding b bs
-                    -> document b <> char ',' <> document bs
+ppBinding
+  :: (e -> Doc)
+  -> Binding e
+  -> Doc
+ppBinding ppExpr b = case b of
+  Unbound
+    -> text "?"
+  Bound e
+    -> ppExpr e
 
-                  Buried bs
-                    -> between (char '[') (char ']') $ document bs
+ppBindings
+  :: (e -> Doc)
+  -> Bindings e
+  -> Doc
+ppBindings ppExpr bs  = between (char '[') (char ']') $ case bs of
+  EmptyBindings
+    -> emptyDoc
+
+  ConsBinding b bs
+    -> ppBinding ppExpr b <> char ',' <> ppBindings ppExpr bs
+
+  Buried bs
+    -> between (char '[') (char ']') $ ppBindings ppExpr bs
 
 -- | No bindings
 emptyBindings :: Bindings e

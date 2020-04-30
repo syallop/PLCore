@@ -21,6 +21,7 @@ module PL.Error where
 
 import PL.Kind
 import PL.Name
+import PL.Bindings
 
 import PLPrinter
 
@@ -29,7 +30,7 @@ import Data.Text
 import Data.List.NonEmpty
 import qualified Data.List.NonEmpty as NE
 
-data Error typ pattern
+data Error expr typ pattern
 
   -- | Generic error
   = EMsg Doc
@@ -68,37 +69,50 @@ data Error typ pattern
   -- | A Union pattern should only match a single typ.
   | EMultipleMatchesInUnion [typ]
 
+  -- | Failed to lookup a binding ix in some context.
+  | EBindLookupFailure Int (Bindings expr)
+
   -- | An error is a context for some deeper error.
-  | EContext (Error typ pattern) (Error typ pattern)
+  | EContext (Error expr typ pattern) (Error expr typ pattern)
 
 deriving instance
-  (Eq typ
+  (Eq expr
+  ,Eq (Bindings expr)
+  ,Eq typ
   ,Eq pattern
   )
-  => Eq (Error typ pattern)
+  => Eq (Error expr typ pattern)
 
 deriving instance
-  (Ord typ
+  (Eq (Bindings expr)
+  ,Ord (Bindings expr)
+  ,Ord expr
+  ,Ord typ
   ,Ord pattern
   )
-  => Ord (Error typ pattern)
+  => Ord (Error expr typ pattern)
 
 deriving instance
-  (Show typ
+  (Show expr
+  ,Show typ
   ,Show pattern
   )
-  => Show (Error typ pattern)
+  => Show (Error expr typ pattern)
 
 
 -- | We can pretty-print an error provided we're told how to pretty print
 -- contained:
 -- - Patterns
 -- - Types
+-- - Expressions
 ppError
   :: (pattern -> Doc)
   -> (typ -> Doc)
-  -> Error typ pattern -> Doc
-ppError ppPattern ppType = \case
+  -> (expr -> Doc)
+  -> Error expr typ pattern -> Doc
+ppError ppPattern ppType ppExpr = \case
+  -- TODO: Wack parameter order
+
   EMsg doc
     -> doc
 
@@ -204,17 +218,27 @@ ppError ppPattern ppType = \case
                , indent1 $ mconcat $ fmap ppType typs
                ]
 
+  EBindLookupFailure ix bindings
+    -> mconcat [ text "Failed to lookup an expression binding with index:"
+               , lineBreak
+               , indent1 $ int ix
+               , lineBreak
+               , text "In context:"
+               , lineBreak
+               , ppBindings ppExpr bindings
+               ]
+
   EContext context err
     -> mconcat [ text "Encountered error with context: "
                , lineBreak
-               , indent1 $ ppError ppPattern ppType context
+               , indent1 $ ppError ppPattern ppType ppExpr context
                , lineBreak
                , text "And the specific error: "
                , lineBreak
-               , indent1 $ ppError ppPattern ppType err
+               , indent1 $ ppError ppPattern ppType ppExpr err
                ]
 
-instance (Document typ, Document pattern) => Document (Error typ pattern) where
+instance (Document expr, Document typ, Document pattern) => Document (Error expr typ pattern) where
   document e = text "ERROR: " <> case e of
     EMsg doc
       -> doc
@@ -320,6 +344,15 @@ instance (Document typ, Document pattern) => Document (Error typ pattern) where
                  , indent1 $ mconcat $ fmap document typs
                  ]
 
+    EBindLookupFailure ix bindings
+      -> mconcat [ text "Failed to lookup an expression binding with index:"
+                 , lineBreak
+                 , indent1 $ int ix
+                 , lineBreak
+                 , text "In context:"
+                 , lineBreak
+                 , document bindings
+                 ]
 
     EContext context err
       -> mconcat [ text "Encountered error with context: "

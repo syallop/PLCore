@@ -53,7 +53,7 @@ import PL.Test.Util
 typeChecksTypesSpec
   :: Map.Map Text.Text TypeTestCase
   -> (Kind -> Doc)
-  -> (Error Type Pattern -> Doc)
+  -> (Error Expr Type Pattern -> Doc)
   -> Spec
 typeChecksTypesSpec testCases ppKind ppError =
   describe "All example types"
@@ -69,7 +69,7 @@ typeCheckTypeSpec
   -> TypeCtx DefaultPhase
   -> Kind
   -> (Kind -> Doc)
-  -> (Error Type Pattern -> Doc)
+  -> (Error Expr Type Pattern -> Doc)
   -> Spec
 typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
   Left err

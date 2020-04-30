@@ -47,7 +47,7 @@ spec
   :: Spec
 spec = do
   describe "Expressions" $ do
-    describe "Type check" $ typeChecksSpec exprTestCases ppType (ppError ppPattern ppType)
+    describe "Type check" $ typeChecksSpec exprTestCases ppType (ppError ppPattern ppType ppExpr)
     describe "Reduce"     $ reducesToSpec  exprTestCases ppExpr ppType ppPattern
   where
     exprTestCases :: Map.Map Text ExprTestCase

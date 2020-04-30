@@ -30,7 +30,7 @@ data Case e p = Case
   {_caseScrutinee    :: e
   ,_caseCaseBranches :: CaseBranches e p
   }
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
 
 -- | Body of a case expression.
 -- Like a list of patterns 'p', result expression 'e' pairs with an optional default catch all 'e'.
@@ -49,14 +49,14 @@ data CaseBranches e p
     { _caseBranches                :: NonEmpty (CaseBranch e p)
     , _caseBranchesOptionalDefault :: Maybe e
     }
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
 
 -- | A single branch in a case analysis
 data CaseBranch e p = CaseBranch
  {_caseBranchPattern :: p -- The pattern to match
  ,_caseBranchResult  :: e -- The result if a match is successful
  }
- deriving (Eq,Show)
+ deriving (Eq,Ord,Show)
 
 mapCaseExpr :: (e -> a) -> Case e p -> Case a p
 mapCaseExpr f c = case c of

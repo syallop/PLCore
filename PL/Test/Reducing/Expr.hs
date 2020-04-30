@@ -87,7 +87,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = de
       -> Spec
     reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case reduce underTypeCtx expr of
       Left exprErr
-        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType $ exprErr
+        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType ppExpr $ exprErr
 
       Right redExpr
         -> if redExpr == eqExpr
@@ -99,13 +99,28 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = de
                     Left eqExprErr
                       -> expectationFailure . Text.unpack . render $ mconcat
                            [ text "target expression reduces, doesnt match the expected expression AND the expected expression fails to reduce itself:"
-                           , ppError ppPattern ppType eqExprErr
+                           , ppError ppPattern ppType ppExpr eqExprErr
                            ]
 
                     Right redEqExpr
-                      -> if redExpr == redEqExpr
-                           then return ()
-                           else expectationFailure "target and expected expression both reduce BUT they are not equal"
+                      -> case exprEq emptyBindings emptyBindings underTypeCtx redExpr redEqExpr of
+                           Left err
+                             -> expectationFailure . Text.unpack . render . ppError ppPattern ppType ppExpr $ err
+
+                           Right False
+                             -> expectationFailure . Text.unpack . render . mconcat $
+                                  [ text "Target and expected expression both reduce BUT they are not equal. Got:"
+                                  , lineBreak
+                                  , indent1 $ ppExpr redExpr
+                                  , lineBreak
+                                  , text "But expected:"
+                                  , lineBreak
+                                  , indent1 $ ppExpr redEqExpr
+                                  ]
+
+                           Right True
+                             -> pure ()
 
 apply :: Expr -> [Expr -> Expr] -> Expr
-apply e fs = foldr (\f -> f) e fs
+apply e fs = foldl (\e f -> f e) e fs
+

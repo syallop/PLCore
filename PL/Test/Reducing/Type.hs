@@ -16,6 +16,7 @@ import PL.Commented
 import PL.Error
 import PL.Kind
 import PL.Reduce
+import PL.Expr
 import PL.ReduceType
 import PL.TyVar
 import PL.Type
@@ -53,12 +54,13 @@ import PL.Test.Util
 -- Test each testcase reduces to expected results.
 reducesTypesToSpec
   :: Map.Map Text.Text TypeTestCase
+  -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reducesTypesToSpec testCases ppType ppPattern =
+reducesTypesToSpec testCases ppExpr ppType ppPattern =
   describe "All example types"
-    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], _reducesTo testCase) : _reducesToWhenApplied testCase) ppType ppPattern)
+    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], _reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
     . Map.toList
     $ testCases
 
@@ -70,22 +72,22 @@ reduceTypeToSpec
   :: Text.Text
   -> TypeFor CommentedPhase
   -> [(Text.Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase], TypeFor DefaultPhase)]
+  -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
-reduceTypeToSpec name inputType reductions ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (appise (stripTypeComments inputType : args)) expectReduction ppType) reductions
+reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
+  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (appise (stripTypeComments inputType : args)) expectReduction) reductions
   where
     reduceSpec
       :: Text.Text
       -> TypeCtx DefaultPhase
       -> Type
       -> Type
-      -> (TypeFor DefaultPhase -> Doc)
       -> Spec
-    reduceSpec name underCtx typ eqType ppType = it (Text.unpack name) $ case reduceType underCtx typ of
+    reduceSpec name underCtx typ eqType = it (Text.unpack name) $ case reduceType underCtx typ of
       Left typErr
-        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType  $ typErr
+        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType ppExpr $ typErr
 
       Right redType
         -> if redType == eqType
@@ -97,7 +99,7 @@ reduceTypeToSpec name inputType reductions ppType ppPattern = describe (Text.unp
                     Left eqTypeErr
                       -> expectationFailure . Text.unpack . render $ mconcat
                            [ text "target type reduces, doesnt match the expected type AND the expected type fails to reduce itself:"
-                           , ppError ppPattern ppType eqTypeErr
+                           , ppError ppPattern ppType ppExpr eqTypeErr
                            ]
 
                     Right redEqType

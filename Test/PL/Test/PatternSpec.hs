@@ -37,8 +37,8 @@ spec
   :: Spec
 spec = do
   describe "Patterns" $ do
-    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppType (ppError ppPattern ppType)
-    describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppType ppPattern
+    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppType (ppError ppPattern ppType ppExpr)
+    describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppExpr ppType ppPattern
   where
     patternTestCases :: Map.Map Text PatternTestCase
     patternTestCases = mkPatternTestCases $ TestPatternSources {}

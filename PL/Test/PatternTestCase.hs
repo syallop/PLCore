@@ -55,7 +55,7 @@ data PatternTestCase = PatternTestCase
   ,_underTypeBindings    :: Bindings (TypeFor DefaultPhase)
   ,_isPattern           :: PatternFor CommentedPhase -- ^ A Pattern
   ,_typed                :: Type                        -- ^ Has this type
-  ,_checkMatchWithResult :: Either (Error Type Pattern) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
+  ,_checkMatchWithResult :: Either (Error Expr Type Pattern) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
   ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 

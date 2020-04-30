@@ -266,13 +266,13 @@ type instance PatternExtension DefaultPhase = Void
 branchType
   :: (BindingFor DefaultPhase ~ Var)
   => CaseBranch expr Pattern
-  -> (BindCtx Var Type -> BindCtx TyVar Kind -> Bindings Type -> TypeCtx DefaultPhase -> expr -> Either (Error Type Pattern) Type)
+  -> (BindCtx Var Type -> BindCtx TyVar Kind -> Bindings Type -> TypeCtx DefaultPhase -> expr -> Either (Error expr Type Pattern) Type)
   -> Type
   -> BindCtx Var Type
   -> BindCtx TyVar Kind
   -> Bindings Type
   -> TypeCtx DefaultPhase
-  -> Either (Error Type Pattern) Type
+  -> Either (Error expr Type Pattern) Type
 branchType (CaseBranch lhs rhs) exprType expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   bindings <- checkWithPattern lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
   exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
@@ -287,7 +287,7 @@ checkWithPattern
   -> BindCtx TyVar Kind
   -> Bindings Type
   -> TypeCtx DefaultPhase
-  -> Either (Error Type (PatternFor DefaultPhase)) [Type]
+  -> Either (Error expr Type (PatternFor DefaultPhase)) [Type]
 checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   -- If we've been given a named type, substitute it with its info, then ensure
   -- the type is reduced.
@@ -377,7 +377,7 @@ checkWithPatterns
   -> BindCtx TyVar Kind
   -> Bindings Type
   -> TypeCtx DefaultPhase
-  -> Either (Error Type Pattern) [Type]
+  -> Either (Error expr Type Pattern) [Type]
 checkWithPatterns pat types exprBindCtx typeBindCtx typeBindings typeCtx = case (pat,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg $ text "Expected more patterns in pattern"

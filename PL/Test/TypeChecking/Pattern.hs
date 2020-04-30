@@ -56,7 +56,7 @@ import PL.Test.Util
 typeChecksPatternsSpec
   :: Map.Map Text.Text PatternTestCase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Type Pattern -> Doc)
+  -> (Error Expr Type Pattern -> Doc)
   -> Spec
 typeChecksPatternsSpec testCases ppType ppError =
   describe "All example patterns"
@@ -76,7 +76,7 @@ typeCheckPatternSpec
   -> TypeCtx phase
   -> TypeFor phase
   -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Type Pattern -> Doc)
+  -> (Error Expr Type Pattern -> Doc)
   -> Spec
 typeCheckPatternSpec name inputPattern underTypeCtx expectedType ppType ppError = it (Text.unpack name) $ pendingWith "There is no defined notion of typechecking for a pattern (yet)"
 

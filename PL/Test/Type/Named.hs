@@ -87,5 +87,11 @@ simpleNameTestCase src
     k = Kind
 
     -- TODO
-    reduces = []
+    reduces =
+      [ ( "Named types reduce to their definition"
+        , ctx
+        , []
+        , Just $ SumT $ NE.fromList [EmptyProductT]
+        )
+      ]
 

@@ -43,6 +43,7 @@ data TestBindingSources = TestBindingSources
   { _bindingTestCase       :: Source
   , _buriedBindingTestCase :: Source
   , _doubleBuriedBindingTestCase :: Source
+  , _buriedBindingsDontMoveTestCase :: Source
   }
 
 bindingTestCases
@@ -52,6 +53,7 @@ bindingTestCases t =
   [("simple binding", bindingTestCase       . _bindingTestCase       $ t)
   ,("buried binding", buriedBindingTestCase . _buriedBindingTestCase $ t)
   ,("double burried binding", doubleBuriedBindingTestCase . _doubleBuriedBindingTestCase $ t)
+  ,("buried bindings don't move", buriedBindingsDontMoveTestCase . _buriedBindingsDontMoveTestCase $ t)
   ]
 
 bindingTestCase
@@ -84,6 +86,7 @@ bindingTestCase src
         )
       ]
 
+-- Test that burried bindings are incremented
 buriedBindingTestCase
   :: Source
   -> ExprTestCase
@@ -127,6 +130,7 @@ buriedBindingTestCase src
        )
       ]
 
+-- Test that burried bindings are incremented by more than 1 where necessary
 doubleBuriedBindingTestCase
   :: Source
   -> ExprTestCase
@@ -169,6 +173,51 @@ doubleBuriedBindingTestCase src
          ,(`App` falseTerm)
          ]
        , Just $ Lam boolTypeName $ trueTerm
+       )
+      ]
+
+-- Test that burried bindings are not incremented when the binding does not move
+buriedBindingsDontMoveTestCase
+  :: Source
+  -> ExprTestCase
+buriedBindingsDontMoveTestCase src
+  = ExprTestCase
+      { _underTypeCtx = ctx
+      , _isExpr       = e
+      , _typed        = ty
+      , _parsesFrom   = src
+
+      ,_reducesTo = stripComments e
+      ,_reducesToWhenApplied = reductions
+      }
+  where
+    ctx = boolTypeCtx
+
+    -- Should reduce:
+    --
+    -- \t. \t. \t. 2
+
+    -- \t ( (\t. 0) (0))
+    -- |      |__|   |
+    -- --------------
+    --
+    -- Should reduce:
+    --
+    -- \t 0.
+    --
+    -- NOT
+    --
+    -- \t 1.
+    e   = Lam boolTypeName $ App (Lam boolTypeName (Binding VZ))
+                                 (Binding VZ)
+
+    ty  = Arrow boolTypeName boolTypeName
+
+    reductions =
+      [
+       ( "Bindings are not adjusted when they don't move"
+       , []
+       , Just $ Lam boolTypeName $ Binding $ VZ
        )
       ]
 

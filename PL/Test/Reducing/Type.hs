@@ -60,7 +60,7 @@ reducesTypesToSpec
   -> Spec
 reducesTypesToSpec testCases ppExpr ppType ppPattern =
   describe "All example types"
-    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], _reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
+    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], Just $ _reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
     . Map.toList
     $ testCases
 
@@ -71,7 +71,7 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern =
 reduceTypeToSpec
   :: Text.Text
   -> TypeFor CommentedPhase
-  -> [(Text.Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase], TypeFor DefaultPhase)]
+  -> [TypeReductionTestCase]
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
@@ -83,29 +83,66 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (T
       :: Text.Text
       -> TypeCtx DefaultPhase
       -> Type
-      -> Type
+      -> Maybe Type
       -> Spec
-    reduceSpec name underCtx typ eqType = it (Text.unpack name) $ case reduceType underCtx typ of
-      Left typErr
-        -> expectationFailure . Text.unpack . render . ppError ppPattern ppType ppExpr $ typErr
+    reduceSpec name underCtx typ eqType = it (Text.unpack name) $ case (reduceType underCtx typ, eqType) of
+      (Left typErr, Just expectedType)
+        -> expectationFailure . Text.unpack . render . mconcat $
+             [ text "Could not reduce:"
+             , lineBreak
+             , indent1 $ ppType typ
+             , lineBreak
+             , text "With error:"
+             , lineBreak
+             , ppError ppPattern ppType ppExpr $ typErr
+             , lineBreak
+             , text "Expected:"
+             , ppType expectedType
+             ]
 
-      Right redType
-        -> if redType == eqType
-             then return ()
+      -- We expected _some_ error and got _some_.
+      (Left _typeErr, Nothing)
+        -> pure ()
 
-             -- Doesnt equal initial type.
-             -- reduce that type and check once more
-             else case reduceType underCtx eqType of
-                    Left eqTypeErr
-                      -> expectationFailure . Text.unpack . render $ mconcat
-                           [ text "target type reduces, doesnt match the expected type AND the expected type fails to reduce itself:"
-                           , ppError ppPattern ppType ppExpr eqTypeErr
-                           ]
+      (Right redType, Nothing)
+        -> expectationFailure . Text.unpack . render $ mconcat
+             [ text "Type reduced to:"
+             , lineBreak
+             , indent1 $ ppType redType
+             , lineBreak
+             , text "But we expected the reducation to fail."
+             ]
 
-                    Right redEqType
-                      -> if redType == redEqType
-                           then return ()
-                           else expectationFailure "target and expected type both reduce BUT they are not equal"
+      (Right redType, Just expectedType)
+        -> case typeEq emptyCtx emptyBindings underCtx redType expectedType of
+             Left err
+               -> expectationFailure . Text.unpack . render $ mconcat
+                    [ text "The type reduced to:"
+                    , lineBreak
+                    , indent1 $ ppType redType
+                    , lineBreak
+                    , text "But failed to compare to the expected type:"
+                    , lineBreak
+                    , indent1 $ ppType expectedType
+                    , lineBreak
+                    , text "Due to error:"
+                    , lineBreak
+                    , indent1 $ ppError ppPattern ppType ppExpr err
+                    ]
+
+             Right False
+               -> expectationFailure . Text.unpack . render . mconcat $
+                    [ text "The type reduced to:"
+                    , lineBreak
+                    , indent1 $ ppType redType
+                    , lineBreak
+                    , text "But does not equal the expected type:"
+                    , lineBreak
+                    , indent1 $ ppType expectedType
+                    ]
+
+             Right True
+               -> pure ()
 
     appise :: [Type] -> Type
     appise []        = error "Cant appise empty list of types"

@@ -14,6 +14,7 @@ Also exports 'TypeTestCase' which encapsulates an example which can have all of 
 -}
 module PL.Test.TypeTestCase
   ( TypeTestCase(..)
+  , TypeReductionTestCase
   )
   where
 
@@ -60,6 +61,7 @@ data TypeTestCase = TypeTestCase
   , _parsesFrom            :: Text                  -- ^ And also parses from this textual representation
   , _hasKind               :: Kind
   , _reducesTo            :: TypeFor DefaultPhase -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
-  , _reducesToWhenApplied :: [(Text,TypeCtx DefaultPhase, [TypeFor DefaultPhase], TypeFor DefaultPhase)] -- ^ When type-applied to a list of arguments, reduces to some result
+  , _reducesToWhenApplied :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
   }
 
+type TypeReductionTestCase = (Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase], Maybe (TypeFor DefaultPhase))

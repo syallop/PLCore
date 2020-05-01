@@ -41,14 +41,16 @@ import PL.Test.Source
 
 -- A record of the sources required to run all the TestNamedSources tests.
 data TestNamedSources = TestNamedSources
-  { _simpleNameTestCase :: Source
+  { _simpleNameTestCase    :: Source
+  , _recursiveNameTestCase :: Source
   }
 
 namedTestCases
   :: TestNamedSources
   -> [(Text,TypeTestCase)]
 namedTestCases t =
-  [ ("Simple name" , simpleNameTestCase . _simpleNameTestCase $ t)
+  [ ("Simple name"   , simpleNameTestCase    . _simpleNameTestCase    $ t)
+  , ("Recursive name", recursiveNameTestCase . _recursiveNameTestCase $ t)
   ]
 
 namedTypeCtx
@@ -60,6 +62,8 @@ namedTypeCtx
 namedTypeCtx
   = fromJust
   . insertType "Preexisting" preExistingType
+  . fromJust
+  . insertRecType "Recursive" recursiveType
   $ emptyTypeCtx
 
 preExistingType
@@ -68,6 +72,14 @@ preExistingType
      )
   => TypeFor phase
 preExistingType = SumT $ NE.fromList [EmptyProductT]
+
+recursiveType
+  :: (SumTExtension phase     ~ Void
+     ,ProductTExtension phase ~ Void
+     ,NamedExtension phase    ~ Void
+     )
+  => TypeFor phase
+recursiveType = SumT $ NE.fromList [EmptyProductT,Named "Recursive"]
 
 simpleNameTestCase
   :: Source
@@ -86,12 +98,48 @@ simpleNameTestCase src
     ty  = Named "Preexisting"
     k = Kind
 
-    -- TODO
     reduces =
       [ ( "Named types reduce to their definition"
         , ctx
         , []
         , Just $ SumT $ NE.fromList [EmptyProductT]
+        )
+      ]
+
+recursiveNameTestCase
+  :: Source
+  -> TypeTestCase
+recursiveNameTestCase src
+  = TypeTestCase
+  {_underTypeCtx         = ctx
+  ,_isType               = ty
+  ,_parsesFrom           = src
+  ,_hasKind              = k
+  ,_reducesTo            = stripTypeComments ty
+  ,_reducesToWhenApplied = reduces
+  }
+  where
+    ctx = namedTypeCtx
+    ty  = Named "Recursive"
+    k = Kind
+
+    reduces =
+      [ ( "Equal themselves"
+        , ctx
+        , []
+        , Just $ Named "Recursive"
+        )
+
+      , ( "Equal one unwrapping of their definition"
+        , ctx
+        , []
+        , Just $ recursiveType
+        )
+
+      , ( "Equal two unwrappings of their definition"
+        , ctx
+        , []
+        , Just $ SumT $ NE.fromList [EmptyProductT,SumT $ NE.fromList [EmptyProductT,Named "Recursive"]]
         )
       ]
 

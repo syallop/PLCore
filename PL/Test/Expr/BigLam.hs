@@ -92,4 +92,10 @@ singleBigLamTestCase src
           ]
         , Just $ trueTerm
         )
+
+      , ("Cannot be applied to values"
+        , [(`App` trueTerm)
+          ]
+        , Nothing
+        )
       ]

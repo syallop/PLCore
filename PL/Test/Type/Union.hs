@@ -74,11 +74,16 @@ unionTwoTestCase src
     k = Kind
 
     reduces =
-      [ ( "Is the same as the reverse union"
-        , ctx
-        , []
-        , [TypeEquals $ UnionT $ Set.fromList [natTypeName,unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Is the same as the reverse union"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeEquals $ UnionT $ Set.fromList [natTypeName,unitTypeName]]
+          }
       ]
 
 singletonUnionTestCase
@@ -99,11 +104,16 @@ singletonUnionTestCase src
     k = Kind
 
     reduces =
-      [ ( "union(Unit) == union(Unit,Unit)"
-        , ctx
-        , []
-        , [TypeEquals $ UnionT $ Set.fromList [unitTypeName,unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "union(Unit) == union(Unit,Unit)"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeEquals $ UnionT $ Set.fromList [unitTypeName,unitTypeName]]
+          }
       ]
 
 duplicateUnionTestCase
@@ -128,10 +138,15 @@ duplicateUnionTestCase src
     -- - Does using the Set type mean this test can't cover parsing and
     -- reduction?
     reduces =
-      [ ( "Union cannot contain the same type multiple times"
-        , ctx
-        , []
-        , [TypeEquals $ UnionT $ Set.fromList [unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Union cannot contain the same type multiple times"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeEquals $ UnionT $ Set.fromList [unitTypeName]]
+          }
       ]
 

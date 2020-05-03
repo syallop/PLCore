@@ -99,11 +99,17 @@ simpleNameTestCase src
     k = Kind
 
     reduces =
-      [ ( "Named types reduce to their definition"
-        , ctx
-        , []
-        , [TypeEquals $ SumT $ NE.fromList [EmptyProductT]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Named types reduce to their definition"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [ TypeEquals $ SumT $ NE.fromList [EmptyProductT]
+              ]
+          }
       ]
 
 recursiveNameTestCase
@@ -124,18 +130,30 @@ recursiveNameTestCase src
     k = Kind
 
     reduces =
-      [ ( "Equal themselves"
-        , ctx
-        , []
-        , [TypeEquals $ Named "Recursive"]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Equal themselves"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [ TypeEquals $ Named "Recursive"
+              ]
+          }
+      , TypeReductionTestCase
+          { _typeReductionName = "Equal unwrappings of themselves"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeEquals $ recursiveType
+              ,TypeEquals $ SumT $ NE.fromList [EmptyProductT,SumT $ NE.fromList [EmptyProductT,Named "Recursive"]]
+              ]
+          }
 
-      , ( "Equal unwrappings of themselves"
-        , ctx
-        , []
-        , [TypeEquals $ recursiveType
-          ,TypeEquals $ SumT $ NE.fromList [EmptyProductT,SumT $ NE.fromList [EmptyProductT,Named "Recursive"]]
-          ]
-        )
       ]
+
 

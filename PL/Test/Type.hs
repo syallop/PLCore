@@ -51,9 +51,9 @@ import PL.Test.Type.Arrow
 import PL.Test.Type.Sum
 import PL.Test.Type.Product
 import PL.Test.Type.Union
+import PL.Test.Type.TypeBinding
 --import PL.Test.Type.BigArrow
 --import PL.Test.Type.TypeLam
---import PL.Test.Type.TypeBinding
 -- TODO: Add more type tests here
 
 import PL.Test.Shared

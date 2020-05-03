@@ -69,22 +69,30 @@ simpleArrowTestCase src
     k = Kind
 
     reduces =
-      [ ( "Can be nested in the first argument"
-        , ctx
-        , [ (`Arrow` boolTypeName)
-          ]
-        , [TypeEquals $ Arrow (Arrow unitTypeName unitTypeName) boolTypeName
-          ,TypeDoesNotEqual $ Arrow unitTypeName (Arrow unitTypeName boolTypeName)
-          ]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Can be nested in the first argument"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [ (`Arrow` boolTypeName)
+              ]
+          , _typeReductionMatches =
+              [TypeEquals $ Arrow (Arrow unitTypeName unitTypeName) boolTypeName
+              ,TypeDoesNotEqual $ Arrow unitTypeName (Arrow unitTypeName boolTypeName)
+              ]
+          }
 
-      , ( "Can be nested in the second argument"
-        , ctx
-        , [ (boolTypeName `Arrow`)
-          ]
-        , [TypeEquals $ Arrow boolTypeName (Arrow unitTypeName unitTypeName)
-          ,TypeDoesNotEqual $ Arrow (Arrow boolTypeName unitTypeName) unitTypeName
-          ]
-        )
+      , TypeReductionTestCase
+          { _typeReductionName = "Can be nested in the second argument"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [ (boolTypeName `Arrow`)
+              ]
+          , _typeReductionMatches =
+              [TypeEquals $ Arrow boolTypeName (Arrow unitTypeName unitTypeName)
+              ,TypeDoesNotEqual $ Arrow (Arrow boolTypeName unitTypeName) unitTypeName
+              ]
+          }
       ]
 

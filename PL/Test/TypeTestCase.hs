@@ -14,7 +14,7 @@ Also exports 'TypeTestCase' which encapsulates an example which can have all of 
 -}
 module PL.Test.TypeTestCase
   ( TypeTestCase(..)
-  , TypeReductionTestCase
+  , TypeReductionTestCase(..)
   , TypeMatch(..)
   )
   where
@@ -58,6 +58,7 @@ import PL.Test.Util
 data TypeTestCase = TypeTestCase
   { _underTypeCtx          :: TypeCtx DefaultPhase -- ^ Under this given typing context
   , _underTypeBindCtx      :: BindCtx (TypeBindingFor DefaultPhase) Kind
+  , _underBindings         :: Bindings (TypeFor DefaultPhase)
   , _isType                :: TypeFor CommentedPhase -- ^ An Expr
   , _parsesFrom            :: Text                  -- ^ And also parses from this textual representation
   , _hasKind               :: Kind
@@ -65,7 +66,14 @@ data TypeTestCase = TypeTestCase
   , _reducesToWhenApplied :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
   }
 
-type TypeReductionTestCase = (Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase -> TypeFor DefaultPhase], [TypeMatch])
+data TypeReductionTestCase = TypeReductionTestCase
+  { _typeReductionName              :: Text
+  , _typeReductionUnderTypeCtx      :: TypeCtx DefaultPhase
+  , _typeReductionUnderTypeBindCtx  :: BindCtx (TypeBindingFor DefaultPhase) Kind
+  , _typeReductionUnderTypeBindings :: Bindings (TypeFor DefaultPhase)
+  , _typeReductionMutateType        :: [TypeFor DefaultPhase -> TypeFor DefaultPhase]
+  , _typeReductionMatches           :: [TypeMatch]
+  }
 
 data TypeMatch
   = TypeError

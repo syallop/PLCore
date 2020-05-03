@@ -63,7 +63,13 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern =
     . mapM_ (\(name,testCase)
               -> reduceTypeToSpec name
                                   (_isType testCase)
-                                  (("Reduces", _underTypeCtx testCase, [], [TypeEquals $ _reducesTo testCase]) : _reducesToWhenApplied testCase)
+                                  ((TypeReductionTestCase
+                                      { _typeReductionName = "Reduces"
+                                      , _typeReductionUnderTypeCtx = _underTypeCtx testCase
+                                      , _typeReductionUnderTypeBindings = emptyBindings
+                                      , _typeReductionMutateType = []
+                                      , _typeReductionMatches = [TypeEquals $ _reducesTo testCase]
+                                   }) : _reducesToWhenApplied testCase)
                                   ppExpr
                                   ppType
                                   ppPattern
@@ -84,8 +90,8 @@ reduceTypeToSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(name,underCtx,args,expectReduction)
-          -> let mutatedType = apply (stripTypeComments inputType) args
+  mapM_ (\(TypeReductionTestCase name underCtx _underTypeBindCtx underTypeBindings mutations expectReduction)
+          -> let mutatedType = apply (stripTypeComments inputType) mutations
               in reduceSpec name underCtx mutatedType expectReduction) reductions
   where
     reduceSpec

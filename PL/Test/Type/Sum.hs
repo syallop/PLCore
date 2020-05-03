@@ -73,11 +73,18 @@ sumTwoTestCase src
     k = Kind
 
     reduces =
-      [ ( "Is NOT the same as the reverse sum"
-        , ctx
-        , []
-        , [TypeDoesNotEqual $ SumT $ NE.fromList [natTypeName,unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Is NOT the same as the reverse sum"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [ TypeDoesNotEqual $ SumT $ NE.fromList [natTypeName,unitTypeName]
+              ]
+          }
+
       ]
 
 singletonSumTestCase
@@ -98,12 +105,16 @@ singletonSumTestCase src
     k = Kind
 
     reduces =
-      [ ( "sum(Unit) != SUM(Unit,Unit)"
-        , ctx
-        , []
-        , [TypeDoesNotEqual $ SumT $ NE.fromList [unitTypeName,unitTypeName]]
-        )
-      ]
+      [ TypeReductionTestCase
+          { _typeReductionName = "Sum(Unit) != Sum(Unit,Unit)"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              []
+          , _typeReductionMatches =
+              [TypeDoesNotEqual $ SumT $ NE.fromList [unitTypeName,unitTypeName]]
+          }
+     ]
 
 duplicateSumTestCase
   :: Source
@@ -123,10 +134,15 @@ duplicateSumTestCase src
     k = Kind
 
     reduces =
-      [ ( "sum(Unit,Unit) != SUM(Unit)"
-        , ctx
-        , []
-        , [TypeDoesNotEqual $ SumT $ NE.fromList [unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Sum(Unit,Unit) != Sum(Unit)"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeDoesNotEqual $ SumT $ NE.fromList [unitTypeName]]
+          }
       ]
 

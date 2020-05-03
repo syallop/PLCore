@@ -117,11 +117,16 @@ twoProductTestCase src
     k = Kind
 
     reduces =
-      [ ( "Is not the same as it's reverse"
-        , ctx
-        , []
-        , [TypeDoesNotEqual $ ProductT [natTypeName, unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Is not the same as it's reverse"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeDoesNotEqual $ ProductT [natTypeName, unitTypeName]]
+          }
       ]
 
 duplicateProductTestCase
@@ -142,10 +147,15 @@ duplicateProductTestCase src
     k = Kind
 
     reduces =
-      [ ( "Does not lose duplicates"
-        , ctx
-        , []
-        , [TypeDoesNotEqual $ ProductT [unitTypeName]]
-        )
+      [ TypeReductionTestCase
+          { _typeReductionName = "Does not lose duplicates"
+          , _typeReductionUnderTypeCtx = ctx
+          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [TypeDoesNotEqual $ ProductT [unitTypeName]]
+          }
       ]
 

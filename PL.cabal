@@ -57,6 +57,7 @@ library
                      , PL.Test.Type.Arrow
                      , PL.Test.Type.Sum
                      , PL.Test.Type.Product
+                     , PL.Test.Type.Union
 
                      , PL.Test.Pattern
                      , PL.Test.Pattern.Bind

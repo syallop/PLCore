@@ -50,7 +50,7 @@ import PL.Test.Type.Named
 import PL.Test.Type.Arrow
 import PL.Test.Type.Sum
 import PL.Test.Type.Product
---import PL.Test.Type.Union
+import PL.Test.Type.Union
 --import PL.Test.Type.BigArrow
 --import PL.Test.Type.TypeLam
 --import PL.Test.Type.TypeBinding
@@ -81,10 +81,11 @@ import PL.Test.Source
 -- | A record of the sources required to run all of the Type tests.
 -- TODO: Define some type level tests
 data TestTypeSources = TestTypeSources
-  { _namedTestCases :: TestNamedSources
-  , _arrowTestCases :: TestArrowSources
-  , _sumTestCases   :: TestSumSources
+  { _namedTestCases   :: TestNamedSources
+  , _arrowTestCases   :: TestArrowSources
+  , _sumTestCases     :: TestSumSources
   , _productTestCases :: TestProductSources
+  , _unionTestCases   :: TestUnionSources
   }
 
 -- | Given a collection of test sources, we can produce a list mapping their names
@@ -93,9 +94,10 @@ mkTypeTestCases
   :: TestTypeSources
   -> Map.Map Text.Text TypeTestCase
 mkTypeTestCases t = Map.fromList . mconcat $
-  [ namedTestCases   . _namedTestCases $ t
-  , arrowTestCases   . _arrowTestCases $ t
-  , sumTestCases     . _sumTestCases   $ t
-  , productTestCases . _productTestCases   $ t
+  [ namedTestCases   . _namedTestCases   $ t
+  , arrowTestCases   . _arrowTestCases   $ t
+  , sumTestCases     . _sumTestCases     $ t
+  , productTestCases . _productTestCases $ t
+  , unionTestCases   . _unionTestCases   $ t
   ]
 

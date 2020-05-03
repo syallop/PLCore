@@ -49,7 +49,7 @@ import PL.Var
 import PL.Test.Type.Named
 import PL.Test.Type.Arrow
 import PL.Test.Type.Sum
---import PL.Test.Type.Product
+import PL.Test.Type.Product
 --import PL.Test.Type.Union
 --import PL.Test.Type.BigArrow
 --import PL.Test.Type.TypeLam
@@ -84,6 +84,7 @@ data TestTypeSources = TestTypeSources
   { _namedTestCases :: TestNamedSources
   , _arrowTestCases :: TestArrowSources
   , _sumTestCases   :: TestSumSources
+  , _productTestCases :: TestProductSources
   }
 
 -- | Given a collection of test sources, we can produce a list mapping their names
@@ -92,8 +93,9 @@ mkTypeTestCases
   :: TestTypeSources
   -> Map.Map Text.Text TypeTestCase
 mkTypeTestCases t = Map.fromList . mconcat $
-  [ namedTestCases . _namedTestCases $ t
-  , arrowTestCases . _arrowTestCases $ t
-  , sumTestCases   . _sumTestCases   $ t
+  [ namedTestCases   . _namedTestCases $ t
+  , arrowTestCases   . _arrowTestCases $ t
+  , sumTestCases     . _sumTestCases   $ t
+  , productTestCases . _productTestCases   $ t
   ]
 

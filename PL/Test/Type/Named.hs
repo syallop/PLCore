@@ -102,7 +102,7 @@ simpleNameTestCase src
       [ ( "Named types reduce to their definition"
         , ctx
         , []
-        , Just $ SumT $ NE.fromList [EmptyProductT]
+        , [TypeEquals $ SumT $ NE.fromList [EmptyProductT]]
         )
       ]
 
@@ -127,19 +127,15 @@ recursiveNameTestCase src
       [ ( "Equal themselves"
         , ctx
         , []
-        , Just $ Named "Recursive"
+        , [TypeEquals $ Named "Recursive"]
         )
 
-      , ( "Equal one unwrapping of their definition"
+      , ( "Equal unwrappings of themselves"
         , ctx
         , []
-        , Just $ recursiveType
-        )
-
-      , ( "Equal two unwrappings of their definition"
-        , ctx
-        , []
-        , Just $ SumT $ NE.fromList [EmptyProductT,SumT $ NE.fromList [EmptyProductT,Named "Recursive"]]
+        , [TypeEquals $ recursiveType
+          ,TypeEquals $ SumT $ NE.fromList [EmptyProductT,SumT $ NE.fromList [EmptyProductT,Named "Recursive"]]
+          ]
         )
       ]
 

@@ -60,7 +60,14 @@ reducesTypesToSpec
   -> Spec
 reducesTypesToSpec testCases ppExpr ppType ppPattern =
   describe "All example types"
-    . mapM_ (\(name,testCase) -> reduceTypeToSpec name (_isType testCase) (("Reduces", _underTypeCtx testCase, [], Just $ _reducesTo testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
+    . mapM_ (\(name,testCase)
+              -> reduceTypeToSpec name
+                                  (_isType testCase)
+                                  (("Reduces", _underTypeCtx testCase, [], [TypeEquals $ _reducesTo testCase]) : _reducesToWhenApplied testCase)
+                                  ppExpr
+                                  ppType
+                                  ppPattern
+            )
     . Map.toList
     $ testCases
 
@@ -77,72 +84,107 @@ reduceTypeToSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (apply (stripTypeComments inputType) args) expectReduction) reductions
+  mapM_ (\(name,underCtx,args,expectReduction)
+          -> let mutatedType = apply (stripTypeComments inputType) args
+              in reduceSpec name underCtx mutatedType expectReduction) reductions
   where
     reduceSpec
       :: Text.Text
       -> TypeCtx DefaultPhase
       -> Type
-      -> Maybe Type
+      -> [TypeMatch]
       -> Spec
-    reduceSpec name underCtx typ eqType = it (Text.unpack name) $ case (reduceType underCtx typ, eqType) of
-      (Left typErr, Just expectedType)
-        -> expectationFailure . Text.unpack . render . mconcat $
-             [ text "Could not reduce:"
-             , lineBreak
-             , indent1 $ ppType typ
-             , lineBreak
-             , text "With error:"
-             , lineBreak
-             , ppError ppPattern ppType ppExpr $ typErr
-             , lineBreak
-             , text "Expected:"
-             , ppType expectedType
-             ]
+    reduceSpec name underCtx typ typeMatches = it (Text.unpack name) $
+      let reducedType = reduceType underCtx typ
+       in mapM_ (test reducedType) typeMatches
 
-      -- We expected _some_ error and got _some_.
-      (Left _typeErr, Nothing)
-        -> pure ()
+      where
+        test reducedType match = case (reducedType,match) of
+          -- We expected _some_ error and got _some_.
+          (Left _typeErr, TypeError)
+            -> pure ()
 
-      (Right redType, Nothing)
-        -> expectationFailure . Text.unpack . render $ mconcat
-             [ text "Type reduced to:"
-             , lineBreak
-             , indent1 $ ppType redType
-             , lineBreak
-             , text "But we expected the reducation to fail."
-             ]
+          (Left typErr, _)
+            -> expectationFailure . Text.unpack . render . mconcat $
+                 [ text "Could not reduce:"
+                 , lineBreak
+                 , indent1 $ ppType typ
+                 , lineBreak
+                 , text "With error:"
+                 , lineBreak
+                 , ppError ppPattern ppType ppExpr $ typErr
+                 ]
 
-      (Right redType, Just expectedType)
-        -> case typeEq emptyCtx emptyBindings underCtx redType expectedType of
-             Left err
-               -> expectationFailure . Text.unpack . render $ mconcat
-                    [ text "The type reduced to:"
-                    , lineBreak
-                    , indent1 $ ppType redType
-                    , lineBreak
-                    , text "But failed to compare to the expected type:"
-                    , lineBreak
-                    , indent1 $ ppType expectedType
-                    , lineBreak
-                    , text "Due to error:"
-                    , lineBreak
-                    , indent1 $ ppError ppPattern ppType ppExpr err
-                    ]
+          (Right redType, TypeError)
+            -> expectationFailure . Text.unpack . render $ mconcat
+                 [ text "Type reduced to:"
+                 , lineBreak
+                 , indent1 $ ppType redType
+                 , lineBreak
+                 , text "But we expected the reducation to fail."
+                 ]
 
-             Right False
-               -> expectationFailure . Text.unpack . render . mconcat $
-                    [ text "The type reduced to:"
-                    , lineBreak
-                    , indent1 $ ppType redType
-                    , lineBreak
-                    , text "But does not equal the expected type:"
-                    , lineBreak
-                    , indent1 $ ppType expectedType
-                    ]
+          (Right redType, TypeEquals expectedType)
+            -> case typeEq emptyCtx emptyBindings underCtx redType expectedType of
+                 Left err
+                   -> expectationFailure . Text.unpack . render $ mconcat
+                        [ text "The type reduced to:"
+                        , lineBreak
+                        , indent1 $ ppType redType
+                        , lineBreak
+                        , text "But failed to compare to the expected type:"
+                        , lineBreak
+                        , indent1 $ ppType expectedType
+                        , lineBreak
+                        , text "Due to error:"
+                        , lineBreak
+                        , indent1 $ ppError ppPattern ppType ppExpr err
+                        ]
 
-             Right True
-               -> pure ()
+                 Right False
+                   -> expectationFailure . Text.unpack . render . mconcat $
+                        [ text "The type reduced to:"
+                        , lineBreak
+                        , indent1 $ ppType redType
+                        , lineBreak
+                        , text "But does not equal the expected type:"
+                        , lineBreak
+                        , indent1 $ ppType expectedType
+                        ]
+
+                 Right True
+                   -> pure ()
+
+          (Right redType, TypeDoesNotEqual notExpectedType)
+            -> case typeEq emptyCtx emptyBindings underCtx redType notExpectedType of
+                 Left err
+                   -> expectationFailure . Text.unpack . render $ mconcat
+                        [ text "The type reduced to:"
+                        , lineBreak
+                        , indent1 $ ppType redType
+                        , lineBreak
+                        , text "But failed to compare to the unexpected type:"
+                        , lineBreak
+                        , indent1 $ ppType notExpectedType
+                        , lineBreak
+                        , text "Due to error:"
+                        , lineBreak
+                        , indent1 $ ppError ppPattern ppType ppExpr err
+                        ]
+
+                 Right False
+                   -> pure ()
+
+                 Right True
+                   -> expectationFailure . Text.unpack . render . mconcat $
+                        [ text "The type reduced to:"
+                        , lineBreak
+                        , indent1 $ ppType redType
+                        , lineBreak
+                        , text "Which equals the unexpected type:"
+                        , lineBreak
+                        , indent1 $ ppType notExpectedType
+                        ]
 
     apply :: Type -> [Type -> Type] -> Type
     apply t fs = foldl (\t f -> f t) t fs

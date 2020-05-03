@@ -73,14 +73,18 @@ simpleArrowTestCase src
         , ctx
         , [ (`Arrow` boolTypeName)
           ]
-        , Just $ Arrow (Arrow unitTypeName unitTypeName) boolTypeName
+        , [TypeEquals $ Arrow (Arrow unitTypeName unitTypeName) boolTypeName
+          ,TypeDoesNotEqual $ Arrow unitTypeName (Arrow unitTypeName boolTypeName)
+          ]
         )
 
       , ( "Can be nested in the second argument"
         , ctx
         , [ (boolTypeName `Arrow`)
           ]
-        , Just $ Arrow boolTypeName (Arrow unitTypeName unitTypeName)
+        , [TypeEquals $ Arrow boolTypeName (Arrow unitTypeName unitTypeName)
+          ,TypeDoesNotEqual $ Arrow (Arrow boolTypeName unitTypeName) unitTypeName
+          ]
         )
       ]
 

@@ -77,7 +77,7 @@ reduceTypeToSpec
   -> (PatternFor DefaultPhase -> Doc)
   -> Spec
 reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (appise (stripTypeComments inputType : args)) expectReduction) reductions
+  mapM_ (\(name,underCtx,args,expectReduction) -> reduceSpec name underCtx (apply (stripTypeComments inputType) args) expectReduction) reductions
   where
     reduceSpec
       :: Text.Text
@@ -144,8 +144,6 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (T
              Right True
                -> pure ()
 
-    appise :: [Type] -> Type
-    appise []        = error "Cant appise empty list of types"
-    appise [t]       = t
-    appise (t:t':ts) = appise (TypeApp t t' : ts)
+    apply :: Type -> [Type -> Type] -> Type
+    apply t fs = foldl (\t f -> f t) t fs
 

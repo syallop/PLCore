@@ -64,4 +64,4 @@ data TypeTestCase = TypeTestCase
   , _reducesToWhenApplied :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
   }
 
-type TypeReductionTestCase = (Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase], Maybe (TypeFor DefaultPhase))
+type TypeReductionTestCase = (Text, TypeCtx DefaultPhase, [TypeFor DefaultPhase -> TypeFor DefaultPhase], Maybe (TypeFor DefaultPhase))

@@ -27,9 +27,6 @@ module PL.Test.Type
   -- Test Reduction
   , reducesTypesToSpec
   , reduceTypeToSpec
-
-  -- Misc
-  , typeCtx
   )
   where
 
@@ -50,6 +47,7 @@ import PL.Var
 
 -- Some specific ExprSpec tests
 import PL.Test.Type.Named
+import PL.Test.Type.Arrow
 -- TODO: Add more type tests here
 
 import PL.Test.Shared
@@ -78,6 +76,7 @@ import PL.Test.Source
 -- TODO: Define some type level tests
 data TestTypeSources = TestTypeSources
   { _namedTestCases :: TestNamedSources
+  , _arrowTestCases :: TestArrowSources
   }
 
 -- | Given a collection of test sources, we can produce a list mapping their names
@@ -87,13 +86,6 @@ mkTypeTestCases
   -> Map.Map Text.Text TypeTestCase
 mkTypeTestCases t = Map.fromList . mconcat $
   [ namedTestCases . _namedTestCases $ t
-  ]
-
--- | A test type context contains bools, nats and lists.
-typeCtx :: TypeCtx DefaultPhase
-typeCtx = foldr unionTypeCtx emptyTypeCtx
-  [ boolTypeCtx
-  , natTypeCtx
-  , listTypeCtx
+  , arrowTestCases . _arrowTestCases $ t
   ]
 

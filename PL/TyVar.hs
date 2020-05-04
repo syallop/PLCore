@@ -42,6 +42,7 @@ tvfour  = coerce vfour
 instance Binds TyVar Kind where
 
   data BindCtx TyVar Kind = TyVarCtx [Kind]
+    deriving (Eq, Ord)
 
   emptyCtx :: BindCtx TyVar Kind
   emptyCtx = TyVarCtx []
@@ -50,7 +51,9 @@ instance Binds TyVar Kind where
   addBinding k (TyVarCtx ks) = TyVarCtx (k:ks)
 
   lookupBindingTy :: TyVar -> BindCtx TyVar Kind -> Maybe Kind
-  lookupBindingTy b (TyVarCtx ks) = Just $ ks !! bindDepth b
+  lookupBindingTy b (TyVarCtx ks) = case drop (bindDepth b) ks of
+    k:_ -> Just k
+    []  -> Nothing
 
   toList :: BindCtx TyVar Kind -> [(TyVar,Kind)]
   toList (TyVarCtx ks) = enumFrom (TyVar VZ) `zip` ks

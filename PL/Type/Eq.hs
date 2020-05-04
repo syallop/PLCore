@@ -71,22 +71,22 @@ typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (t0, t1) of
   -- propogating this unification? If so, the current data structures and
   -- algorithm is not appropriate.
   (TypeBinding b0, TypeBinding b1)
-    -> let binding0 = fromMaybe (error "") $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
-           binding1 = index (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b1)
-          in case (binding0,binding1) of
-               -- Two unbound are unified
-               (Unbound, Unbound)
-                 -> Right True
+    -> do binding0 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b0) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
+          binding1 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b1) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b1)
+          case (binding0,binding1) of
+             -- Two unbound are unified
+             (Unbound, Unbound)
+               -> Right True
 
-               -- An unbound unifies with a bound
-               (Unbound, Bound ty1)
-                 -> Right True
-               (Bound ty1, Unbound)
-                 -> Right True
+             -- An unbound unifies with a bound
+             (Unbound, Bound ty1)
+               -> Right True
+             (Bound ty1, Unbound)
+               -> Right True
 
-               -- Two bound types are equal if the bound types are equal
-               (Bound ty0, Bound ty1)
-                 -> typeEq typeBindCtx typeBindings typeNameCtx ty0 ty1
+             -- Two bound types are equal if the bound types are equal
+             (Bound ty0, Bound ty1)
+               -> typeEq typeBindCtx typeBindings typeNameCtx ty0 ty1
 
   -- To compare a binding to a non-binding
   (ty0, TypeBinding _)
@@ -243,8 +243,10 @@ typeKind typeBindCtx typeCtx ty = case ty of
   --
   TypeBinding b
     -> case lookupBindingTy b typeBindCtx of
-         Nothing -> Left $ EMsg $ text "Type binding does not exist."
-         Just ky -> Right ky
+         Nothing
+           -> Left $ EContext (EMsg $ text "Kind-checking type") $ EBindCtxTypeLookupFailure (fromEnum b) typeBindCtx
+         Just ky
+           -> Right ky
 
   --
   --

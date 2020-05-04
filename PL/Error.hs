@@ -22,6 +22,9 @@ module PL.Error where
 import PL.Kind
 import PL.Name
 import PL.Bindings
+import PL.Binds
+import PL.Var
+import PL.TyVar
 
 import PLPrinter
 
@@ -69,8 +72,17 @@ data Error expr typ pattern
   -- | A Union pattern should only match a single typ.
   | EMultipleMatchesInUnion [typ]
 
-  -- | Failed to lookup a binding ix in some context.
-  | EBindLookupFailure Int (Bindings expr)
+  -- | Failed to lookup an expression binding ix in some context.
+  | EBindExprLookupFailure Int (Bindings expr)
+
+  -- | Failed to lookup a type binding ix in some context.
+  | EBindTypeLookupFailure Int (Bindings typ)
+
+  -- | Failed to lookup an expressions type
+  | EBindCtxExprLookupFailure Int (BindCtx Var typ)
+
+  -- | Failed to lookup a types kind
+  | EBindCtxTypeLookupFailure Int (BindCtx TyVar Kind)
 
   -- | An error is a context for some deeper error.
   | EContext (Error expr typ pattern) (Error expr typ pattern)
@@ -109,8 +121,10 @@ ppError
   :: (pattern -> Doc)
   -> (typ -> Doc)
   -> (expr -> Doc)
+  -> (Var -> Doc)
+  -> (TyVar -> Doc)
   -> Error expr typ pattern -> Doc
-ppError ppPattern ppType ppExpr = \case
+ppError ppPattern ppType ppExpr ppVar ppTyVar = \case
   -- TODO: Wack parameter order
 
   EMsg doc
@@ -218,7 +232,7 @@ ppError ppPattern ppType ppExpr = \case
                , indent1 $ mconcat $ fmap ppType typs
                ]
 
-  EBindLookupFailure ix bindings
+  EBindExprLookupFailure ix bindings
     -> mconcat [ text "Failed to lookup an expression binding with index:"
                , lineBreak
                , indent1 $ int ix
@@ -228,14 +242,44 @@ ppError ppPattern ppType ppExpr = \case
                , ppBindingsTree ppExpr bindings
                ]
 
+  EBindTypeLookupFailure ix bindings
+    -> mconcat [ text "Failed to lookup a type binding with index:"
+               , lineBreak
+               , indent1 $ int ix
+               , lineBreak
+               , text "In bindings:"
+               , lineBreak
+               , ppBindingsTree ppType bindings
+               ]
+
+  EBindCtxExprLookupFailure ix bindCtx
+    -> mconcat [ text "Failed to lookup an expressions type from a binding with index:"
+               , lineBreak
+               , indent1 $ int ix
+               , lineBreak
+               , text "In bind ctx:"
+               , lineBreak
+               , ppBindCtx ppVar ppType bindCtx
+               ]
+
+  EBindCtxTypeLookupFailure ix bindCtx
+    -> mconcat [ text "Failed to lookup a types kind from a binding with index:"
+               , lineBreak
+               , indent1 $ int ix
+               , lineBreak
+               , text "In bind ctx:"
+               , lineBreak
+               , ppBindCtx ppTyVar document bindCtx
+               ]
+
   EContext context err
     -> mconcat [ text "Error:"
                , lineBreak
-               , indent1 $ ppError ppPattern ppType ppExpr err
+               , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
                , lineBreak
                , text "In context:"
                , lineBreak
-               , indent1 $ ppError ppPattern ppType ppExpr context
+               , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar context
                ]
 
 instance (Document expr, Document typ, Document pattern) => Document (Error expr typ pattern) where
@@ -344,7 +388,7 @@ instance (Document expr, Document typ, Document pattern) => Document (Error expr
                  , indent1 $ mconcat $ fmap document typs
                  ]
 
-    EBindLookupFailure ix bindings
+    EBindExprLookupFailure ix bindings
       -> mconcat [ text "Failed to lookup an expression binding with index:"
                  , lineBreak
                  , indent1 $ int ix
@@ -353,6 +397,37 @@ instance (Document expr, Document typ, Document pattern) => Document (Error expr
                  , lineBreak
                  , document bindings
                  ]
+
+    EBindTypeLookupFailure ix bindings
+      -> mconcat [ text "Failed to lookup a type binding with index:"
+                 , lineBreak
+                 , indent1 $ int ix
+                 , lineBreak
+                 , text "In bindings:"
+                 , lineBreak
+                 , document bindings
+                 ]
+
+    EBindCtxExprLookupFailure ix bindCtx
+      -> mconcat [ text "Failed to lookup an expressions type from a binding with index:"
+                 , lineBreak
+                 , indent1 $ int ix
+                 , lineBreak
+                 , text "In bind ctx:"
+                 , lineBreak
+                 , document bindCtx
+                 ]
+
+    EBindCtxTypeLookupFailure ix bindCtx
+      -> mconcat [ text "Failed to lookup a types kind from a binding with index:"
+                 , lineBreak
+                 , indent1 $ int ix
+                 , lineBreak
+                 , text "In bind ctx:"
+                 , lineBreak
+                 , document bindCtx
+                 ]
+
 
     EContext context err
       -> mconcat [ text "Error: "

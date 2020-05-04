@@ -40,8 +40,8 @@ spec
   :: Spec
 spec = do
   describe "Types" $ do
-    describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppPattern ppType ppExpr)
-    describe "Reduce"            $ reducesTypesToSpec  typeTestCases ppExpr ppType ppPattern
+    describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppPattern ppType ppExpr ppVar ppTyVar)
+    describe "Reduce"            $ reducesTypesToSpec  typeTestCases ppExpr ppType ppPattern ppVar ppTyVar
   where
     typeTestCases :: Map.Map Text TypeTestCase
     typeTestCases = mkTypeTestCases $ TestTypeSources {}
@@ -57,3 +57,10 @@ spec = do
 
     ppPattern :: Pattern -> Doc
     ppPattern = text . Text.pack . show
+
+    ppVar :: Var -> Doc
+    ppVar = text . Text.pack . show
+
+    ppTyVar :: TyVar -> Doc
+    ppTyVar = text . Text.pack . show
+

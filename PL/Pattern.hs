@@ -302,7 +302,7 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
     -- BindingPatterns match when the binding is bound and has the same type.
     (BindingPattern b, expectTy)
       -> do -- the type of the binding
-            bTy <- maybe (Left $ EMsg $ text "pattern pattern on a non-existant binding") Right $ lookupBindingTy b exprBindCtx
+            bTy <- maybe (Left $ EContext (EMsg $ text "Pattern matching expression") $ EBindCtxExprLookupFailure (fromEnum b) exprBindCtx) Right $ lookupBindingTy b exprBindCtx
             case typeEq typeBindCtx typeBindings typeCtx bTy expectTy of
                 Left err
                   -> Left err

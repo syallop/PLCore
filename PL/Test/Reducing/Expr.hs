@@ -55,10 +55,22 @@ reducesToSpec
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
+  -> (Var -> Doc)
+  -> (TyVar -> Doc)
   -> Spec
-reducesToSpec testCases ppExpr ppType ppPattern =
+reducesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
   describe "All example programs"
-    . mapM_ (\(name,testCase) -> reduceToSpec name (_underTypeCtx testCase) (_isExpr testCase) (("Reduces",[],Just . _reducesTo $ testCase) : _reducesToWhenApplied testCase) ppExpr ppType ppPattern)
+    . mapM_ (\(name,testCase)
+              -> reduceToSpec name
+                              (_underTypeCtx testCase)
+                              (_isExpr testCase)
+                              (("Reduces",[],Just . _reducesTo $ testCase) : _reducesToWhenApplied testCase)
+                              ppExpr
+                              ppType
+                              ppPattern
+                              ppVar
+                              ppTyVar
+            )
     . Map.toList
     $ testCases
 
@@ -74,18 +86,18 @@ reduceToSpec
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
+  -> (Var -> Doc)
+  -> (TyVar -> Doc)
   -> Spec
-reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(name,args,expectReduction) -> reduceSpec name (apply (stripComments inputExpr) args) expectReduction ppExpr ppType) reductions
+reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
+  mapM_ (\(name,args,expectReduction) -> reduceSpec name (apply (stripComments inputExpr) args) expectReduction) reductions
   where
     reduceSpec
       :: Text.Text
       -> ExprFor DefaultPhase
       -> Maybe (ExprFor DefaultPhase)
-      -> (ExprFor DefaultPhase -> Doc)
-      -> (TypeFor DefaultPhase -> Doc)
       -> Spec
-    reduceSpec name expr eqExpr ppExpr ppType = it (Text.unpack name) $ case (reduce underTypeCtx expr, eqExpr) of
+    reduceSpec name expr eqExpr = it (Text.unpack name) $ case (reduce underTypeCtx expr, eqExpr) of
       (Left exprErr, Just expectedExpr)
         -> expectationFailure . Text.unpack . render $ mconcat
              [ text "Could not reduce:"
@@ -94,7 +106,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = de
              , lineBreak
              , text "With error:"
              , lineBreak
-             , ppError ppPattern ppType ppExpr $ exprErr
+             , ppError ppPattern ppType ppExpr ppVar ppTyVar $ exprErr
              , lineBreak
              , text "Expected:"
              , ppExpr expectedExpr
@@ -127,7 +139,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern = de
                     , lineBreak
                     , text "Due to error:"
                     , lineBreak
-                    , indent1 $ ppError ppPattern ppType ppExpr err
+                    , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
                     ]
 
              Right False

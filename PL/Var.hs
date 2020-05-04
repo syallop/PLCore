@@ -51,6 +51,7 @@ vfour  = VS vthree
 instance Binds Var typ where
 
   data BindCtx Var typ = VarCtx [typ]
+    deriving (Eq, Ord)
 
   emptyCtx :: BindCtx Var typ
   emptyCtx = VarCtx []
@@ -59,7 +60,9 @@ instance Binds Var typ where
   addBinding t (VarCtx ts) = VarCtx (t:ts)
 
   lookupBindingTy :: Var -> BindCtx Var typ -> Maybe typ
-  lookupBindingTy b (VarCtx ts) =  Just $ ts !! bindDepth b
+  lookupBindingTy b (VarCtx ts) =  case drop (bindDepth b) ts of
+    t:_ -> Just t
+    []  -> Nothing
 
   toList :: BindCtx Var typ -> [(Var,typ)]
   toList (VarCtx ts) = enumFrom VZ `zip` ts

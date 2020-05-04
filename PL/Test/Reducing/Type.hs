@@ -57,8 +57,10 @@ reducesTypesToSpec
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
+  -> (Var -> Doc)
+  -> (TyVar -> Doc)
   -> Spec
-reducesTypesToSpec testCases ppExpr ppType ppPattern =
+reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
   describe "All example types"
     . mapM_ (\(name,testCase)
               -> reduceTypeToSpec name
@@ -66,13 +68,15 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern =
                                   ((TypeReductionTestCase
                                       { _typeReductionName = "Reduces"
                                       , _typeReductionUnderTypeCtx = _underTypeCtx testCase
-                                      , _typeReductionUnderTypeBindings = emptyBindings
+                                      , _typeReductionUnderTypeBindings = _underBindings testCase
                                       , _typeReductionMutateType = []
                                       , _typeReductionMatches = [TypeEquals $ _reducesTo testCase]
                                    }) : _reducesToWhenApplied testCase)
                                   ppExpr
                                   ppType
                                   ppPattern
+                                  ppVar
+                                  ppTyVar
             )
     . Map.toList
     $ testCases
@@ -88,20 +92,24 @@ reduceTypeToSpec
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
+  -> (Var -> Doc)
+  -> (TyVar -> Doc)
   -> Spec
-reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (Text.unpack name) $
-  mapM_ (\(TypeReductionTestCase name underCtx _underTypeBindCtx underTypeBindings mutations expectReduction)
+reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
+  mapM_ (\(TypeReductionTestCase name underCtx underTypeBindCtx underTypeBindings mutations expectReduction)
           -> let mutatedType = apply (stripTypeComments inputType) mutations
-              in reduceSpec name underCtx mutatedType expectReduction) reductions
+              in reduceSpec name underCtx underTypeBindCtx underTypeBindings mutatedType expectReduction) reductions
   where
     reduceSpec
       :: Text.Text
       -> TypeCtx DefaultPhase
+      -> BindCtx (TypeBindingFor DefaultPhase) Kind
+      -> Bindings (TypeFor DefaultPhase)
       -> Type
       -> [TypeMatch]
       -> Spec
-    reduceSpec name underCtx typ typeMatches = it (Text.unpack name) $
-      let reducedType = reduceType underCtx typ
+    reduceSpec name underCtx _underTypeBindCtx underTypeBindings typ typeMatches = it (Text.unpack name) $
+      let reducedType = reduceTypeWith underTypeBindings underCtx Nothing typ
        in mapM_ (test reducedType) typeMatches
 
       where
@@ -118,7 +126,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (T
                  , lineBreak
                  , text "With error:"
                  , lineBreak
-                 , ppError ppPattern ppType ppExpr $ typErr
+                 , ppError ppPattern ppType ppExpr ppVar ppTyVar $ typErr
                  ]
 
           (Right redType, TypeError)
@@ -144,7 +152,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (T
                         , lineBreak
                         , text "Due to error:"
                         , lineBreak
-                        , indent1 $ ppError ppPattern ppType ppExpr err
+                        , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
                         ]
 
                  Right False
@@ -175,7 +183,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern = describe (T
                         , lineBreak
                         , text "Due to error:"
                         , lineBreak
-                        , indent1 $ ppError ppPattern ppType ppExpr err
+                        , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
                         ]
 
                  Right False

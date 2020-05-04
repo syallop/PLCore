@@ -158,7 +158,7 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
           -- - Are invalid bindings caught at the type-checking phase?
           -- - Can we check in an earlier phase and avoid doing so here?
           Nothing
-            -> Left . EContext (EMsg . text $ "Reducing expression") . EBindLookupFailure ix $ bindings
+            -> Left . EContext (EMsg . text $ "Reducing expression") . EBindExprLookupFailure ix $ bindings
 
   -- Reduce a single step under the sum expression.
   Sum sumExpr sumIx sumTy

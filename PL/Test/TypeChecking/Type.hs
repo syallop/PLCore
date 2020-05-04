@@ -57,7 +57,16 @@ typeChecksTypesSpec
   -> Spec
 typeChecksTypesSpec testCases ppKind ppError =
   describe "All example types"
-  . mapM_ (\(name,testCase) -> typeCheckTypeSpec name (_isType testCase) (_underTypeBindCtx testCase) (_underTypeCtx testCase) (_hasKind testCase) ppKind ppError)
+  . mapM_ (\(name,testCase)
+            -> typeCheckTypeSpec name
+                                 (_isType testCase)
+                                 (_underTypeBindCtx testCase)
+                                 (_underTypeCtx testCase)
+                                 (_underBindings testCase)
+                                 (_hasKind testCase)
+                                 ppKind
+                                 ppError
+          )
   . Map.toList
   $ testCases
 
@@ -67,11 +76,12 @@ typeCheckTypeSpec
   -> TypeFor CommentedPhase
   -> BindCtx (TypeBindingFor DefaultPhase) Kind
   -> TypeCtx DefaultPhase
+  -> Bindings (TypeFor DefaultPhase)
   -> Kind
   -> (Kind -> Doc)
   -> (Error Expr Type Pattern -> Doc)
   -> Spec
-typeCheckTypeSpec name inputType bindCtx underTypeCtx expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
+typeCheckTypeSpec name inputType bindCtx underTypeCtx bindings expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

@@ -690,8 +690,10 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   --      b : t
   Binding b
     -> case lookupBindingTy b exprBindCtx of
-          Nothing -> Left $ EMsg $ text "Expression refers to a non-existant binding"
-          Just ty -> Right ty
+          Nothing
+            -> Left $ EContext (EMsg $ text "Type-checking expression") $ EBindCtxExprLookupFailure (fromEnum b) exprBindCtx
+          Just ty
+            -> Right ty
 
 
   --        scrutineeExpr : t0   defExpr : t1

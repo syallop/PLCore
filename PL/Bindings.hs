@@ -10,6 +10,28 @@ Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
+Data structure designed to hold values for bindings which may be:
+- Bound with some value
+- Unbound with no value yet
+- Burried as if the expression they correspond to has been moved under an
+  abstraction, such as under a lambda.
+
+This abstraction is not (currently) used to lookup metadata such as bindings
+types or type bindings kinds, this is handled by Binds which is confusingly
+similar. It's possible these abstractions should be unified.
+
+In short:
+Binds:
+- Maps binding constructs (such as variables, type variables) to metadata such
+  as the type for variables and the kind for type variables.
+- Is used in the typechecking/ kind checking phase before reduction as the
+   interface does not allow for bindings to be moved under each other.
+Whereas Bindings:
+- Map Binding indexes (which variables, type variables may be/ contain) to
+  either their bound value, or an Unbound token.
+- Is used in the reduction/ evaluation phase as the interface allows for
+  bindings to be moved under each other as functions are applied.
+
 -}
 module PL.Bindings
   ( Bindings()

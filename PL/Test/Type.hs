@@ -52,7 +52,7 @@ import PL.Test.Type.Sum
 import PL.Test.Type.Product
 import PL.Test.Type.Union
 import PL.Test.Type.TypeBinding
---import PL.Test.Type.BigArrow
+import PL.Test.Type.BigArrow
 --import PL.Test.Type.TypeLam
 -- TODO: Add more type tests here
 
@@ -86,6 +86,7 @@ data TestTypeSources = TestTypeSources
   , _sumTestCases         :: TestSumSources
   , _productTestCases     :: TestProductSources
   , _unionTestCases       :: TestUnionSources
+  , _bigArrowTestCases    :: TestBigArrowSources
   , _typeBindingTestCases :: TestTypeBindingSources
   }
 
@@ -100,6 +101,7 @@ mkTypeTestCases t = Map.fromList . mconcat $
   , sumTestCases         . _sumTestCases         $ t
   , productTestCases     . _productTestCases     $ t
   , unionTestCases       . _unionTestCases       $ t
+  , bigArrowTestCases    . _bigArrowTestCases    $ t
   , typeBindingTestCases . _typeBindingTestCases $ t
   ]
 

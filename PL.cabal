@@ -59,6 +59,7 @@ library
                      , PL.Test.Type.Product
                      , PL.Test.Type.Union
                      , PL.Test.Type.TypeBinding
+                     , PL.Test.Type.BigArrow
 
                      , PL.Test.Pattern
                      , PL.Test.Pattern.Bind

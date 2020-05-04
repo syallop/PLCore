@@ -97,8 +97,8 @@ buriedBindingTestCase src
       , _typed        = ty
       , _parsesFrom   = src
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reductions
+      , _reducesTo = stripComments e
+      , _reducesToWhenApplied = reductions
       }
   where
     ctx = boolTypeCtx

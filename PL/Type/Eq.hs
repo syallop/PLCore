@@ -48,116 +48,148 @@ typeEq
   -> TypeFor phase
   -> TypeFor phase
   -> Either (Error expr Type patternFor) Bool
-typeEq typeBindCtx typeBindings typeNameCtx t0 t1 = case (t0, t1) of
+typeEq typeBindCtx typeBindings typeNameCtx type0 type1 = typeEqWith typeBindCtx typeBindings typeNameCtx (Just 100) type0 type1
 
-  -- Named Types are ONLY equal if they have the same name.
-  (Named n0, Named n1)
-    | n0 == n1  -> Right True
-    | otherwise -> Right False
+typeEqWith
+  :: forall phase patternFor expr
+   . (
+     --, Binds (TypeBindingFor phase) Kind
+       HasBinding (TypeFor phase) (TypeBindingFor phase)
+     , phase ~ DefaultPhase
+     )
+  => BindCtx (TypeBindingFor phase) Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtx phase
+  -> Maybe Int
+  -> TypeFor phase
+  -> TypeFor phase
+  -> Either (Error expr Type patternFor) Bool
+typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
+  | reductionLimit == Just 0
+   = Left . EMsg . mconcat $
+       [ text "Reduction limit reached when type-checking expression. Comparing two types:"
+       , lineBreak
+       , indent1 . text . Text.pack . show $ type0
+       , lineBreak
+       , text "And:"
+       , lineBreak
+       , indent1 . text . Text.pack . show $ type1
+       ]
 
-  -- To compare a Named type to a non-named type, lookup the definition of the
-  -- name and recurse.
-  (_, Named _)
-    -> typeEq typeBindCtx typeBindings typeNameCtx t1 t0
-  (Named n0, _)
-    -> let it0 = lookupTypeNameInitialInfo n0 typeNameCtx
-        in case it0 of
-             Nothing -> Left $ EMsg $ text "Failed to lookup named type"
-             Just t0 -> typeEq typeBindCtx typeBindings typeNameCtx (_typeInfoType t0) t1
+  | otherwise
+   = case (type0, type1) of
+       -- Named Types are ONLY equal if they have the same name.
+       (Named n0, Named n1)
+         | n0 == n1  -> Right True
+         | otherwise -> Right False
+
+       -- To compare a Named type to a non-named type, lookup the definition of the
+       -- name and recurse.
+       (_, Named _)
+         -> typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type1 type0
+       (Named n0, _)
+         -> let it0 = lookupTypeNameInitialInfo n0 typeNameCtx
+             in case it0 of
+                  Nothing
+                    -> Left $ EMsg $ text "Failed to lookup named type"
+
+                  Just type0
+                    -> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) (_typeInfoType type0) type1
+
+       -- Type bindings are 'equal' when they unify.
+       -- TODO: If we're unifying unbound types with types, should we be back
+       -- propogating this unification? If so, the current data structures and
+       -- algorithm is not appropriate.
+       (TypeBinding b0, TypeBinding b1)
+         -> do binding0 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b0) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
+               binding1 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b1) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b1)
+               case (binding0,binding1) of
+                  -- Two unbound are unified
+                  (Unbound, Unbound)
+                    -> Right True
+
+                  -- An unbound unifies with a bound
+                  (Unbound, Bound ty1)
+                    -> Right True
+
+                  (Bound ty1, Unbound)
+                    -> Right True
+
+                  -- Two bound types are equal if the bound types are equal
+                  (Bound type0, Bound type1)
+                    -> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) type0 type1
+
+       -- To compare a binding to a non-binding
+       (type0, TypeBinding _)
+         -> typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type1 type0
+       (TypeBinding b0, type1)
+         -> let binding0 = index (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
+               in case binding0 of
+                    Unbound
+                      -> Right True
+
+                    Bound type0
+                      -> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) type0 type1
+
+       -- Two type applications are equal if both of their corresponding parts are
+       -- equal
+       (TypeApp f0 x0, TypeApp f1 x1)
+         -> (&&) <$> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) f0 f1
+                 <*> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) x0 x1
+
+       -- A TypeApp is equal to something else when, after reducing it, it is equal
+       -- to that other thing.
+       (ty0, TypeApp _ _)
+         -> typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type1 ty0
+       (TypeApp f0 x0, ty1)
+         -> case reduceTypeStep typeBindings typeNameCtx f0 of
+              Left e
+                -> Left e
+
+              Right redF0
+                -> case redF0 of
+                     -- TODO: we're assuming kindchecking has already been performed. Otherwise, aKy must equal xKy
+                     -- The resulting type is then the rhs of the typelam under the
+                     -- context of what it was applied to
+                     TypeLam aKy bTy
+                       -> typeEqWith (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx (fmap (subtract 1) reductionLimit) bTy ty1
+
+                     _ -> Left $ EMsg $ text "In typeEq: Cant type apply a non-lambda type to a type"
 
 
-  -- Type bindings are 'equal' when they unify.
-  -- TODO: If we're unifying unbound types with types, should we be back
-  -- propogating this unification? If so, the current data structures and
-  -- algorithm is not appropriate.
-  (TypeBinding b0, TypeBinding b1)
-    -> do binding0 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b0) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
-          binding1 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b1) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b1)
-          case (binding0,binding1) of
-             -- Two unbound are unified
-             (Unbound, Unbound)
-               -> Right True
+       -- Arrow types are equal when their corresponding to and from types are the
+       -- same
+       (Arrow from0 to0, Arrow from1 to1)
+         -> (&&) <$> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) from0 from1
+                 <*> typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) to0   to1
 
-             -- An unbound unifies with a bound
-             (Unbound, Bound ty1)
-               -> Right True
-             (Bound ty1, Unbound)
-               -> Right True
+       (SumT ts0, SumT ts1)
+         -> typeEqsWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) (NE.toList ts0) (NE.toList ts1)
 
-             -- Two bound types are equal if the bound types are equal
-             (Bound ty0, Bound ty1)
-               -> typeEq typeBindCtx typeBindings typeNameCtx ty0 ty1
+       (ProductT ts0, ProductT ts1)
+         -> typeEqsWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) ts0 ts1
 
-  -- To compare a binding to a non-binding
-  (ty0, TypeBinding _)
-    -> typeEq typeBindCtx typeBindings typeNameCtx t1 ty0
-  (TypeBinding b0, ty1)
-    -> let binding0 = index (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
-          in case binding0 of
-               Unbound
-                 -> Right True
+       (UnionT ts0, UnionT ts1)
+         -> typeEqsWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit) (Set.toList ts0) (Set.toList ts1)
 
-               Bound ty0
-                 -> typeEq typeBindCtx typeBindings typeNameCtx ty0 ty1
+       (BigArrow fromKy0 toTy0, BigArrow fromKy1 toTy1)
+         -> let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
+                newTypeBindings = unbound $ bury typeBindings
+               in if kindEq fromKy0 fromKy1
+                    then typeEqWith newTypeBindCtx newTypeBindings typeNameCtx (fmap (subtract 1) reductionLimit) toTy0 toTy1
+                    else Right False
 
+       -- Two type lambda are equivalent if their corresponding from and to are the
+       -- same
+       -- TODO: Should probably UnBound the type vars when checking theyre equal
+       (TypeLam k0 ty0, TypeLam k1 ty1)
+         -> let newTypeBindCtx  = addBinding k0 typeBindCtx
+                newTypeBindings = unbound $ bury typeBindings
+               in (&&) <$> pure (k0 == k1)
+                       <*> typeEqWith newTypeBindCtx newTypeBindings typeNameCtx (fmap (subtract 1) reductionLimit) ty0 ty1
 
-  -- Two type applications are equal if both of their corresponding parts are
-  -- equal
-  (TypeApp f0 x0, TypeApp f1 x1)
-    -> (&&) <$> typeEq typeBindCtx typeBindings typeNameCtx f0 f1 <*> typeEq typeBindCtx typeBindings typeNameCtx x0 x1
-
-  -- A TypeApp is equal to something else when, after reducing it, it is equal
-  -- to that other thing.
-  (ty0, TypeApp _ _)
-    -> typeEq typeBindCtx typeBindings typeNameCtx t1 ty0
-  (TypeApp f0 x0, ty1)
-    -> case reduceTypeStep typeBindings typeNameCtx f0 of
-         Left e
-           -> Left e
-
-         Right redF0
-           -> case redF0 of
-                -- TODO: we're assuming kindchecking has already been performed. Otherwise, aKy must equal xKy
-                -- The resulting type is then the rhs of the typelam under the
-                -- context of what it was applied to
-                TypeLam aKy bTy
-                  -> typeEq (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx bTy ty1
-
-                _ -> Left $ EMsg $ text "In typeEq: Cant type apply a non-lambda type to a type"
-
-
-  -- Arrow types are equal when their corresponding to and from types are the
-  -- same
-  (Arrow from0 to0, Arrow from1 to1)
-    -> (&&) <$> typeEq typeBindCtx typeBindings typeNameCtx from0 from1 <*> typeEq typeBindCtx typeBindings typeNameCtx to0 to1
-
-  (SumT ts0, SumT ts1)
-    -> typeEqs typeBindCtx typeBindings typeNameCtx (NE.toList ts0) (NE.toList ts1)
-
-  (ProductT ts0, ProductT ts1)
-    -> typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
-
-  (UnionT ts0, UnionT ts1)
-    -> typeEqs typeBindCtx typeBindings typeNameCtx (Set.toList ts0) (Set.toList ts1)
-
-  (BigArrow fromKy0 toTy0, BigArrow fromKy1 toTy1)
-    -> let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
-           newTypeBindings = unbound $ bury typeBindings
-          in if kindEq fromKy0 fromKy1
-               then typeEq newTypeBindCtx newTypeBindings typeNameCtx toTy0 toTy1
-               else Right False
-
-  -- Two type lambda are equivalent if their corresponding from and to are the
-  -- same
-  -- TODO: Should probably UnBound the type vars when checking theyre equal
-  (TypeLam k0 ty0, TypeLam k1 ty1)
-    -> let newTypeBindCtx  = addBinding k0 typeBindCtx
-           newTypeBindings = unbound $ bury typeBindings
-          in (&&) <$> pure (k0 == k1) <*> typeEq newTypeBindCtx newTypeBindings typeNameCtx ty0 ty1
-
-  -- A non-Named, non identical type
-  _ -> Right False
-
+       -- A non-Named, non identical type
+       _ -> Right False
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs
@@ -169,8 +201,32 @@ typeEqs
   -> [TypeFor phase]
   -> [TypeFor phase]
   -> Either (Error expr (TypeFor phase) patternFor) Bool
-typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1
-  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEq typeBindCtx typeBindings typeNameCtx) ts0 ts1
+typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1 = typeEqsWith typeBindCtx typeBindings typeNameCtx (Just 100) ts0 ts1
+
+-- Are two lists of types pairwise equivalent under a typectx?
+typeEqsWith
+  :: forall phase patternFor expr
+   . phase ~ DefaultPhase
+  => BindCtx (TypeBindingFor phase) Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtx phase
+  -> Maybe Int
+  -> [TypeFor phase]
+  -> [TypeFor phase]
+  -> Either (Error expr (TypeFor phase) patternFor) Bool
+typeEqsWith typeBindCtx typeBindings typeNameCtx reductionLimit ts0 ts1
+  | reductionLimit == Just 0
+   = Left . EMsg . mconcat $
+       [ text "Reduction limit reached when type-checking two lists of expressions:"
+       , lineBreak
+       , indent1 . text . Text.pack . show $ ts0
+       , lineBreak
+       , text "And:"
+       , lineBreak
+       , indent1 . text . Text.pack . show $ ts1
+       ]
+
+  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEqWith typeBindCtx typeBindings typeNameCtx (fmap (subtract 1) reductionLimit)) ts0 ts1
                                   in case mEq of
                                        Right True -> mEq
                                        _          -> mEq

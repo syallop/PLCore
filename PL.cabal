@@ -60,6 +60,7 @@ library
                      , PL.Test.Type.Union
                      , PL.Test.Type.TypeBinding
                      , PL.Test.Type.BigArrow
+                     , PL.Test.Type.TypeLam
 
                      , PL.Test.Pattern
                      , PL.Test.Pattern.Bind

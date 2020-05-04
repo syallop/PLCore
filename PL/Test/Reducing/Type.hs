@@ -68,6 +68,7 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
                                   ((TypeReductionTestCase
                                       { _typeReductionName = "Reduces"
                                       , _typeReductionUnderTypeCtx = _underTypeCtx testCase
+                                      , _typeReductionUnderTypeBindCtx = _underTypeBindCtx testCase
                                       , _typeReductionUnderTypeBindings = _underBindings testCase
                                       , _typeReductionMutateType = []
                                       , _typeReductionMatches = [TypeEquals $ _reducesTo testCase]
@@ -108,7 +109,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
       -> Type
       -> [TypeMatch]
       -> Spec
-    reduceSpec name underCtx _underTypeBindCtx underTypeBindings typ typeMatches = it (Text.unpack name) $
+    reduceSpec name underCtx underTypeBindCtx underTypeBindings typ typeMatches = it (Text.unpack name) $
       let reducedType = reduceTypeWith underTypeBindings underCtx Nothing typ
        in mapM_ (test reducedType) typeMatches
 
@@ -139,7 +140,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                  ]
 
           (Right redType, TypeEquals expectedType)
-            -> case typeEq emptyCtx emptyBindings underCtx redType expectedType of
+            -> case typeEq underTypeBindCtx underTypeBindings underCtx redType expectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"
@@ -170,7 +171,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                    -> pure ()
 
           (Right redType, TypeDoesNotEqual notExpectedType)
-            -> case typeEq emptyCtx emptyBindings underCtx redType notExpectedType of
+            -> case typeEq underTypeBindCtx underTypeBindings underCtx redType notExpectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"

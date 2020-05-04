@@ -81,11 +81,12 @@ import PL.Test.Source
 -- | A record of the sources required to run all of the Type tests.
 -- TODO: Define some type level tests
 data TestTypeSources = TestTypeSources
-  { _namedTestCases   :: TestNamedSources
-  , _arrowTestCases   :: TestArrowSources
-  , _sumTestCases     :: TestSumSources
-  , _productTestCases :: TestProductSources
-  , _unionTestCases   :: TestUnionSources
+  { _namedTestCases       :: TestNamedSources
+  , _arrowTestCases       :: TestArrowSources
+  , _sumTestCases         :: TestSumSources
+  , _productTestCases     :: TestProductSources
+  , _unionTestCases       :: TestUnionSources
+  , _typeBindingTestCases :: TestTypeBindingSources
   }
 
 -- | Given a collection of test sources, we can produce a list mapping their names
@@ -94,10 +95,11 @@ mkTypeTestCases
   :: TestTypeSources
   -> Map.Map Text.Text TypeTestCase
 mkTypeTestCases t = Map.fromList . mconcat $
-  [ namedTestCases   . _namedTestCases   $ t
-  , arrowTestCases   . _arrowTestCases   $ t
-  , sumTestCases     . _sumTestCases     $ t
-  , productTestCases . _productTestCases $ t
-  , unionTestCases   . _unionTestCases   $ t
+  [ namedTestCases       . _namedTestCases       $ t
+  , arrowTestCases       . _arrowTestCases       $ t
+  , sumTestCases         . _sumTestCases         $ t
+  , productTestCases     . _productTestCases     $ t
+  , unionTestCases       . _unionTestCases       $ t
+  , typeBindingTestCases . _typeBindingTestCases $ t
   ]
 

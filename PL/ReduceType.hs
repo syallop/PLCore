@@ -63,8 +63,8 @@ reduceType typeCtx typ = reduceTypeWith emptyBindings typeCtx (Just 100) typ
 -- | 'reduceType' with a collection of initial bindings as if Types have already
 -- been applied to an outer type lambda abstraction.
 reduceTypeWith
-  :: Bindings (TypeFor DefaultPhase)
-  -> TypeCtx DefaultPhase
+  :: Bindings (TypeFor DefaultPhase) -- ^ Bind known and unknown types by their position away
+  -> TypeCtx DefaultPhase            -- ^ Known named types
   -> Maybe Int
   -> TypeFor DefaultPhase
   -> Either (Error expr Type pattern) (TypeFor DefaultPhase)

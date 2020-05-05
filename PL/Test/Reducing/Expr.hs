@@ -80,12 +80,12 @@ reducesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 reduceToSpec
   :: Text.Text
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> ExprFor CommentedPhase
   -> [ReductionTestCase]
-  -> (ExprFor DefaultPhase -> Doc)
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (PatternFor DefaultPhase -> Doc)
+  -> (Expr -> Doc)
+  -> (Type -> Doc)
+  -> (Pattern -> Doc)
   -> (Var -> Doc)
   -> (TyVar -> Doc)
   -> Spec
@@ -106,7 +106,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern ppVa
              , lineBreak
              , text "With error:"
              , lineBreak
-             , ppError ppPattern ppType ppExpr ppVar ppTyVar $ exprErr
+             , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar $ exprErr
              , lineBreak
              , text "Expected:"
              , ppExpr expectedExpr
@@ -139,7 +139,7 @@ reduceToSpec name underTypeCtx inputExpr reductions ppExpr ppType ppPattern ppVa
                     , lineBreak
                     , text "Due to error:"
                     , lineBreak
-                    , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
+                    , indent1 $ ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar err
                     ]
 
              Right False

@@ -85,9 +85,9 @@ import PLPrinter
 --   - Case analysis reduces it's scrutinee fully before proceeding with
 --   matches.
 reduce
-  :: TypeCtx DefaultPhase
+  :: TypeCtx
   -> Expr
-  -> Either (Error Expr Type Pattern) Expr
+  -> Either (Error Expr Type Pattern TypeCtx) Expr
 reduce typeCtx expr = reduceWith emptyBindings emptyBindings typeCtx (Just 100) expr
 
 -- | 'reduce' with a collection of initial bindings as if Expressions and Types
@@ -95,10 +95,10 @@ reduce typeCtx expr = reduceWith emptyBindings emptyBindings typeCtx (Just 100) 
 reduceWith
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Maybe Int
   -> Expr
-  -> Either (Error Expr Type Pattern) Expr
+  -> Either (Error Expr Type Pattern TypeCtx) Expr
 reduceWith bindings typeBindings typeCtx reductionLimit initialExpr
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -125,9 +125,9 @@ reduceWith bindings typeBindings typeCtx reductionLimit initialExpr
 reduceStep
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Expr
-  -> Either (Error Expr Type Pattern) Expr
+  -> Either (Error Expr Type Pattern TypeCtx) Expr
 reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
   -- TODO: Consider whether/ where we should reduce types.
 
@@ -286,9 +286,9 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
 reducePossibleCaseRHSStep
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> CaseBranches Expr Pattern
-  -> Either (Error Expr Type Pattern) (CaseBranches Expr Pattern)
+  -> Either (Error Expr Type Pattern TypeCtx) (CaseBranches Expr Pattern)
 reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings typeBindings typeCtx)
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
@@ -299,10 +299,10 @@ reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesEx
 reducePossibleCaseBranchesStep
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Expr
   -> CaseBranches Expr Pattern
-  -> Either (Error Expr Type Pattern) Expr
+  -> Either (Error Expr Type Pattern TypeCtx) Expr
 reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \case
   -- With only a default branch there is no need to bind the matched value as it
   -- should be accessible in the outer scope.
@@ -346,7 +346,7 @@ reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \ca
 tryBranches
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Expr
   -> NonEmpty (CaseBranch Expr Pattern)
   -> Maybe ([Expr],Expr)
@@ -369,7 +369,7 @@ tryBranches bindings typeBindings typeCtx caseScrutinee branches = firstMatch $ 
 tryBranch
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Expr
   -> CaseBranch Expr Pattern
   -> Maybe ([Expr],Expr)
@@ -381,7 +381,7 @@ tryBranch bindings typeBindings typeCtx caseScrutinee (CaseBranch pattern rhsExp
 patternBinding
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Expr
   -> Pattern
   -> Maybe [Expr]
@@ -476,7 +476,7 @@ patternBinding bindings typeBindings typeCtx caseScrutinee pattern = case (caseS
 patternBindings
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> [Expr]
   -> [Pattern]
   -> Maybe [Expr]
@@ -494,10 +494,10 @@ patternBindings bindings typeBindings typeCtx exprs patterns
 exprEq
   :: Bindings Expr
   -> Bindings Type
-  -> TypeCtx DefaultPhase
+  -> TypeCtx
   -> Expr
   -> Expr
-  -> Either (Error Expr Type Pattern) Bool
+  -> Either (Error Expr Type Pattern TypeCtx) Bool
 exprEq bindings typeBindings typeCtx e0 e1 = do
   redE0 <- reduceWith bindings typeBindings typeCtx (Just 100) e0
   redE1 <- reduceWith bindings typeBindings typeCtx (Just 100) e1

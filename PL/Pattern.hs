@@ -266,13 +266,13 @@ type instance PatternExtension DefaultPhase = Void
 branchType
   :: (BindingFor DefaultPhase ~ Var)
   => CaseBranch expr Pattern
-  -> (BindCtx Var Type -> BindCtx TyVar Kind -> Bindings Type -> TypeCtx DefaultPhase -> expr -> Either (Error expr Type Pattern) Type)
+  -> (BindCtx Var Type -> BindCtx TyVar Kind -> Bindings Type -> TypeCtx -> expr -> Either (Error expr Type Pattern TypeCtx) Type)
   -> Type
   -> BindCtx Var Type
   -> BindCtx TyVar Kind
   -> Bindings Type
-  -> TypeCtx DefaultPhase
-  -> Either (Error expr Type Pattern) Type
+  -> TypeCtx
+  -> Either (Error expr Type Pattern TypeCtx) Type
 branchType (CaseBranch lhs rhs) exprType expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   bindings <- checkWithPattern lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
   exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
@@ -286,12 +286,12 @@ checkWithPattern
   -> BindCtx Var Type
   -> BindCtx TyVar Kind
   -> Bindings Type
-  -> TypeCtx DefaultPhase
-  -> Either (Error expr Type (PatternFor DefaultPhase)) [Type]
+  -> TypeCtx
+  -> Either (Error expr Type Pattern TypeCtx) [Type]
 checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
   -- If we've been given a named type, substitute it with its info, then ensure
   -- the type is reduced.
-  rExpectTy <- either (\name -> Left $ ETypeNotDefined name "expected type in a pattern.") Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
+  rExpectTy <- either (\name -> Left $ EContext (EMsg $ text "Checking pattern") $ ETypeNotDefined name typeCtx) Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
 
   case (pat,rExpectTy) of
 
@@ -376,8 +376,8 @@ checkWithPatterns
   -> BindCtx Var Type
   -> BindCtx TyVar Kind
   -> Bindings Type
-  -> TypeCtx DefaultPhase
-  -> Either (Error expr Type Pattern) [Type]
+  -> TypeCtx
+  -> Either (Error expr Type Pattern TypeCtx) [Type]
 checkWithPatterns pat types exprBindCtx typeBindCtx typeBindings typeCtx = case (pat,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg $ text "Expected more patterns in pattern"

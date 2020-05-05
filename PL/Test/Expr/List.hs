@@ -76,7 +76,7 @@ emptyListTestCase src
       , _reducesToWhenApplied = reduces
       }
   where
-    ctx = listTypeCtx <> natTypeCtx
+    ctx = sharedTypeCtx
 
     -- [] :: forall a. [a]
     e   = emptyTerm
@@ -90,10 +90,9 @@ emptyListTestCase src
                , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
                )
 
-              -- TODO
-              --,("[] : [[Bool]]"
-               --, [(`BigApp` (TypeApp listTypeName boolTypeName))]
-               --, Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
-               --)
+              ,("[] : [[Bool]]"
+              , [(`BigApp` (TypeApp listTypeName boolTypeName))]
+              , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
+              )
               ]
 

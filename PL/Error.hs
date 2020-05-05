@@ -24,7 +24,9 @@ import PL.Name
 import PL.Bindings
 import PL.Binds
 import PL.Var
+import PL.TypeCtx
 import PL.TyVar
+import PL.FixPhase
 
 import PLPrinter
 
@@ -33,13 +35,13 @@ import Data.Text
 import Data.List.NonEmpty
 import qualified Data.List.NonEmpty as NE
 
-data Error expr typ pattern
+data Error expr typ pattern typeCtx
 
   -- | Generic error
   = EMsg Doc
 
   -- No such name in some context
-  | ETypeNotDefined TypeName Text -- ^ No such type
+  | ETypeNotDefined TypeName typeCtx  -- ^ No such type
   | ETermNotDefined TermName -- ^ No such term
 
   -- | Two typed things cannot be applied to each other
@@ -85,15 +87,16 @@ data Error expr typ pattern
   | EBindCtxTypeLookupFailure Int (BindCtx TyVar Kind)
 
   -- | An error is a context for some deeper error.
-  | EContext (Error expr typ pattern) (Error expr typ pattern)
+  | EContext (Error expr typ pattern typeCtx) (Error expr typ pattern typeCtx)
 
 deriving instance
   (Eq expr
   ,Eq (Bindings expr)
   ,Eq typ
   ,Eq pattern
+  ,Eq typeCtx
   )
-  => Eq (Error expr typ pattern)
+  => Eq (Error expr typ pattern typeCtx)
 
 deriving instance
   (Eq (Bindings expr)
@@ -101,15 +104,17 @@ deriving instance
   ,Ord expr
   ,Ord typ
   ,Ord pattern
+  ,Ord typeCtx
   )
-  => Ord (Error expr typ pattern)
+  => Ord (Error expr typ pattern typeCtx)
 
 deriving instance
   (Show expr
   ,Show typ
   ,Show pattern
+  ,Show typeCtx
   )
-  => Show (Error expr typ pattern)
+  => Show (Error expr typ pattern typeCtx)
 
 
 -- | We can pretty-print an error provided we're told how to pretty print
@@ -121,23 +126,24 @@ ppError
   :: (pattern -> Doc)
   -> (typ -> Doc)
   -> (expr -> Doc)
+  -> (typeCtx -> Doc)
   -> (Var -> Doc)
   -> (TyVar -> Doc)
-  -> Error expr typ pattern -> Doc
-ppError ppPattern ppType ppExpr ppVar ppTyVar = \case
+  -> Error expr typ pattern typeCtx -> Doc
+ppError ppPattern ppType ppExpr ppTypeCtx ppVar ppTyVar = \case
   -- TODO: Wack parameter order
 
   EMsg doc
     -> doc
 
-  ETypeNotDefined name context
+  ETypeNotDefined name typeCtx
     -> mconcat [ text "Type named:"
                , lineBreak
                , indent1 $ document name
                , lineBreak
-               , text "is not defined in the context: "
+               , text "is not defined in the named type context: "
                , lineBreak
-               , indent1 $ text context
+               , indent1 $ ppTypeCtx typeCtx
                ]
 
   ETermNotDefined name
@@ -275,168 +281,18 @@ ppError ppPattern ppType ppExpr ppVar ppTyVar = \case
   EContext context err
     -> mconcat [ text "Error:"
                , lineBreak
-               , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
+               , indent1 $ ppError ppPattern ppType ppExpr ppTypeCtx ppVar ppTyVar err
                , lineBreak
                , text "In context:"
                , lineBreak
-               , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar context
+               , indent1 $ ppError ppPattern ppType ppExpr ppTypeCtx ppVar ppTyVar context
                ]
 
-instance (Document expr, Document typ, Document pattern) => Document (Error expr typ pattern) where
-  document e = text "ERROR: " <> case e of
-    EMsg doc
-      -> doc
-
-    ETypeNotDefined name context
-      -> mconcat [ text "Type named:"
-                 , lineBreak
-                 , indent1 $ document name
-                 , lineBreak
-                 , text "is not defined in the context: "
-                 , lineBreak
-                 , indent1 $ text context
-                 ]
-
-    ETermNotDefined name
-      -> mconcat [ text "Term named:"
-                 , lineBreak
-                 , indent1 $ document name
-                 , lineBreak
-                 , text "is not defined."
-                 ]
-
-    EAppMismatch fTy xTy
-      -> mconcat [ text "Cannot apply expression typed:"
-                 , lineBreak
-                 , indent1 $ document fTy
-                 , lineBreak
-                 , text "to expression typed:"
-                 , lineBreak
-                 , indent1 $ document xTy
-                 ]
-
-    EBigAppMismatch fTy xKy
-      -> mconcat [ text "Cannot big-apply expression typed:"
-                 , lineBreak
-                 , indent1 $ document fTy
-                 , lineBreak
-                 , text "to type kinded:"
-                 , lineBreak
-                 , indent1 $ document xKy
-                 ]
-
-    ETypeAppMismatch fKy xKy
-      -> mconcat [ text "Cannot type-apply type kinded"
-                 , lineBreak
-                 , indent1 $ document fKy
-                 , lineBreak
-                 , text "to type kinded:"
-                 , lineBreak
-                 , indent1 $ document xKy
-                 ]
-
-    ETypeAppLambda fTy
-      -> mconcat [ text "Cannot type-apply a non type-lam: "
-                 , lineBreak
-                 , indent1 $ document fTy
-                 ]
-
-    ESumMismatch actualType index sumTys
-      -> mconcat [ text "Expression had type: "
-                 , lineBreak
-                 , indent1 $ document actualType
-                 , lineBreak
-                 , text "and claimed to be contained within the sum:"
-                 , indent1 $ mconcat . NE.toList . fmap document $ sumTys
-                 , lineBreak
-                 , text "at index:"
-                 , lineBreak
-                 , indent1 $ document index
-                 ]
-
-    ECaseDefaultMismatch defaultTy firstBranchTy
-      -> mconcat [ text "In a case statement the default branch had type: "
-                 , lineBreak
-                 , indent1 $ document defaultTy
-                 , lineBreak
-                 , indent1 $ text "whereas the first branch had type: "
-                 , lineBreak
-                 , indent1 $ document firstBranchTy
-                 , lineBreak
-                 , text "but branches must have the same type."
-                 ]
-
-    EPatternMismatch expectedTy gotPattern
-      -> mconcat [ text "in a case analysis the scrutinee expression had type: "
-                 , lineBreak
-                 , indent1 $ document expectedTy
-                 , lineBreak
-                 , text "but this type is not matched by a given pattern: "
-                 , lineBreak
-                 , indent1 $ document gotPattern
-                 ]
-
-    ETypeReductionLimitReached typ
-      -> mconcat [ text "Aborted reducing a type due to hitting the provided reduction limit. Aborted with the type: "
-                 , lineBreak
-                 , indent1 $ document typ
-                 ]
-
-    EMultipleMatchesInUnion typs
-      -> mconcat [ text "Exactly one match is expected, but matched types:"
-                 , lineBreak
-                 , indent1 $ mconcat $ fmap document typs
-                 ]
-
-    EBindExprLookupFailure ix bindings
-      -> mconcat [ text "Failed to lookup an expression binding with index:"
-                 , lineBreak
-                 , indent1 $ int ix
-                 , lineBreak
-                 , text "In bindings:"
-                 , lineBreak
-                 , document bindings
-                 ]
-
-    EBindTypeLookupFailure ix bindings
-      -> mconcat [ text "Failed to lookup a type binding with index:"
-                 , lineBreak
-                 , indent1 $ int ix
-                 , lineBreak
-                 , text "In bindings:"
-                 , lineBreak
-                 , document bindings
-                 ]
-
-    EBindCtxExprLookupFailure ix bindCtx
-      -> mconcat [ text "Failed to lookup an expressions type from a binding with index:"
-                 , lineBreak
-                 , indent1 $ int ix
-                 , lineBreak
-                 , text "In bind ctx:"
-                 , lineBreak
-                 , document bindCtx
-                 ]
-
-    EBindCtxTypeLookupFailure ix bindCtx
-      -> mconcat [ text "Failed to lookup a types kind from a binding with index:"
-                 , lineBreak
-                 , indent1 $ int ix
-                 , lineBreak
-                 , text "In bind ctx:"
-                 , lineBreak
-                 , document bindCtx
-                 ]
-
-
-    EContext context err
-      -> mconcat [ text "Error: "
-                 , lineBreak
-                 , indent1 $ document err
-                 , lineBreak
-
-                 , text "In context:"
-                 , lineBreak
-                 , indent1 $ document context
-                 ]
+instance
+  (Document expr
+  ,Document typ
+  ,Document pattern
+  ,Document typeCtx
+  ) => Document (Error expr typ pattern typeCtx) where
+  document = ppError document document document document document document
 

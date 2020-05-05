@@ -11,6 +11,7 @@ import PL.TyVar
 import PL.Type
 import PL.Var
 import PL.Pattern
+import PL.TypeCtx
 
 import PL.Test.PatternTestCase
 import PL.Test.Parsing.Pattern
@@ -37,7 +38,7 @@ spec
   :: Spec
 spec = do
   describe "Patterns" $ do
-    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppType (ppError ppPattern ppType ppExpr ppVar ppTyVar)
+    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppType (ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar)
     describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppExpr ppType ppPattern ppVar ppTyVar
   where
     patternTestCases :: Map.Map Text PatternTestCase

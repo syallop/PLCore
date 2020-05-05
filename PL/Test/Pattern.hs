@@ -27,9 +27,6 @@ module PL.Test.Pattern
   -- Test Reduction
   , reducesPatternsToSpec
   , reducePatternToSpec
-
-  -- Misc
-  , typeCtx
   )
   where
 
@@ -97,13 +94,5 @@ mkPatternTestCases t = Map.fromList . mconcat $
   , productTestCases . _productTestCases $ t
   , unionTestCases   . _unionTestCases   $ t
   , bindingTestCases . _bindingTestCases $ t
-  ]
-
--- type context of bools and nats
-typeCtx :: TypeCtx DefaultPhase
-typeCtx = foldr unionTypeCtx emptyTypeCtx
-  [ boolTypeCtx
-  , natTypeCtx
-  , listTypeCtx
   ]
 

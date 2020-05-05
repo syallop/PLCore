@@ -52,9 +52,9 @@ import PL.Test.Util
 -- order to produce the intended Pattern.
 parsesToPatternsSpec
   :: Map.Map Text.Text PatternTestCase
-  -> (Source -> Either (Error Expr Type Pattern) (PatternFor CommentedPhase, Source))
-  -> (PatternFor DefaultPhase -> Doc)
-  -> (Error Expr Type Pattern -> Doc)
+  -> (Source -> Either (Error Expr Type Pattern TypeCtx) (PatternFor CommentedPhase, Source))
+  -> (Pattern -> Doc)
+  -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parsesToPatternsSpec testCases parsePattern ppPattern ppError
   = describe "All example patterns"
@@ -65,12 +65,12 @@ parsesToPatternsSpec testCases parsePattern ppPattern ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended pattern.
 parseToPatternSpec
-  :: (Source -> Either (Error Expr Type Pattern) (PatternFor CommentedPhase,Source))
+  :: (Source -> Either (Error Expr Type Pattern TypeCtx) (PatternFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> PatternFor CommentedPhase
-  -> (PatternFor DefaultPhase -> Doc)
-  -> (Error Expr Type Pattern -> Doc)
+  -> (Pattern -> Doc)
+  -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppError = it (Text.unpack name) $ case parsePattern inputSource of
   Left err

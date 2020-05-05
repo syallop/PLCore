@@ -583,9 +583,9 @@ mapSubExpressions f e = case e of
 
 -- | A top-level expression is an expression without a bindings context.
 topExprType
-  :: TypeCtx DefaultPhase
+  :: TypeCtx
   -> Expr
-  -> Either (Error Expr Type Pattern) Type
+  -> Either (Error Expr Type Pattern TypeCtx) Type
 topExprType = exprType emptyCtx emptyCtx emptyBindings
 
 -- | Under a binding context, type check an expression.
@@ -593,9 +593,9 @@ exprType
   :: BindCtx Var Type         -- Associate expr bindings to their types
   -> BindCtx TyVar Kind       -- Associate type bindings to their Kinds
   -> Bindings Type            -- Associate type bindings to their bound or unbound types
-  -> TypeCtx DefaultPhase -- Associate Named types to their TypeInfo
+  -> TypeCtx -- Associate Named types to their TypeInfo
   -> Expr                     -- Expression to type-check
-  -> Either (Error Expr Type Pattern) Type
+  -> Either (Error Expr Type Pattern TypeCtx) Type
 exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
@@ -617,7 +617,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
     -> do fTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx f -- Both f and x must type check
           xTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx x
 
-          resFTy <- either (\name -> Left $ ETypeNotDefined name "function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: function application") $ ETypeNotDefined name typeCtx) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           let errAppMismatch = Left $ EAppMismatch resFTy xTy
           case resFTy of
@@ -675,7 +675,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
           -- Type must be in the set somewhere...
           -- TODO
-          _ <- if Set.member (Right True :: Either (Error Expr Type Pattern) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
+          _ <- if Set.member (Right True :: Either (Error Expr Type Pattern TypeCtx) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
                  then Right ()
                  else Left $ EMsg $ text "Expressions type is not within the union"
 
@@ -773,7 +773,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
 
           -- TODO maybe verify the xTy we've been given to apply?
 
-          resFTy <- either (\name -> Left $ ETypeNotDefined name "Big function application") Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: Big application") $ ETypeNotDefined name typeCtx) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
 
           case resFTy of
             -- Regular big application attempt

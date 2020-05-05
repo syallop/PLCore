@@ -51,9 +51,9 @@ import PL.Test.Util
 -- order to produce the intended type.
 parsesToTypesSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (Source -> Either (Error Expr Type Pattern) (TypeFor CommentedPhase, Source))
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Expr Type Pattern -> Doc)
+  -> (Source -> Either (Error Expr Type Pattern TypeCtx) (TypeFor CommentedPhase, Source))
+  -> (Type -> Doc)
+  -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parsesToTypesSpec testCases parseType ppType ppError
   = describe "All example types"
@@ -64,12 +64,12 @@ parsesToTypesSpec testCases parseType ppType ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended type.
 parseToTypeSpec
-  :: (Source -> Either (Error Expr Type Pattern) (TypeFor CommentedPhase,Source))
+  :: (Source -> Either (Error Expr Type Pattern TypeCtx) (TypeFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> TypeFor CommentedPhase
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Expr Type Pattern -> Doc)
+  -> (Type -> Doc)
+  -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name) $ case parseType inputSource of
   Left err

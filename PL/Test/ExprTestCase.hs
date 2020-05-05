@@ -58,17 +58,17 @@ import PL.Test.Util
 --
 -- It's likely factored badly.
 data ExprTestCase = ExprTestCase
-  {_underTypeCtx :: TypeCtx DefaultPhase   -- ^ Under this given typing context
+  {_underTypeCtx :: TypeCtx                -- ^ Under this given typing context
   ,_isExpr       :: ExprFor CommentedPhase -- ^ An Expr
-  ,_typed        :: TypeFor DefaultPhase   -- ^ Has this type
+  ,_typed        :: Type                   -- ^ Has this type
   ,_parsesFrom   :: Text                   -- ^ And also parses from this textual representation
 
-  ,_reducesTo :: ExprFor DefaultPhase      -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
+  ,_reducesTo :: Expr -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
 
   ,_reducesToWhenApplied :: [ReductionTestCase]
   }
 
 -- A Reduction test has a name, a list of transformations and is expected to
 -- fail or succeed with some reduced expression.
-type ReductionTestCase = (Text, [ExprFor DefaultPhase -> ExprFor DefaultPhase], Maybe (ExprFor DefaultPhase))
+type ReductionTestCase = (Text, [Expr -> Expr], Maybe Expr)
 

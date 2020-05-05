@@ -21,6 +21,7 @@ import PL.Case
 import PL.Commented
 import PL.Error
 import PL.Expr
+import PL.FixPhase
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -54,11 +55,11 @@ namedTestCases t =
   ]
 
 namedTypeCtx
-  :: (NamedExtension phase ~ Void
+  :: (NamedExtension    phase ~ Void
      ,SumTExtension     phase ~ Void
      ,ProductTExtension phase ~ Void
      )
-  => TypeCtx phase
+  => TypeCtxFor phase
 namedTypeCtx
   = fromJust
   . insertType "Preexisting" preExistingType

@@ -11,7 +11,13 @@ Stability   : experimental
 Assign new name types to things we really wouldnt want to accidentally confuse.
 Type and variable names for example.
 -}
-module PL.Name where
+module PL.Name
+  ( Name
+
+  , TypeName (..)
+  , TermName (..)
+  )
+  where
 
 import Data.Monoid
 import Data.Text

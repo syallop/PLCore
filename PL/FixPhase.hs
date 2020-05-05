@@ -20,7 +20,30 @@ Maintainer  : syallop@gmail.com
 Stability   : experimental
 
 -}
-module PL.FixPhase where
+module PL.FixPhase
+  ( -- Construct and deconstruct data types which recursively contain themselves
+    -- and may be indexed on some phase type variable.
+    FixPhase (..)
+  , fixPhase
+  , unfixPhase
+
+  -- Recursion schemes over the FixPhase structure
+  , (<&>)
+  , cataPhase
+  , anaPhase
+  , hyloPhase
+  , (~>)
+
+  , cataPhaseM
+  , anaPhaseM
+  , hyloPhaseM
+
+  -- Misc phase-related things
+  , DefaultPhase
+  , Void
+  , void
+  )
+  where
 
 import PLPrinter.Doc
 
@@ -108,3 +131,21 @@ hyloPhaseM
   -> (fA -> m (f phase fA))
   -> (fA -> m fB)
 hyloPhaseM phi psi = (cataPhaseM phi =<<) . anaPhaseM psi
+
+data DefaultPhase
+
+data Void
+
+instance Show Void where
+  show _ = ""
+
+instance Eq Void where
+  _ == _ = True
+
+instance Ord Void where
+  compare _ _ = EQ
+
+-- Some patterns to make working with ExprF nicer
+void :: Void
+void = error "Cannot evaluate Void"
+

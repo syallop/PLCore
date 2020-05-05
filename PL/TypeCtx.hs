@@ -11,16 +11,49 @@ Copyright   : (c) Samuel A. Yallop, 2016
 Maintainer  : syallop@gmail.com
 Stability   : experimental
 
-Maps names to types allowing type resolution.
+This module defines a TypeCtx datastructure which can be used to map TypeNames
+to definitions and their metadata.
+
+I.E. Lookups can return:
+- Kinds - useful for deciding whether a name can be applied to a type or not.
+- Recursive/ non-recursive - useful for determining a reduction strategy that
+  will terminate.
+- The type's definition - useful for substitution & comparing structural
+  equality.
+
+Not to be confused with:
+- Binds which maps lambda abstractions in expressions/ types to metadata (such as a variables type or kind)
+- Bindings allows looking up bound/ unbound bindings to an abstraction (such as a variables expression or a type-variables type)
+
+In its current usage, type contexts are hardcoded to some default types
+(Nat,Bool,Maybe,etc) and threaded through evaluation.
+
+At some point the ability to define types will be exposed to the user either:
+- Out of band
+- At the top-level
+- Anywhere in an expression
+
+Depending that choice as well as decisions on:
+- Naming
+- Type uniqueness
+- Recursion
+- Generalisation to named expression
+definitions here will be replaced/ made stronger. Due to the amount of unknowns,
+this api isn't particularly finished or as safe as it should be and so care
+should be taken when using to avoid creating bad states.
 -}
 module PL.TypeCtx
-  ( TypeCtx ()
+  ( TypeCtx
+  , TypeCtxFor ()
   , emptyTypeCtx
   , typeCtxMapping
+  , ppTypeCtx
 
   , Rec (..)
-  , TypeInfo (..)
+  , TypeInfo
+  , TypeInfoFor (..)
   , mkTypeInfo
+  , ppTypeInfo
 
   , lookupTypeNameInfo
   , lookupTypeNameInitialInfo
@@ -54,70 +87,134 @@ import qualified Data.Set as Set
 data Rec
   = Rec
   | NonRec
-  deriving Show
+  deriving (Show, Eq, Ord)
 
 instance Document Rec where
   document r = case r of
     Rec -> text "Rec"
     NonRec -> text "NonRec"
 
--- Associate typenames to a description of their type
--- Types may be aliased to refer to other types but should only
--- do so a finite amount of times.
-newtype TypeCtx phase = TypeCtx {_unTypeCtx :: Map.Map TypeName (TypeInfo phase)}
+-- | Associate type names to a description of their type.
+--
+-- Types may be aliased to refer to other types but there should not be cycles
+-- unless they are denoted as being 'Rec'ursive.
+type TypeCtx = TypeCtxFor DefaultPhase
+
+newtype TypeCtxFor phase = TypeCtx {_unTypeCtx :: Map.Map TypeName (TypeInfoFor phase)}
 
 deriving instance
-  (Show (TypeInfo phase))
-  => Show (TypeCtx phase)
+  (Show (TypeInfoFor phase))
+  => Show (TypeCtxFor phase)
+
+deriving instance
+  (Ord (TypeInfoFor phase))
+  => Ord (TypeCtxFor phase)
+
+deriving instance
+  (Eq (TypeInfoFor phase))
+  => Eq (TypeCtxFor phase)
 
 -- Retrieve the underlying map of type names to their information
-typeCtxMapping :: TypeCtx phase -> Map.Map TypeName (TypeInfo phase)
+typeCtxMapping
+  :: TypeCtxFor phase
+  -> Map.Map TypeName (TypeInfoFor phase)
 typeCtxMapping = _unTypeCtx
 
-instance Semigroup (TypeCtx phase) where
+instance Semigroup (TypeCtxFor phase) where
   (TypeCtx t0) <> (TypeCtx t1) = TypeCtx (t0 <> t1)
 
-instance Monoid (TypeCtx phase) where
+instance Monoid (TypeCtxFor phase) where
   mempty = TypeCtx mempty
 
-instance (Document (TypeFor phase), Document (TypeBindingFor phase)) => Document (TypeCtx phase) where
-  document (TypeCtx m) = mconcat . Map.foldrWithKey
-                                   (\typeName typeInfo acc -> document typeName : lineBreak : indent 2 (document typeInfo) : lineBreak : lineBreak : acc)
-                                   []
-                                 $ m
+instance Document (TypeFor phase)
+  => Document (TypeCtxFor phase)
+  where
+  document = ppTypeCtx document (ppTypeInfo document)
 
--- Information associated with a type
-data TypeInfo phase
+ppTypeCtx
+  :: (TypeName -> Doc)
+  -> (TypeInfoFor phase -> Doc)
+  -> TypeCtxFor phase
+  -> Doc
+ppTypeCtx ppTypeName ppTypeInfo (TypeCtx m) =
+  Map.foldrWithKey
+    (\typeName typeInfo acc
+      -> mconcat [ ppTypeName typeName
+                 , lineBreak
+                 , indent 2 $ ppTypeInfo typeInfo
+                 , lineBreak
+                 , lineBreak
+                 , acc
+                 ]
+    )
+    emptyDoc
+    m
+
+
+-- | Information associated with a type that can be used to provide hints to
+-- type-checking, reduction phases.
+--
+-- - Caching the Types Kind makes type-checking TypeApplications faster.
+-- - Storing whether the definition is recursive or not allows reduction to
+--   avoid non-termination.
+-- - The definition of the type itself can be used to compare structural
+--   equality.
+type TypeInfo = TypeInfoFor DefaultPhase
+
+data TypeInfoFor phase
   = TypeInfo
-    {_typeInfoIsRecursive :: Rec           -- Is the type recursively defined?
-    ,_typeInfoKind        :: Kind          -- Cache the Kind of the Type
-    ,_typeInfoType        :: TypeFor phase -- The type definition
+    {_typeInfoIsRecursive :: Rec
+    ,_typeInfoKind        :: Kind
+    ,_typeInfoType        :: TypeFor phase
     }
 
 deriving instance
   (Show (TypeFor phase))
-  => Show (TypeInfo phase)
+  => Show (TypeInfoFor phase)
 
-instance (Document (TypeFor phase), Document (TypeBindingFor phase)) => Document (TypeInfo phase) where
-  document (TypeInfo isRecursive kind def) = mconcat
-    [ document isRecursive
-    , lineBreak
-    , text ":: ", document kind
-    , lineBreak
-    , text "= ", document def
-    ]
+deriving instance
+  (Ord (TypeFor phase))
+  => Ord (TypeInfoFor phase)
+
+deriving instance
+  (Eq (TypeFor phase))
+  => Eq (TypeInfoFor phase)
+
+instance
+  ( Document (TypeFor phase)
+  , Document (TypeBindingFor phase)
+  ) => Document (TypeInfoFor phase) where
+  document = ppTypeInfo document
+
+ppTypeInfo
+  :: (TypeFor phase -> Doc)
+  -> TypeInfoFor phase
+  -> Doc
+ppTypeInfo ppDef (TypeInfo isRecursive kind def) = mconcat
+  [ document isRecursive
+  , lineBreak
+  , text ":: ", document kind
+  , lineBreak
+  , text "= ", ppDef def
+  ]
 
 -- Create TypeInfo which MUST be non-recursive
 -- TODO: Move 'typeKind' from Expr module, breaking the recursion between Type,Expr,TypeCtx,etc
 --       Then actually perform a kind check here instead of cheating
-mkTypeInfo :: TypeFor phase -> TypeCtx phase -> TypeInfo phase
+mkTypeInfo
+  :: TypeFor phase
+  -> TypeCtxFor phase
+  -> TypeInfoFor phase
 mkTypeInfo ty ctx = TypeInfo NonRec kind ty
   where
     {-kind = error "kind unchecked"-}
     kind = Kind
 
 -- Create TypeInfo which is recursive.
-mkRecTypeInfo :: TypeFor phase -> TypeCtx phase -> TypeInfo phase
+mkRecTypeInfo
+  :: TypeFor phase
+  -> TypeCtxFor phase
+  -> TypeInfoFor phase
 mkRecTypeInfo ty ctx = TypeInfo Rec kind ty
   where
     {-kind = error "kind unchecked"-}
@@ -125,11 +222,15 @@ mkRecTypeInfo ty ctx = TypeInfo Rec kind ty
 
 
 -- The empty TypeCtx with no mappings
-emptyTypeCtx :: TypeCtx phase
+emptyTypeCtx
+  :: TypeCtxFor phase
 emptyTypeCtx = TypeCtx Map.empty
 
 -- Lookup the TypeInfo associated with a TypeName
-lookupTypeNameInfo :: TypeName -> TypeCtx phase -> Maybe (TypeInfo phase)
+lookupTypeNameInfo
+  :: TypeName
+  -> TypeCtxFor phase
+  -> Maybe (TypeInfoFor phase)
 lookupTypeNameInfo n (TypeCtx ctx) = Map.lookup n ctx
 
 -- Recursively lookup up the TypeInfo associated with a name until a non-'named' definition is found.
@@ -138,7 +239,10 @@ lookupTypeNameInfo n (TypeCtx ctx) = Map.lookup n ctx
 -- Then
 -- "lookupTypeNameInfo Number" would return TypeInfo for the type "Named 'Nat'"
 -- "lookupTypeNameInitialInfo Number" would recurse twice and return TypeInfo for the "SumT ..." type definition
-lookupTypeNameInitialInfo :: TypeName -> TypeCtx phase -> Maybe (TypeInfo phase)
+lookupTypeNameInitialInfo
+  :: TypeName
+  -> TypeCtxFor phase
+  -> Maybe (TypeInfoFor phase)
 lookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
   Just (TypeInfo rec kind (NamedExt _ n1))
     -> lookupTypeNameInitialInfo n1 ctx
@@ -149,8 +253,8 @@ lookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
 traceLookupTypeNameInitialInfo
   :: (NamedExtension phase ~ Void)
   => TypeName
-  -> TypeCtx phase
-  -> Maybe (TypeInfo phase,[TypeInfo phase])
+  -> TypeCtxFor phase
+  -> Maybe (TypeInfoFor phase,[TypeInfoFor phase])
 traceLookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
   Nothing
     -> Nothing
@@ -165,7 +269,10 @@ traceLookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
 
 -- If a Named type, then lookup associated TypeInfo.
 -- otherwise generate it.
-resolveTypeInfo :: TypeFor phase -> TypeCtx phase -> Maybe (TypeInfo phase)
+resolveTypeInfo
+  :: TypeFor phase
+  -> TypeCtxFor phase
+  -> Maybe (TypeInfoFor phase)
 resolveTypeInfo t ctx = case t of
   NamedExt _ n -> lookupTypeNameInfo n ctx
   t       -> Just . mkTypeInfo t $ ctx
@@ -173,7 +280,10 @@ resolveTypeInfo t ctx = case t of
 
 -- If a Named type, then recursively lookup the associated TypeInfo.
 -- otherwise generate it.
-resolveTypeInitialInfo :: TypeFor phase -> TypeCtx phase -> Either TypeName (TypeInfo phase)
+resolveTypeInitialInfo
+  :: TypeFor phase
+  -> TypeCtxFor phase
+  -> Either TypeName (TypeInfoFor phase)
 resolveTypeInitialInfo t ctx = case t of
   NamedExt _ n
     -> case lookupTypeNameInitialInfo n ctx of
@@ -184,15 +294,13 @@ resolveTypeInitialInfo t ctx = case t of
 
   t -> Right . mkTypeInfo t $ ctx
 
-
-
 -- If a Named type, then recursively lookup the associated TypeInfo, also returning a trace of each intermediate TypeInfo.
 -- otherwise, generate it first.
 traceResolveTypeInitialInfo
   :: (NamedExtension phase ~ Void)
   => TypeFor phase
-  -> TypeCtx phase
-  -> Maybe (TypeInfo phase,[TypeInfo phase])
+  -> TypeCtxFor phase
+  -> Maybe (TypeInfoFor phase,[TypeInfoFor phase])
 traceResolveTypeInitialInfo t ctx = case t of
   NamedExt _ n -> traceLookupTypeNameInitialInfo n ctx
   t       -> Just (mkTypeInfo t ctx,[])
@@ -205,8 +313,8 @@ traceResolveTypeInitialInfo t ctx = case t of
 insertType
   :: TypeName
   -> TypeFor phase
-  -> TypeCtx phase
-  -> Maybe (TypeCtx phase)
+  -> TypeCtxFor phase
+  -> Maybe (TypeCtxFor phase)
 insertType n t ctx = case lookupTypeNameInfo n ctx of
 
   -- Name is already associated with something
@@ -223,7 +331,11 @@ insertType n t ctx = case lookupTypeNameInfo n ctx of
 -- - All mentioned names are already defined/ are the name we're attempting to insert
 -- - The type kind-checks.
 -- TODO: Should a type still be inserted as recursive if it doesnt recurse??
-insertRecType :: TypeName -> TypeFor phase -> TypeCtx phase -> Maybe (TypeCtx phase)
+insertRecType
+  :: TypeName
+  -> TypeFor phase
+  -> TypeCtxFor phase
+  -> Maybe (TypeCtxFor phase)
 insertRecType n t tCtx0 = case lookupTypeNameInfo n tCtx0 of
 
   -- Name is already associated with something
@@ -241,7 +353,7 @@ insertRecType n t tCtx0 = case lookupTypeNameInfo n tCtx0 of
 -- Validate that a type definition only refers to names that are in the TypeCtx
 validDefinition
   :: TypeFor phase
-  -> TypeCtx phase
+  -> TypeCtxFor phase
   -> Bool
 validDefinition t ctx = case t of
   NamedExt _ n
@@ -273,6 +385,9 @@ validDefinition t ctx = case t of
 
   _ -> error "Non-exhaustive pattern when checking type definition is valid"
 
-unionTypeCtx :: TypeCtx phase -> TypeCtx phase -> TypeCtx phase
+unionTypeCtx
+  :: TypeCtxFor phase
+  -> TypeCtxFor phase
+  -> TypeCtxFor phase
 unionTypeCtx (TypeCtx t0) (TypeCtx t1) = TypeCtx (Map.union t0 t1)
 

@@ -30,6 +30,7 @@ import PL.Name
 import PL.Type
 import PL.TypeCtx
 import PLPrinter
+import PL.FixPhase
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -55,19 +56,19 @@ import qualified Data.Text as Text
 --   - Arguments to type application are reduced themselves before being
 --   substituted into the body of the type function.
 reduceType
-  :: TypeCtx DefaultPhase
-  -> TypeFor DefaultPhase
-  -> Either (Error expr Type pattern) (TypeFor DefaultPhase)
+  :: TypeCtx
+  -> Type
+  -> Either (Error expr Type pattern TypeCtx) Type
 reduceType typeCtx typ = reduceTypeWith emptyBindings typeCtx (Just 100) typ
 
 -- | 'reduceType' with a collection of initial bindings as if Types have already
 -- been applied to an outer type lambda abstraction.
 reduceTypeWith
-  :: Bindings (TypeFor DefaultPhase) -- ^ Bind known and unknown types by their position away
-  -> TypeCtx DefaultPhase            -- ^ Known named types
+  :: Bindings Type -- ^ Bind known and unknown types by their position away
+  -> TypeCtx -- ^ Known named types
   -> Maybe Int
-  -> TypeFor DefaultPhase
-  -> Either (Error expr Type pattern) (TypeFor DefaultPhase)
+  -> Type
+  -> Either (Error expr Type pattern TypeCtx) Type
 reduceTypeWith bindings typeNameCtx reductionLimit ty
   | reductionLimit == Just 0
    = Left . ETypeReductionLimitReached $ ty
@@ -89,10 +90,10 @@ reduceTypeWith bindings typeNameCtx reductionLimit ty
 -- | 'reduceType' a single step with a collection of initial type bindings as if
 -- Types have already been applied to an outer type lambda abstraction.
 reduceTypeStep
-  :: Bindings (TypeFor DefaultPhase)
-  -> TypeCtx DefaultPhase
-  -> TypeFor DefaultPhase
-  -> Either (Error expr Type pattern) (TypeFor DefaultPhase)
+  :: Bindings Type
+  -> TypeCtx
+  -> Type
+  -> Either (Error expr Type pattern TypeCtx) Type
 reduceTypeStep bindings typeNameCtx ty = case ty of
 
   -- TypeBindings are substituted if they have been bound.
@@ -190,7 +191,7 @@ reduceTypeStep bindings typeNameCtx ty = case ty of
   Named n
     -> case lookupTypeNameInitialInfo n typeNameCtx of
          Nothing
-           -> Left $ EMsg $ text "Name does not exist in type reduction"
+           -> Left $ ETypeNotDefined n typeNameCtx
 
          Just (TypeInfo NonRec k ty)
            -> Right ty

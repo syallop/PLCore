@@ -49,13 +49,13 @@ type TestType = Type
 type TestPattern = Pattern
 
 data PatternTestCase = PatternTestCase
-  {_underTypeCtx         :: TypeCtx DefaultPhase                     -- ^ Under this given typing context
-  ,_underExprBindCtx     :: BindCtx Var (TypeFor DefaultPhase)
+  {_underTypeCtx         :: TypeCtx -- ^ Under this given typing context
+  ,_underExprBindCtx     :: BindCtx Var Type
   ,_underTypeBindCtx     :: BindCtx TyVar Kind
-  ,_underTypeBindings    :: Bindings (TypeFor DefaultPhase)
-  ,_isPattern           :: PatternFor CommentedPhase -- ^ A Pattern
+  ,_underTypeBindings    :: Bindings Type
+  ,_isPattern            :: PatternFor CommentedPhase -- ^ A Pattern
   ,_typed                :: Type                        -- ^ Has this type
-  ,_checkMatchWithResult :: Either (Error Expr Type Pattern) [TypeFor DefaultPhase] -- ^ Either produces an error or a list of bound types.
+  ,_checkMatchWithResult :: Either (Error Expr Type Pattern TypeCtx) [Type] -- ^ Either produces an error or a list of bound types.
   ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 

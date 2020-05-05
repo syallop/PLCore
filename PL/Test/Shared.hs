@@ -75,6 +75,7 @@ import PL.Case
 import PL.Commented
 import PL.Error
 import PL.Expr
+import PL.FixPhase
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
@@ -100,7 +101,7 @@ sharedTypeCtx
      ,TypeLamExtension phase ~ Void
      ,TypeAppExtension phase  ~ Void
      )
-  => TypeCtx phase
+  => TypeCtxFor phase
 sharedTypeCtx = mconcat
   [ natTypeCtx
   , boolTypeCtx
@@ -116,7 +117,7 @@ boolTypeCtx
   :: (SumTExtension     phase ~ Void
      ,ProductTExtension phase ~ Void
      )
-  => TypeCtx phase
+  => TypeCtxFor phase
 boolTypeCtx = fromJust $ insertType "Bool" boolType emptyTypeCtx
 
 -- | Name of the Bool type.
@@ -183,7 +184,7 @@ natTypeCtx
      ,ProductTExtension phase ~ Void
      ,NamedExtension    phase ~ Void
      )
-  => TypeCtx phase
+  => TypeCtxFor phase
 natTypeCtx = fromJust $ insertRecType "Nat" natType emptyTypeCtx
 
 natTypeName
@@ -273,7 +274,7 @@ four  = suc three
 
 unitTypeCtx
   :: ProductTExtension phase ~ Void
-  => TypeCtx phase
+  => TypeCtxFor phase
 unitTypeCtx = fromJust $ insertType "Unit" unitType emptyTypeCtx
 
 -- | Name of the Unit type.
@@ -314,7 +315,7 @@ maybeTypeCtx
      ,TypeBindingExtension phase ~ Void
      ,TypeBindingFor phase ~ TyVar
      )
-  => TypeCtx phase
+  => TypeCtxFor phase
 maybeTypeCtx = fromJust $ insertType "Maybe" maybeType emptyTypeCtx
 
 maybeTypeName
@@ -395,7 +396,7 @@ listTypeCtx
      ,TypeAppExtension     phase ~ Void
      ,NamedExtension       phase ~ Void
      )
-  => TypeCtx phase
+  => TypeCtxFor phase
 listTypeCtx = fromJust $ insertRecType "List" listType emptyTypeCtx
 
 listTypeName

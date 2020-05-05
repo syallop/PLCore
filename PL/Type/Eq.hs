@@ -17,6 +17,7 @@ import PL.Binds.Ix
 import PL.Error
 import PL.ExprLike
 import PL.Kind
+import PL.TyVar
 import PLPrinter
 import PL.ReduceType
 import PL.Type
@@ -36,34 +37,22 @@ import Debug.Trace
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
 typeEq
-  :: forall phase patternFor expr
-   . (
-     --, Binds (TypeBindingFor phase) Kind
-       HasBinding (TypeFor phase) (TypeBindingFor phase)
-     , phase ~ DefaultPhase
-     )
-  => BindCtx (TypeBindingFor phase) Kind
-  -> Bindings (TypeFor phase)
-  -> TypeCtx phase
-  -> TypeFor phase
-  -> TypeFor phase
-  -> Either (Error expr Type patternFor) Bool
+  :: BindCtx TyVar Kind
+  -> Bindings Type
+  -> TypeCtx
+  -> Type
+  -> Type
+  -> Either (Error expr Type patternFor TypeCtx) Bool
 typeEq typeBindCtx typeBindings typeNameCtx type0 type1 = typeEqWith typeBindCtx typeBindings typeNameCtx (Just 100) type0 type1
 
 typeEqWith
-  :: forall phase patternFor expr
-   . (
-     --, Binds (TypeBindingFor phase) Kind
-       HasBinding (TypeFor phase) (TypeBindingFor phase)
-     , phase ~ DefaultPhase
-     )
-  => BindCtx (TypeBindingFor phase) Kind
-  -> Bindings (TypeFor phase)
-  -> TypeCtx phase
+  :: BindCtx TyVar Kind
+  -> Bindings Type
+  -> TypeCtx
   -> Maybe Int
-  -> TypeFor phase
-  -> TypeFor phase
-  -> Either (Error expr Type patternFor) Bool
+  -> Type
+  -> Type
+  -> Either (Error expr Type patternFor TypeCtx) Bool
 typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -101,8 +90,8 @@ typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
        -- propogating this unification? If so, the current data structures and
        -- algorithm is not appropriate.
        (TypeBinding b0, TypeBinding b1)
-         -> do binding0 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b0) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
-               binding1 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b1) typeBindings) Right $ safeIndex (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b1)
+         -> do binding0 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b0) typeBindings) Right $ safeIndex (Proxy :: Proxy TyVar) typeBindings (bindDepth b0)
+               binding1 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b1) typeBindings) Right $ safeIndex (Proxy :: Proxy TyVar) typeBindings (bindDepth b1)
                case (binding0,binding1) of
                   -- Two unbound are unified
                   (Unbound, Unbound)
@@ -123,7 +112,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
        (type0, TypeBinding _)
          -> typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type1 type0
        (TypeBinding b0, type1)
-         -> let binding0 = index (Proxy :: Proxy (TypeBindingFor phase)) typeBindings (bindDepth b0)
+         -> let binding0 = index (Proxy :: Proxy TyVar) typeBindings (bindDepth b0)
                in case binding0 of
                     Unbound
                       -> Right True
@@ -193,27 +182,23 @@ typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs
-  :: forall phase patternFor expr
-   . phase ~ DefaultPhase
-  => BindCtx (TypeBindingFor phase) Kind
-  -> Bindings (TypeFor phase)
-  -> TypeCtx phase
-  -> [TypeFor phase]
-  -> [TypeFor phase]
-  -> Either (Error expr (TypeFor phase) patternFor) Bool
+  :: BindCtx TyVar Kind
+  -> Bindings Type
+  -> TypeCtx
+  -> [Type]
+  -> [Type]
+  -> Either (Error expr Type pattern TypeCtx) Bool
 typeEqs typeBindCtx typeBindings typeNameCtx ts0 ts1 = typeEqsWith typeBindCtx typeBindings typeNameCtx (Just 100) ts0 ts1
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqsWith
-  :: forall phase patternFor expr
-   . phase ~ DefaultPhase
-  => BindCtx (TypeBindingFor phase) Kind
-  -> Bindings (TypeFor phase)
-  -> TypeCtx phase
+  :: BindCtx TyVar Kind
+  -> Bindings Type
+  -> TypeCtx
   -> Maybe Int
-  -> [TypeFor phase]
-  -> [TypeFor phase]
-  -> Either (Error expr (TypeFor phase) patternFor) Bool
+  -> [Type]
+  -> [Type]
+  -> Either (Error expr Type pattern TypeCtx) Bool
 typeEqsWith typeBindCtx typeBindings typeNameCtx reductionLimit ts0 ts1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -237,11 +222,10 @@ typeEqsWith typeBindCtx typeBindings typeNameCtx reductionLimit ts0 ts1
 -- | Under a given bindings context, kind-check a type.
 -- TODO: Break move to more appropriate location.
 typeKind
-  :: phase ~ DefaultPhase
-  => BindCtx (TypeBindingFor phase) Kind
-  -> TypeCtx phase
-  -> TypeFor phase
-  -> Either (Error expr (TypeFor phase) patternFor) Kind
+  :: BindCtx TyVar Kind
+  -> TypeCtx
+  -> Type
+  -> Either (Error expr Type pattern TypeCtx) Kind
 typeKind typeBindCtx typeCtx ty = case ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.

@@ -76,10 +76,6 @@ module PL.Type
   , unarrowise
   , instantiate
 
-  -- TODO: Relocate
-  , DefaultPhase
-  , Void
-  , void
 
   , forgetTypeExtensions
   )
@@ -354,21 +350,6 @@ type family TypeExtension phase
 
 type family TypeBindingFor phase
 
-data Void
-
-instance Show Void where
-  show _ = ""
-
-instance Eq Void where
-  _ == _ = True
-
-instance Ord Void where
-  compare _ _ = EQ
-
--- Some patterns to make working with ExprF nicer
-void :: Void
-void = error "Cannot evaluate Void"
-
 -- NamedF for phases where there is no extension to the constructor.
 pattern Named :: NamedExtension phase ~ Void => TypeName -> TypeFor phase
 pattern Named name <- FixPhase (NamedF _ name)
@@ -467,9 +448,6 @@ pattern TypeExtension <- FixPhase (TypeExtensionF _)
 pattern TypeExtensionExt :: TypeExtension phase -> TypeFor phase
 pattern TypeExtensionExt ext <- FixPhase (TypeExtensionF ext)
   where TypeExtensionExt ext = FixPhase (TypeExtensionF ext)
-
--- Phases
-data DefaultPhase
 
 type instance NamedExtension DefaultPhase = Void
 type instance ArrowExtension DefaultPhase = Void

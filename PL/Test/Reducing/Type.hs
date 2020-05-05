@@ -14,6 +14,7 @@ import PL.Binds
 import PL.Case
 import PL.Commented
 import PL.Error
+import PL.FixPhase
 import PL.Kind
 import PL.Reduce
 import PL.Expr
@@ -103,9 +104,9 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
   where
     reduceSpec
       :: Text.Text
-      -> TypeCtx DefaultPhase
-      -> BindCtx (TypeBindingFor DefaultPhase) Kind
-      -> Bindings (TypeFor DefaultPhase)
+      -> TypeCtx
+      -> BindCtx TyVar Kind
+      -> Bindings Type
       -> Type
       -> [TypeMatch]
       -> Spec
@@ -127,7 +128,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                  , lineBreak
                  , text "With error:"
                  , lineBreak
-                 , ppError ppPattern ppType ppExpr ppVar ppTyVar $ typErr
+                 , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar $ typErr
                  ]
 
           (Right redType, TypeError)
@@ -153,7 +154,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                         , lineBreak
                         , text "Due to error:"
                         , lineBreak
-                        , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
+                        , indent1 $ ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar err
                         ]
 
                  Right False
@@ -184,7 +185,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                         , lineBreak
                         , text "Due to error:"
                         , lineBreak
-                        , indent1 $ ppError ppPattern ppType ppExpr ppVar ppTyVar err
+                        , indent1 $ ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar err
                         ]
 
                  Right False

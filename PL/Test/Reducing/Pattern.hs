@@ -81,16 +81,16 @@ reducesPatternsToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
 -- | Test whether a pattern reduces to bind the expected values.
 reducePatternToSpec
   :: Text.Text
-  -> TypeCtx DefaultPhase
-  -> BindCtx (BindingFor DefaultPhase) (AbstractionFor DefaultPhase)
-  -> BindCtx (TypeBindingFor DefaultPhase) Kind
-  -> Bindings (TypeFor DefaultPhase)
-  -> PatternFor DefaultPhase
+  -> TypeCtx
+  -> BindCtx Var Type
+  -> BindCtx TyVar Kind
+  -> Bindings Type
+  -> Pattern
   -> Type
-  -> Either (Error (ExprFor DefaultPhase) (TypeFor DefaultPhase) (PatternFor DefaultPhase)) [TypeFor DefaultPhase]
-  -> (ExprFor DefaultPhase -> Doc)
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (PatternFor DefaultPhase -> Doc)
+  -> Either (Error Expr Type Pattern TypeCtx) [Type]
+  -> (Expr -> Doc)
+  -> (Type -> Doc)
+  -> (Pattern -> Doc)
   -> (Var -> Doc)
   -> (TyVar -> Doc)
   -> Spec
@@ -98,17 +98,17 @@ reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPatter
   it (Text.unpack name) $ isExpected (checkWithPattern testPattern expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
   where
     isExpected
-      :: Either (Error Expr Type Pattern) [TypeFor DefaultPhase]
-      -> Either (Error Expr Type Pattern) [TypeFor DefaultPhase]
+      :: Either (Error Expr Type Pattern TypeCtx) [Type]
+      -> Either (Error Expr Type Pattern TypeCtx) [Type]
       -> Expectation
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()
         | otherwise  -> expectationFailure $ Text.unpack $ render $ mconcat
             [ text "Pattern expected error:"
-            , ppError ppPattern ppType ppExpr ppVar ppTyVar expectedErr
+            , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar expectedErr
             , text "but got:"
-            , ppError ppPattern ppType ppExpr ppVar ppTyVar resultErr
+            , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar resultErr
             ]
 
       (Right resultTys, Right expectedTys)
@@ -127,7 +127,7 @@ reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPatter
       (Right resultTys, Left expectedErr)
         -> expectationFailure $ Text.unpack $ render $ mconcat
              [ text "Pattern expected error:"
-             , ppError ppPattern ppType ppExpr ppVar ppTyVar expectedErr
+             , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar expectedErr
              , text "but got successful result, binding types:"
              , foldr ((<>) . ppType) mempty resultTys
              ]
@@ -137,7 +137,7 @@ reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPatter
              [ text "Pattern expected to bind:"
              , foldr ((<>) . ppType) mempty expectedTys
              , text "but got error:"
-             , ppError ppPattern ppType ppExpr ppVar ppTyVar resultErr
+             , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar resultErr
              ]
 
     fromRight :: b -> Either a b -> b

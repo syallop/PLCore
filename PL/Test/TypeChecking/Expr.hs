@@ -51,8 +51,8 @@ import PL.Test.Util
 -- | Test that for each test case, whether an expression typechecks to the intended type.
 typeChecksSpec
   :: Map.Map Text.Text ExprTestCase
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Expr Type Pattern -> Doc)
+  -> (Type -> Doc)
+  -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 typeChecksSpec testCases ppType ppError
   = describe "All example programs"
@@ -64,10 +64,10 @@ typeChecksSpec testCases ppType ppError
 typeCheckSpec
   :: Text.Text
   -> ExprFor CommentedPhase
-  -> TypeCtx DefaultPhase
-  -> TypeFor DefaultPhase
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (Error Expr Type Pattern -> Doc)
+  -> TypeCtx
+  -> Type
+  -> (Type -> Doc)
+  -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 typeCheckSpec name inputExpr underTypeCtx expectedType ppType ppError = it (Text.unpack name) $ case topExprType underTypeCtx (stripComments inputExpr) of
   Left err

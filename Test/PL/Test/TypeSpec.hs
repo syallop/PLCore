@@ -14,6 +14,7 @@ import PL.TyVar
 import PL.Pattern
 import PL.Type
 import PL.Var
+import PL.TypeCtx
 
 import PL.Test.TypeTestCase
 import PL.Test.Parsing.Type
@@ -40,7 +41,7 @@ spec
   :: Spec
 spec = do
   describe "Types" $ do
-    describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppPattern ppType ppExpr ppVar ppTyVar)
+    describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar)
     describe "Reduce"            $ reducesTypesToSpec  typeTestCases ppExpr ppType ppPattern ppVar ppTyVar
   where
     typeTestCases :: Map.Map Text TypeTestCase

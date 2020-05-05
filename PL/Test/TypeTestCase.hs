@@ -56,25 +56,25 @@ import PL.Test.Source
 import PL.Test.Util
 
 data TypeTestCase = TypeTestCase
-  { _underTypeCtx          :: TypeCtx DefaultPhase -- ^ Under this given typing context
-  , _underTypeBindCtx      :: BindCtx (TypeBindingFor DefaultPhase) Kind
-  , _underBindings         :: Bindings (TypeFor DefaultPhase)
+  { _underTypeCtx          :: TypeCtx -- ^ Under this given typing context
+  , _underTypeBindCtx      :: BindCtx TyVar Kind
+  , _underBindings         :: Bindings Type
 
   , _isType                :: TypeFor CommentedPhase -- ^ An Expr
   , _parsesFrom            :: Text                  -- ^ And also parses from this textual representation
   , _hasKind               :: Kind
-  , _reducesTo            :: TypeFor DefaultPhase -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
+  , _reducesTo            :: Type -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
   , _reducesToWhenApplied :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
   }
 
 data TypeReductionTestCase = TypeReductionTestCase
   { _typeReductionName              :: Text
 
-  , _typeReductionUnderTypeCtx      :: TypeCtx DefaultPhase
-  , _typeReductionUnderTypeBindCtx  :: BindCtx (TypeBindingFor DefaultPhase) Kind
-  , _typeReductionUnderTypeBindings :: Bindings (TypeFor DefaultPhase)
+  , _typeReductionUnderTypeCtx      :: TypeCtx
+  , _typeReductionUnderTypeBindCtx  :: BindCtx TyVar Kind
+  , _typeReductionUnderTypeBindings :: Bindings Type
 
-  , _typeReductionMutateType        :: [TypeFor DefaultPhase -> TypeFor DefaultPhase]
+  , _typeReductionMutateType        :: [Type -> Type]
   , _typeReductionMatches           :: [TypeMatch]
   }
 

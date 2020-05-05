@@ -144,8 +144,8 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
           -- If an expression has been bound, we substitute it for the binding.
           -- We assume strict evaluation of the expression and so don't reduce
           -- it again.
-          Just (Bound e)
-            -> pure $ e
+          Just (Bound e')
+            -> pure e'
 
           -- We've been asked to bind an expression further away than there are
           -- lambda abstractions.

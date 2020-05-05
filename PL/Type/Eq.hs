@@ -174,7 +174,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
 
        (BigArrow fromKy0 toTy0, BigArrow fromKy1 toTy1)
          -> let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
-                newTypeBindings = unbound $ bury typeBindings
+                newTypeBindings = unbound $ typeBindings
                in if kindEq fromKy0 fromKy1
                     then typeEqWith newTypeBindCtx newTypeBindings typeNameCtx (fmap (subtract 1) reductionLimit) toTy0 toTy1
                     else Right False
@@ -184,7 +184,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
        -- TODO: Should probably UnBound the type vars when checking theyre equal
        (TypeLam k0 ty0, TypeLam k1 ty1)
          -> let newTypeBindCtx  = addBinding k0 typeBindCtx
-                newTypeBindings = unbound $ bury typeBindings
+                newTypeBindings = unbound $ typeBindings
                in (&&) <$> pure (k0 == k1)
                        <*> typeEqWith newTypeBindCtx newTypeBindings typeNameCtx (fmap (subtract 1) reductionLimit) ty0 ty1
 

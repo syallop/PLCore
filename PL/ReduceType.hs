@@ -165,7 +165,7 @@ reduceTypeStep bindings typeNameCtx ty = case ty of
                    Nothing
                      -> Left $ EMsg $ text "Cant reduce type application to a name which does not exist in the context"
 
-                   Just ti
+                   Just _ti
                      -> Right $ TypeApp f' x'
 
             -- An error here indicates type/kind checking has not been performed/ has

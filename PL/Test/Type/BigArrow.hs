@@ -48,7 +48,7 @@ bigArrowTestCases
   :: TestBigArrowSources
   -> [(Text,TypeTestCase)]
 bigArrowTestCases t =
-  [ ("Simple", simpleBigArrowTestCase . _simpleBigArrowTestCase $ t)
+  [ ("Simple Big Arrow", simpleBigArrowTestCase . _simpleBigArrowTestCase $ t)
   ]
 
 simpleBigArrowTestCase

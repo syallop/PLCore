@@ -1,7 +1,4 @@
 resolver: lts-15.11
-flags:
-  haskeline:
-    brick: true
 extra-package-dbs: []
 packages:
 - .

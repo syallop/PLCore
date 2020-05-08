@@ -32,7 +32,6 @@ library
                      , PL.Type.Eq
                      , PL.TypeCtx
                      , PL.Var
-                     , PL.Megaparsec
 
                      , PL.Test.ExprTestCase
                      , PL.Test.TypeTestCase
@@ -99,8 +98,6 @@ library
                      , containers >=0.5
                      , hedgehog
                      , hspec
-                     , megaparsec >=6.4.0
-                     , parser-combinators
                      , quickcheck-instances
                      , semigroups
                      , text
@@ -131,8 +128,6 @@ test-suite hspec
                    , containers >=0.5
                    , hedgehog
                    , hspec
-                   , megaparsec >=6.4.0
-                   , parser-combinators
                    , quickcheck-instances
                    , semigroups
                    , text

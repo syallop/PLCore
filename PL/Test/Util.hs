@@ -61,10 +61,10 @@ putBlue   = putColor 34
 putCyan   = putColor 36
 
 ppTypeName :: TypeName -> Doc
-ppTypeName (TypeName n) = PLPrinter.char '#' <> PLPrinter.text n
+ppTypeName = PLPrinter.text . typeName
 
 ppTermName :: TermName -> Doc
-ppTermName (TermName n) = PLPrinter.char '#' <> PLPrinter.text n
+ppTermName = PLPrinter.text . termName
 
 ppKind :: Kind -> Doc
 ppKind k = case k of

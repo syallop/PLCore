@@ -37,6 +37,6 @@ newtype TermName = TermName {unTermName :: Name} deriving (Eq,Ord,IsString)
 instance Show TypeName where show (TypeName n) = unpack n
 instance Show TermName where show (TermName n) = unpack n
 
-instance Document TypeName where document (TypeName n) = char '#' <> text n
-instance Document TermName where document (TermName n) = char '#' <> text n
+instance Document TypeName where document (TypeName n) = text n
+instance Document TermName where document (TermName n) = text n
 

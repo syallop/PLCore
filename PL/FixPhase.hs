@@ -148,6 +148,9 @@ instance Eq Void where
 instance Ord Void where
   compare _ _ = EQ
 
+instance Hashable Void where
+  toHashToken _ = HashTag "" []
+
 -- Some patterns to make working with ExprF nicer
 void :: Void
 void = error "Cannot evaluate Void"

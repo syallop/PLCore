@@ -106,15 +106,18 @@ instance Show TermName where show (TermName n) = Text.unpack n
 instance Document TermName where document (TermName n) = text n
 
 -- | Name a thing uniquely by its content.
-newtype ContentName = ContentName {contentName :: Name} deriving (Eq,Ord)
+newtype ContentName = ContentName {contentName :: Hash} deriving (Eq,Ord)
 
 -- | Construct a ContentName for a thing by hashing it.
 mkContentName
   :: Hashable h
   => h
   -> Maybe ContentName
-mkContentName = Just . ContentName . showBase58 . hash
+mkContentName = Just . ContentName . hash
 
-instance Show ContentName where show (ContentName n) = Text.unpack n
-instance Document ContentName where document (ContentName n) = text n
+instance Show ContentName where show (ContentName n) = show $ n
+instance Document ContentName where document (ContentName n) = text . showBase58 $ n
+
+instance Hashable ContentName where
+  toHashToken (ContentName n) = HashIs n
 

@@ -63,6 +63,7 @@ data Hash = Hash
   { _hashAlgorithm :: HashAlgorithm -- ^ By storing the algorithm used to generate the hash we can more easily regenerate/ and switch the algorithm if necessary.
   , _unHash        :: BS.ByteString -- ^ The hashed bytes
   }
+  deriving (Eq,Ord)
 
 instance Show Hash where
   show = Text.unpack . showBase58
@@ -94,6 +95,7 @@ showBase58 (Hash alg h) = mconcat
 -- should remain static.
 data HashAlgorithm
   = SHA3_512
+  deriving (Eq,Ord)
 
 -- | Uniquely identify a hash algorithm with human readable text.
 hashIdentifier :: HashAlgorithm -> Text

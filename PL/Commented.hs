@@ -78,6 +78,7 @@ import PL.Var
 import PL.Case
 import PL.TyVar
 import PL.Name
+import PL.Hash
 import PL.Kind
 import PL.FixPhase
 import PL.Pattern
@@ -113,6 +114,10 @@ data Commented e = Commented
   , _commentee :: e
   }
   deriving (Show, Eq, Ord)
+
+-- Comments do not contribute to a Hash
+instance Hashable e => Hashable (Commented e) where
+  toHashToken (Commented c e) = toHashToken e
 
 -- | A Type is in the commented phase when is has an additional constructor
 -- which may recursively contain types wrapped in comments.

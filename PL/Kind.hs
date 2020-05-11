@@ -15,6 +15,8 @@ module PL.Kind
   )
   where
 
+import PL.Hash
+
 import PLPrinter
 import PLPrinter.Doc
 
@@ -43,4 +45,12 @@ instance Document Kind where
 
     KindArrow from to
       -> char '^' <> parens (document from) <> parens (document to)
+
+instance Hashable Kind where
+  toHashToken k = case k of
+    Kind
+      -> HashTag "Kind" []
+
+    KindArrow fromKy toKy
+      -> HashTag "KindArrow" [toHashToken fromKy, toHashToken toKy]
 

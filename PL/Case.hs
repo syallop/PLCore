@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : PL.Case
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -10,6 +11,7 @@ module PL.Case where
 
 import Prelude hiding (sequence,mapM,foldr)
 
+import PL.Hash
 import PL.ExprLike
 import PLPrinter hiding (parens,between)
 import PLPrinter.Doc
@@ -32,6 +34,9 @@ data Case e p = Case
   }
   deriving (Eq,Ord,Show)
 
+instance (Hashable e, Hashable p) => Hashable (Case e p) where
+  toHashToken (Case e branches) = HashTag "Case" [toHashToken e, toHashToken branches]
+
 -- | Body of a case expression.
 -- Like a list of patterns 'p', result expression 'e' pairs with an optional default catch all 'e'.
 --
@@ -51,12 +56,24 @@ data CaseBranches e p
     }
   deriving (Eq,Ord,Show)
 
+instance (Hashable e, Hashable p) => Hashable (CaseBranches e p) where
+  toHashToken c = case c of
+    DefaultOnly e
+      -> HashTag "CaseBranches.Default" [toHashToken e]
+    CaseBranches bs Nothing
+      -> HashTag "CaseBranches.JustBranches" [toHashToken bs]
+    CaseBranches bs (Just def)
+      -> HashTag "CaseBranches.BranchesAndDefault" [toHashToken bs, toHashToken def]
+
 -- | A single branch in a case analysis
 data CaseBranch e p = CaseBranch
  {_caseBranchPattern :: p -- The pattern to match
  ,_caseBranchResult  :: e -- The result if a match is successful
  }
  deriving (Eq,Ord,Show)
+
+instance (Hashable e, Hashable p) => Hashable (CaseBranch e p) where
+  toHashToken (CaseBranch p r) = HashTag "CaseBranch" [toHashToken p, toHashToken r]
 
 mapCaseExpr :: (e -> a) -> Case e p -> Case a p
 mapCaseExpr f c = case c of

@@ -65,6 +65,7 @@ import PL.Bindings
 import PL.TypeCtx
 import PL.TyVar
 import PL.Var
+import PL.Hash
 import PL.Binds
 import PL.Type.Eq
 import PL.Error
@@ -174,6 +175,37 @@ deriving instance
   ,Ord pat
   )
   => Ord (PatternF phase pat)
+
+instance
+  (Hashable (SumPatternExtension phase)
+  ,Hashable (ProductPatternExtension phase)
+  ,Hashable (UnionPatternExtension phase)
+  ,Hashable (BindingPatternExtension phase)
+  ,Hashable (BindExtension phase)
+  ,Hashable (PatternExtension phase)
+  ,Hashable (TypeFor phase)
+  ,Hashable (BindingFor phase)
+  ,Hashable pat
+  )
+  => Hashable (PatternF phase pat) where
+  toHashToken p = case p of
+    SumPatternF ext ix p
+      -> HashTag "Pattern.Sum" [toHashToken ext, HashInt ix, toHashToken p]
+
+    ProductPatternF ext ps
+      -> HashTag "Pattern.Product" [toHashToken ext, toHashToken ps]
+
+    UnionPatternF ext tyIx p
+      -> HashTag "Pattern.Union" [toHashToken ext, toHashToken tyIx, toHashToken p]
+
+    BindingPatternF ext b
+      -> HashTag "Pattern.Binding" [toHashToken ext, toHashToken b]
+
+    BindF ext
+      -> HashTag "Pattern.Bind" [toHashToken ext]
+
+    PatternExtensionF ext
+      -> HashTag "Pattern.Extension" [toHashToken ext]
 
 -- The type families below allow adding new parameters to each of the
 -- base constructors of an expression which depend upon the phase

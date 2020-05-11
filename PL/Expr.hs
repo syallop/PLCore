@@ -94,6 +94,7 @@ import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
+import PL.Hash
 import PL.ExprLike
 import PL.FixPhase
 import PL.Kind
@@ -385,6 +386,56 @@ instance
 
     ExprExtensionF ext
       -> ["{ExprExtension ", show ext, "}"]
+
+instance
+  (Hashable (LamExtension phase)
+  ,Hashable (AppExtension phase)
+  ,Hashable (BindingExtension phase)
+  ,Hashable (CaseAnalysisExtension phase)
+  ,Hashable (SumExtension phase)
+  ,Hashable (ProductExtension phase)
+  ,Hashable (UnionExtension phase)
+  ,Hashable (BigLamExtension phase)
+  ,Hashable (BigAppExtension phase)
+  ,Hashable (ExprExtension phase)
+  ,Hashable (AbstractionFor phase)
+  ,Hashable (BindingFor phase)
+  ,Hashable (TypeBindingFor phase)
+  ,Hashable (TypeFor phase)
+  ,Hashable (PatternFor phase)
+  ,Hashable expr
+  )
+  => Hashable (ExprF phase expr) where
+  toHashToken = \case
+    LamF ext take expr
+      -> HashTag "Expr.Lam" [toHashToken ext,toHashToken take,toHashToken expr]
+
+    AppF ext f x
+      -> HashTag "Expr.App" [toHashToken ext,toHashToken f,toHashToken x]
+
+    BindingF ext b
+      -> HashTag "Expr.Binding" [toHashToken ext,toHashToken b]
+
+    CaseAnalysisF ext c
+      -> HashTag "Expr.Case" [toHashToken ext,toHashToken c]
+
+    SumF ext x ix ty
+      -> HashTag "Expr.Sum" [toHashToken ext,toHashToken x,HashInt ix,toHashToken ty]
+
+    ProductF ext exprs
+      -> HashTag "Expr.Product" [toHashToken ext,toHashToken exprs]
+
+    UnionF ext e tyIx ty
+      -> HashTag "Expr.Union" [toHashToken ext,toHashToken e,toHashToken tyIx,toHashToken ty]
+
+    BigLamF ext ty expr
+      -> HashTag "Expr.BigLam" [toHashToken ext,toHashToken ty,toHashToken expr]
+
+    BigAppF ext f xTy
+      -> HashTag "Expr.App" [toHashToken ext,toHashToken f,toHashToken xTy]
+
+    ExprExtensionF ext
+      -> HashTag "Expr.Extension" [toHashToken ext]
 
 -- The type families below allow adding new parameters to each of the
 -- base constructors of an expression which depend upon the phase

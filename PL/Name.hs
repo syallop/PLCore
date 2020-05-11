@@ -52,6 +52,9 @@ instance IsString TypeName where
 instance Show TypeName where show (TypeName n) = Text.unpack n
 instance Document TypeName where document (TypeName n) = text n
 
+instance Hashable TypeName where
+  toHashToken (TypeName n) = HashTag "TypeName" [HashText n]
+
 -- | Construct a TypeName that must:
 -- - Begin with an Upper case character
 -- - Only contain alphabetical characters
@@ -79,6 +82,9 @@ newtype TermName = TermName {termName :: Name} deriving (Eq,Ord)
 
 instance IsString TermName where
   fromString = fromMaybe (error "Invalid TermName") . mkTermName . Text.pack
+
+instance Hashable TermName where
+  toHashToken (TermName n) = HashTag "TermName" [HashText n]
 
 -- | Construct a TermName that must:
 -- - Begin with an Upper case character

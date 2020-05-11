@@ -84,6 +84,7 @@ module PL.Type
 import PL.Binds.Ix
 import PL.Name
 import PL.Kind
+import PL.Hash
 import PL.ExprLike
 import PL.FixPhase
 import PL.TyVar
@@ -331,6 +332,54 @@ instance
       TypeExtensionF ext
         -> ["{TypeExtension ", show ext, "}"]
 
+instance
+  (Hashable (NamedExtension phase)
+  ,Hashable (ArrowExtension phase)
+  ,Hashable (SumTExtension phase)
+  ,Hashable (ProductTExtension phase)
+  ,Hashable (UnionTExtension phase)
+  ,Hashable (BigArrowExtension phase)
+  ,Hashable (TypeLamExtension phase)
+  ,Hashable (TypeAppExtension phase)
+  ,Hashable (TypeBindingExtension phase)
+  ,Hashable (TypeExtension phase)
+  ,Hashable (TypeBindingFor phase)
+  ,Hashable typ
+  )
+  => Hashable (TypeF phase typ) where
+  toHashToken = \case
+    -- Name deliberatly unhashed - we don't have type context
+    -- This implies hashing is only useful when the Named extension
+    -- contains a resolved name.
+    NamedF ext _n
+      -> HashTag "Type.Named" [toHashToken ext]
+
+    ArrowF ext from to
+      -> HashTag "Type.Arrow" [toHashToken ext, toHashToken from, toHashToken to]
+
+    SumTF ext tys
+      -> HashTag "Type.Arrow" [toHashToken ext, toHashToken tys]
+
+    ProductTF ext tys
+      -> HashTag "Type.Product" [toHashToken ext, toHashToken tys]
+
+    UnionTF ext tys
+      -> HashTag "Type.Union" [toHashToken ext, toHashToken tys]
+
+    BigArrowF ext absKind ty
+      -> HashTag "Type.Arrow" [toHashToken ext, toHashToken absKind, toHashToken ty]
+
+    TypeLamF ext absKind ty
+      -> HashTag "Type.TypeLam" [toHashToken ext, toHashToken absKind, toHashToken ty]
+
+    TypeAppF ext fTy xTy
+      -> HashTag "Type.TypeApp" [toHashToken ext, toHashToken fTy, toHashToken xTy]
+
+    TypeBindingF ext b
+      -> HashTag "Type.Binding" [toHashToken ext, toHashToken b]
+
+    TypeExtensionF ext
+      -> HashTag "Type.TypeExtension" [toHashToken ext]
 
 -- The type families below allow adding new parameters to each of the base
 -- constructors of a type which depend upon the phase

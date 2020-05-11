@@ -18,4 +18,5 @@ extra-deps:
 - git: https://github.com/rootmos/haskeline.git
   commit: bcd94f5cc0c4e919cbda3bb43dde482cac56dd51
 - pretty-tree-0.1.0.0@sha256:49b0e17008f9d30328db2bcc2958f3a7b78d154d2335c2dbaa2073e237b524ae
+- base58-bytestring-0.1.0@sha256:a1da72ee89d5450bac1c792d9fcbe95ed7154ab7246f2172b57bd4fd9b5eab79,1913
 allow-newer: true

@@ -19,6 +19,7 @@ library
                      , PL.Case
                      , PL.Commented
                      , PL.Error
+                     , PL.Hash
                      , PL.Expr
                      , PL.Pattern
                      , PL.FixPhase
@@ -96,7 +97,11 @@ library
 
                      , QuickCheck
                      , containers >=0.5
+                     , memory
                      , hedgehog
+                     , cryptonite
+                     , bytestring
+                     , base58-bytestring
                      , hspec
                      , quickcheck-instances
                      , semigroups

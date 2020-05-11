@@ -22,8 +22,14 @@ module PL.Name
   , TermName ()
   , termName
   , mkTermName
+
+  , ContentName ()
+  , contentName
+  , mkContentName
   )
   where
+
+import PL.Hash
 
 import Data.Monoid
 import Data.Text (Text)
@@ -42,6 +48,9 @@ newtype TypeName = TypeName {typeName :: Name} deriving (Eq,Ord)
 
 instance IsString TypeName where
   fromString = fromMaybe (error "Invalid TypeName") . mkTypeName . Text.pack
+
+instance Show TypeName where show (TypeName n) = Text.unpack n
+instance Document TypeName where document (TypeName n) = text n
 
 -- | Construct a TypeName that must:
 -- - Begin with an Upper case character
@@ -93,9 +102,19 @@ mkTermName txt = case Text.uncons txt of
   where
     alpha = ['a'..'z'] <> ['A'..'Z']
 
-instance Show TypeName where show (TypeName n) = Text.unpack n
 instance Show TermName where show (TermName n) = Text.unpack n
-
-instance Document TypeName where document (TypeName n) = text n
 instance Document TermName where document (TermName n) = text n
+
+-- | Name a thing uniquely by its content.
+newtype ContentName = ContentName {contentName :: Name} deriving (Eq,Ord)
+
+-- | Construct a ContentName for a thing by hashing it.
+mkContentName
+  :: Hashable h
+  => h
+  -> Maybe ContentName
+mkContentName = Just . ContentName . showBase58 . hash
+
+instance Show ContentName where show (ContentName n) = Text.unpack n
+instance Document ContentName where document (ContentName n) = text n
 

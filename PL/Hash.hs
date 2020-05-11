@@ -48,15 +48,21 @@ module PL.Hash
 
 import Data.Text hiding (length,intersperse)
 
+import Data.ByteString.Builder
 import Data.List (intersperse)
 import Data.Text.Encoding
 import qualified Crypto.Hash as CH
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteArray as BA
-import qualified Data.Text as Text
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base58 as B58
-import Data.ByteString.Builder
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.Text as Text
+
+-- For Hashable instances
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NE
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 -- | A Hash uniquely identifies a 'hash'ed thing.
 data Hash = Hash
@@ -195,4 +201,13 @@ instance Hashable Int where
 
 instance Hashable h => Hashable (Text,[h]) where
   toHashToken (tag,args) = HashTag tag (fmap toHashToken args)
+
+instance Hashable h => Hashable [h] where
+  toHashToken hs = HashTag "[]" (fmap toHashToken hs)
+
+instance Hashable h => Hashable (NonEmpty h) where
+  toHashToken hs = HashTag "NonEmpty" (fmap toHashToken . NE.toList $ hs)
+
+instance Hashable h => Hashable (Set h) where
+  toHashToken hs = HashTag "Set" (fmap toHashToken . Set.toAscList $ hs)
 

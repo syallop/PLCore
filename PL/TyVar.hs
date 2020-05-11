@@ -14,6 +14,7 @@ Type-level variables which can be used with a binding context to Kinds.
 -}
 module PL.TyVar where
 
+import PL.Hash
 import PL.Binds
 import PL.Binds.Ix
 import PL.Kind
@@ -65,3 +66,5 @@ instance BindingIx TyVar where
   buryBinding :: TyVar -> Int -> TyVar
   buryBinding tv n = coerce $ buryBinding (coerce tv :: Var) n
 
+instance Hashable TyVar where
+  toHashToken = HashInt . bindDepth

@@ -45,6 +45,7 @@ module PL.FixPhase
   )
   where
 
+import PL.Hash
 import PLPrinter.Doc
 
 -- | Fix a phase-indexed type with nested sub-types 'f'.
@@ -67,6 +68,8 @@ fixPhase
   :: f phase (FixPhase phase f)
   -> FixPhase phase f
 fixPhase = FixPhase
+
+deriving instance Hashable (f phase (FixPhase phase f)) => Hashable (FixPhase phase f)
 
 (<&>) :: Functor f => f a -> (a -> b) -> f b
 as <&> f = f <$> as

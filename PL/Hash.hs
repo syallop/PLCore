@@ -46,13 +46,12 @@ module PL.Hash
   )
   where
 
-import Data.Text hiding (length,intersperse)
-
 import Data.ByteString.Builder
+import Data.ByteString.UTF8 as BSU (fromString)
 import Data.List (intersperse)
+import Data.Text (Text)
 import Data.Text.Encoding
 import qualified Crypto.Hash as CH
-import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base58 as B58
 import qualified Data.ByteString.Lazy as BL
@@ -74,9 +73,9 @@ data Hash = Hash
 instance Show Hash where
   show = Text.unpack . showBase58
 
--- | Get a unique Hash of a Hashable thing using the default SHA3_512 algorithm.
+-- | Get a unique Hash of a Hashable thing using the default SHA512 algorithm.
 hash :: Hashable h => h -> Hash
-hash = hashWith SHA3_512
+hash = hashWith SHA512
 
 -- | Get a unique Hash of a Hashable thing with a particular algorithm.
 hashWith
@@ -100,21 +99,21 @@ showBase58 (Hash alg h) = mconcat
 -- This enumeration may be extended with new known hashes but hashes identifiers
 -- should remain static.
 data HashAlgorithm
-  = SHA3_512
+  = SHA512
   deriving (Eq,Ord)
 
 -- | Uniquely identify a hash algorithm with human readable text.
 hashIdentifier :: HashAlgorithm -> Text
 hashIdentifier a = case a of
-  SHA3_512
-    -> "SHA3_512"
+  SHA512
+    -> "SHA512"
   _ -> error "Hash Algorithm unknown"
 
 -- | Lookup a HashAlgorithm that transforms opaque bytes to hashed bytes.
 hashFunction :: HashAlgorithm -> BL.ByteString -> BS.ByteString
 hashFunction a = case a of
-  SHA3_512
-    -> BA.convert . (CH.hashlazy :: BL.ByteString -> CH.Digest CH.SHA3_512)
+  SHA512
+    -> BSU.fromString . show . (CH.hashLazy :: BL.ByteString -> CH.SHA512)
 
 -- | HashToken is a complete AST of a 'Hashable' thing.
 -- All unique values should have a unique HashToken representation to ensure
@@ -143,7 +142,7 @@ data HashToken
   | HashInt Int
   | HashIs Hash
 
--- Realize a HashToken to it's compact Hash using SHA3 512
+-- Realize a HashToken to it's compact Hash using SHA512
 hashToken
   :: HashAlgorithm
   -> HashToken

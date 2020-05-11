@@ -17,6 +17,9 @@ import PL.Binds.Ix           as X
 -- Case analysis on... things
 import PL.Case               as X
 
+-- Hash things to produce Content-Addressed names
+import PL.Hash               as X
+
 -- Expressions, Types, etc extended with comments.
 import PL.Commented          as X
 

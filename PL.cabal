@@ -99,8 +99,9 @@ library
                      , containers >=0.5
                      , memory
                      , hedgehog
-                     , cryptonite
+                     , hashing
                      , bytestring
+                     , utf8-string
                      , base58-bytestring
                      , hspec
                      , quickcheck-instances

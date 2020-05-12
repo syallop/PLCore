@@ -60,6 +60,9 @@ import PL.Reduce             as X
 -- to behave differently and terminate on types that could be otherwise reduced.
 import PL.ReduceType         as X
 
+-- Interface for storing arbitrary key-values
+import PL.Store              as X
+
 -- Type-level variables which can be used with a binding context to Kinds.
 import PL.TyVar              as X
 

@@ -23,6 +23,7 @@ library
                      , PL.Expr
                      , PL.Pattern
                      , PL.Store
+                     , PL.Store.Memory
                      , PL.FixPhase
                      , PL.ExprLike
                      , PL.Kind

@@ -24,6 +24,7 @@ library
                      , PL.Pattern
                      , PL.Store
                      , PL.Store.Memory
+                     , PL.Store.Nested
                      , PL.FixPhase
                      , PL.ExprLike
                      , PL.Kind

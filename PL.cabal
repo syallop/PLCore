@@ -26,6 +26,7 @@ library
                      , PL.Store
                      , PL.Store.Memory
                      , PL.Store.Nested
+                     , PL.Store.File
                      , PL.FixPhase
                      , PL.ExprLike
                      , PL.Kind
@@ -104,12 +105,15 @@ library
                      , memory
                      , hedgehog
                      , hashing
+                     , filepath-bytestring
                      , bytestring
                      , utf8-string
                      , base58-bytestring
                      , hspec
                      , quickcheck-instances
+                     , system-fileio
                      , semigroups
+                     , directory
                      , text
                      , pretty-tree
                      , ghc-prim

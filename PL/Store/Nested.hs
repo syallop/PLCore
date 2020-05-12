@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses
            , FlexibleInstances
            , RankNTypes
+           , LambdaCase
   #-}
 {-|
 Module      : PL.Store.Nested
@@ -84,30 +85,31 @@ lookupNested
      )
   => NestedStore s s' k v
   -> k
-  -> Maybe (NestedStore s s' k v, v)
-lookupNested (NestedStore topStore nestedStore) key = case lookup topStore key of
+  -> IO (Maybe (NestedStore s s' k v, v))
+lookupNested (NestedStore topStore nestedStore) key =
+  lookup topStore key >>= \case
     -- Not in top store, check nested store.
     Nothing
-      -> case lookup nestedStore key of
+      -> lookup nestedStore key >>= \case
            -- Not in either store.
            Nothing
-             -> Nothing
+             -> pure Nothing
 
            -- In the nested store. Cache in the top store and return.
            Just (nestedStore', value)
-             -> case store topStore key value of
+             -> store topStore key value >>= \case
                   -- Failed to cache in the top store.
                   -- TODO: Should we still return the value?
                   Nothing
-                    -> Nothing
+                    -> pure Nothing
 
                   Just (topStore', topStoreResult)
-                    -> Just (NestedStore topStore' nestedStore', value)
+                    -> pure $ Just (NestedStore topStore' nestedStore', value)
 
     -- In the top store. We can assume the value is also contained in the nested
     -- store.
     Just (topStore', value)
-      -> Just (NestedStore topStore' nestedStore, value)
+      -> pure $ Just (NestedStore topStore' nestedStore, value)
 
 -- | Store a key-value in the nested store by ensuring:
 -- - It is first stored in the nested store.
@@ -133,8 +135,8 @@ storeNested
   => NestedStore s s' k v
   -> k
   -> v
-  -> Maybe (NestedStore s s' k v, StoreResult v)
-storeNested (NestedStore topStore nestedStore) key value = case lookup topStore key of
+  -> IO (Maybe (NestedStore s s' k v, StoreResult v))
+storeNested (NestedStore topStore nestedStore) key value = lookup topStore key >>= \case
    -- TODO: Merge the many similar branches.
    -- TODO: Consider reporting partial success when we store in nested stores
    -- but encounter failures caching at the top.
@@ -145,7 +147,7 @@ storeNested (NestedStore topStore nestedStore) key value = case lookup topStore 
 
    -- Not in the top store, proceed to check the nested store.
    Nothing
-     -> case lookup nestedStore key of
+     -> lookup nestedStore key >>= \case
           -- Value isn't in the nested store, proceed to store and cache.
           Nothing
             -> storeNestedThenTop topStore nestedStore key value
@@ -156,8 +158,11 @@ storeNested (NestedStore topStore nestedStore) key value = case lookup topStore 
             -- The value in the nested store is what we're trying to store.
             -- Cache in the top store and we're done.
             | nestedValue == value
-             -> do (topStore', topStoreResult) <- store topStore key value
-                   pure (NestedStore topStore' nestedStore', (topStoreResult <> AlreadyStored))
+             -> fmap (fmap (\(topStore',topStoreResult)
+                             -> (NestedStore topStore' nestedStore', topStoreResult <> AlreadyStored)
+                           )
+                     )
+                     $ store topStore key value
 
             -- Nested store has a different value, replace it, cache the
             -- replacement in the higher store and return the old values
@@ -167,12 +172,12 @@ storeNested (NestedStore topStore nestedStore) key value = case lookup topStore 
    -- In the top store. If identical, we're done. Otherwise, recurse.
    Just (topStore', topValue)
      | topValue == value
-      -> Just (NestedStore topStore' nestedStore, AlreadyStored)
+      -> pure $ Just (NestedStore topStore' nestedStore, AlreadyStored)
 
      -- Different value in the top store, recurse and replace on the way back
      -- up returning the old value
      | otherwise
-      -> case lookup nestedStore key of
+      -> lookup nestedStore key >>= \case
            -- Value isn't in the nested store. Store and replace higher.
            Nothing
              -> storeNestedThenTop topStore' nestedStore key value
@@ -183,8 +188,11 @@ storeNested (NestedStore topStore nestedStore) key value = case lookup topStore 
 
              -- Value is already stored here. Cache in the top store.
              | nestedValue == value
-              -> do (topStore'', topStoreResult) <- store topStore' key value
-                    pure (NestedStore topStore'' nestedStore', topStoreResult <> AlreadyStored)
+              -> fmap (fmap (\(topStore'', topStoreResult)
+                              -> (NestedStore topStore'' nestedStore', topStoreResult <> AlreadyStored)
+                            )
+                      )
+                      $ store topStore' key value
 
              -- Value isn't stored in nested and is different in the top.
              -- If everything is behaving correctly this shouldnt happen. It
@@ -203,9 +211,26 @@ storeNested (NestedStore topStore nestedStore) key value = case lookup topStore 
 
 -- Attempt to store in the second nested store. Then only if successful the
 -- first top-level store.
-storeNestedThenTop :: (Store s k v, Store s' k v, Ord v) => s k v -> s' k v -> k -> v -> Maybe (NestedStore s s' k v, StoreResult v)
-storeNestedThenTop top nested key value = do
-  (nested', nestedResult) <- store nested key value
-  (top'   , topResult)    <- store top    key value
-  pure (NestedStore top' nested', (topResult <> nestedResult))
+storeNestedThenTop
+  :: ( Store s k v
+     , Store s' k v
+     , Ord v
+     )
+  => s k v
+  -> s' k v
+  -> k
+  -> v
+  -> IO (Maybe (NestedStore s s' k v, StoreResult v))
+storeNestedThenTop top nested key value =
+  store nested key value >>= \case
+    Nothing
+      -> pure Nothing
+
+    Just (nested', nestedResult)
+      -> do store top key value >>= \case
+              Nothing
+                -> pure Nothing
+
+              Just (top', topResult)
+                -> pure $ Just (NestedStore top' nested', topResult <> nestedResult)
 

@@ -79,7 +79,7 @@ class Store s k v where
     :: s k v
     -> k
     -> v
-    -> Maybe (s k v, StoreResult v)
+    -> IO (Maybe (s k v, StoreResult v))
 
   -- | Lookup a value 'v' by it's key 'k' in the storage container 's'.
   -- An updated container is returned in the success case to allow the contain
@@ -88,5 +88,7 @@ class Store s k v where
   lookup
     :: s k v
     -> k
-    -> Maybe (s k v, v)
+    -> IO (Maybe (s k v, v))
+
+-- TODO: Perhaps move IO, Maybe, under a 'm' type parameter.
 

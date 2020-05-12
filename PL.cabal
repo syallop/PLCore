@@ -22,6 +22,7 @@ library
                      , PL.Hash
                      , PL.Expr
                      , PL.Pattern
+                     , PL.Serialize
                      , PL.Store
                      , PL.Store.Memory
                      , PL.Store.Nested

@@ -46,8 +46,8 @@ newMemoryStore :: Map k v -> MemoryStore k v
 newMemoryStore m = MemoryStore m
 
 instance (Ord k, Ord v) => Store MemoryStore k v where
-  store  = storeInMemory
-  lookup = lookupFromMemory
+  store s k v = pure $ storeInMemory s k v
+  lookup s k  = pure $ lookupFromMemory s k
 
 -- | Store a key-value association in memory.
 storeInMemory

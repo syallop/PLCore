@@ -37,6 +37,8 @@ module PL.Hash
   , hash
   , hashWith
   , showBase58
+  , readBase58
+  , hashAlgorithm
 
   -- In order to be hashed, a type must have a Hashable instance which declares
   -- how toHashToken transforms it into a HashToken.
@@ -91,9 +93,33 @@ hashWith alg = hashToken alg . toHashToken
 showBase58 :: Hash -> Text
 showBase58 (Hash alg h) = mconcat
   [ hashIdentifier alg
-  , ":"
+  , "/"
   , decodeUtf8 . B58.encodeBase58 B58.bitcoinAlphabet $ h
   ]
+
+-- | Attempt to read a Base58 textual representation of a Hash with a preceeding
+-- algorithm identifier, separated by a '/'.
+readBase58 :: Text -> Maybe Hash
+readBase58 txt = do
+  case Text.split (== '/') txt of
+    (algText:hashText:[])
+      -> case readHashAlgorithm algText of
+           Just SHA512
+             -> do bytes <- B58.decodeBase58 B58.bitcoinAlphabet . encodeUtf8 $ hashText
+                   if BS.length bytes /= 128
+                     then Nothing
+                     else Just $ Hash SHA512 bytes
+           _
+             -> error "Unrecognised hashing algorithm"
+
+    _
+      -> Nothing
+
+-- | Retrieve the algorithm used to generate a Hash.
+hashAlgorithm
+  :: Hash
+  -> HashAlgorithm
+hashAlgorithm (Hash a _) = a
 
 -- | An algorithm capable of hashing HashTokens to a Hash.
 -- This enumeration may be extended with new known hashes but hashes identifiers
@@ -108,6 +134,13 @@ hashIdentifier a = case a of
   SHA512
     -> "SHA512"
   _ -> error "Hash Algorithm unknown"
+
+-- | Read a hash identifier to the corresponding algorithm.
+readHashAlgorithm :: Text -> Maybe HashAlgorithm
+readHashAlgorithm txt = case txt of
+  "SHA512"
+    -> Just SHA512
+  _ -> Nothing
 
 -- | Lookup a HashAlgorithm that transforms opaque bytes to hashed bytes.
 hashFunction :: HashAlgorithm -> BL.ByteString -> BS.ByteString

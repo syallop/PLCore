@@ -25,6 +25,8 @@ import Data.Text
 import Data.ByteString
 import Data.Text.Encoding
 
+import PL.Hash
+
 class Serialize t where
   serialize   :: t -> ByteString
   deserialize :: ByteString -> Maybe t
@@ -32,4 +34,8 @@ class Serialize t where
 instance Serialize Text where
   serialize   = encodeUtf8
   deserialize = either (const Nothing) Just . decodeUtf8'
+
+instance Serialize Hash where
+  serialize   = serialize . showBase58
+  deserialize = (readBase58 =<<) . deserialize
 

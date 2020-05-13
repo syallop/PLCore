@@ -54,6 +54,8 @@ instance
   (Store s  k v
   ,Store s' k v
   ,Ord v
+  ,Show k
+  ,Show v
   )
   => Store (NestedStore s s') k v where
   store  = storeNested
@@ -132,6 +134,8 @@ storeNested
   :: ( Store s  k v
      , Store s' k v
      , Ord v
+     , Show k
+     , Show v
      )
   => NestedStore s s' k v
   -> k
@@ -179,9 +183,35 @@ storeNested (NestedStore topStore nestedStore) key value = lookup topStore key >
      -- up returning the old value
      | otherwise
       -> lookup nestedStore key >>= \case
-           -- Value isn't in the nested store. Store and replace higher.
+           -- Value isn't stored in nested and is different in the top.
+           -- If everything is behaving correctly this shouldnt happen. It
+           -- implies either:
+           --
+           -- - A store algorithm (incorrectly) added something to a higher
+           --  store before storing in the nested store and we're witnessing a
+           --  race condition.
+           --
+           -- - A value has been evicted from the nested store but not the
+           --   top cache. Stores should be layered such that nested store
+           --   does not evict data.
+           --
+           -- While developing, we're going to fail loudly here.
+           --
+           -- TODO: Consider tolerating this invarient being broken and
+           -- attempting to store in the nested stores anyway.
            Nothing
-             -> storeNestedThenTop topStore' nestedStore key value
+             -> error $ mconcat
+                  [ "When storing a key-value in a nested store we:\n"
+                  , "- Found a different value at the top store (which we assume to be outdated)\n"
+                  , "- Found no value at the nested store\n"
+                  , "This could imply data-loss at the nested store which _should_ not evict values.\n"
+                  , "Since we're in development mode we're failing loudly here, instead of attempting to clean up. Sorry!\n"
+                  , "Context:\n"
+                  , "Key:", show key, "\n"
+                  , "New value:", show value, "\n"
+                  , "Top value:", show topValue, "\n"
+                  ]
+
 
            -- Value is in the nested store. If identical we only need to cache
            -- in the top store. If different, both need to be replaced.
@@ -195,20 +225,11 @@ storeNested (NestedStore topStore nestedStore) key value = lookup topStore key >
                       )
                       $ store topStore' key value
 
-             -- Value isn't stored in nested and is different in the top.
-             -- If everything is behaving correctly this shouldnt happen. It
-             -- implies either:
-             -- - A store algorithm (incorrectly) added something to a higher
-             --  store before storing in the nested store
-             -- - A value has been evicted from all nested stores but not the
-             --   top cache. Stores should be layered such that absolute
-             --   lowest does not evict data and so this should not happen.
-             --
-             -- While developing, we're going to fail loudly here.
-             -- TODO: Consider tolerating this invarient being broken and
-             -- attempting to store in the nested stores anyway.
+             -- Value is different in both the cache and the nested store.
+             -- Update it.
              | otherwise
-              -> error "When storing a value we found an old version at the top-level and nothing in the nested stores. This implies data loss in the lowest store. Since we're in development mode, we're failing loudly here instead of attempting to restore, sorry!"
+              -> storeNestedThenTop topStore' nestedStore key value
+
 
 -- Attempt to store in the second nested store. Then only if successful the
 -- first top-level store.

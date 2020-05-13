@@ -48,6 +48,7 @@ data NestedStore s s' k v = NestedStore
   { topStore    :: s  k v -- ^ A Top level store should be less expensive than the nested store and may evict items if necessary.
   , nestedStore :: s' k v -- ^ A nested store may be more expensive than the top store and should not evict items.
   }
+  deriving Show
 
 instance
   (Store s  k v

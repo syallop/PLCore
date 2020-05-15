@@ -63,4 +63,11 @@ Some other related components:
 | PL.Type       | Types inhabited by Expressions. Types are structural until explicitly Named and can abstract and be applied much like Expressions. Types contain named types, arrows, sum types, product types, union types, type arrows, type lambdas, type application and type bindings. Types are abstracted over a binding type and are similarly defined as a fixed point in FixType. |
 | PL.TypeCtx    | Maps type names to a definition. Definitions are currently allowed to be declared as recursive or non-recursive (upon themselves). Type declarations are (currently) made out of scope of Exprs |
 | PL.Test.\*    | Exports test cases useful for external Parsers to run tests against |
+| PL.Hash       | Hashes uniquely identify things and self-identify the hashing algorithm used. A Hashable interface describes how types can be Hashed. By default types are SHA512 and are rendered as base58 text |
+| PL.Store      | An interface to key-value storage and lookup where lookup may mutate the container and storage may report values it has replaced |
+| PL.Store.\*   | Default implementations of `Store` include in-memory, filesystem and a nesting store that uses a top-level as a cache (which may be evicted from) and a lower layer as a source of truth. E.G. The memory store could be used as a cache for values backed by a filesystem |
+| PL.HashStore  | Store and retrieve values by their Hash, backed by a provided Store implementation |
+
+
+
 

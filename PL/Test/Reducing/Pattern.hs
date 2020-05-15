@@ -19,6 +19,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.TypeCheck
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
@@ -62,10 +63,7 @@ reducesPatternsToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
   describe "All example patterns"
     . mapM_ (\(name,testCase)
               -> reducePatternToSpec name
-                                     (_underTypeCtx testCase)
-                                     (_underExprBindCtx testCase)
-                                     (_underTypeBindCtx testCase)
-                                     (_underTypeBindings testCase)
+                                     (_underTypeCheckCtx testCase)
                                      (stripPatternComments $ _isPattern testCase)
                                      (_typed testCase)
                                      (_checkMatchWithResult testCase)
@@ -81,10 +79,7 @@ reducesPatternsToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
 -- | Test whether a pattern reduces to bind the expected values.
 reducePatternToSpec
   :: Text.Text
-  -> TypeCtx
-  -> BindCtx Var Type
-  -> BindCtx TyVar Kind
-  -> Bindings Type
+  -> TypeCheckCtx
   -> Pattern
   -> Type
   -> Either (Error Expr Type Pattern TypeCtx) [Type]
@@ -94,8 +89,8 @@ reducePatternToSpec
   -> (Var -> Doc)
   -> (TyVar -> Doc)
   -> Spec
-reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPattern expectTy expect ppExpr ppType ppPattern ppVar ppTyVar =
-  it (Text.unpack name) $ isExpected (checkWithPattern testPattern expectTy exprBindCtx typeBindCtx typeBindings typeCtx) expect
+reducePatternToSpec name ctx testPattern expectTy expect ppExpr ppType ppPattern ppVar ppTyVar =
+  it (Text.unpack name) $ isExpected (checkWithPattern testPattern expectTy ctx) expect
   where
     isExpected
       :: Either (Error Expr Type Pattern TypeCtx) [Type]
@@ -113,7 +108,7 @@ reducePatternToSpec name typeCtx exprBindCtx typeBindCtx typeBindings testPatter
 
       (Right resultTys, Right expectedTys)
         | length resultTys == length expectedTys
-          && all (fromRight False . uncurry (typeEq typeBindCtx typeBindings typeCtx)) (zip resultTys expectedTys)
+          && all (fromRight False . uncurry (\a b -> checkEqual a b ctx)) (zip resultTys expectedTys)
           -> return ()
 
         | otherwise

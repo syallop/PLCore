@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -58,7 +59,7 @@ defaultNatTestCase
   -> ExprTestCase
 defaultNatTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -67,7 +68,7 @@ defaultNatTestCase src
       ,_reducesToWhenApplied = reductions
       }
   where
-    ctx = maybeTypeCtx <> natTypeCtx
+    ctx = topTypeCheckCtx $ maybeTypeCtx <> natTypeCtx
 
     -- \x:Maybe Nat ->
     -- case x of

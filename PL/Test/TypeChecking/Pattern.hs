@@ -22,6 +22,7 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Bindings
 import PL.Pattern
@@ -60,7 +61,7 @@ typeChecksPatternsSpec
   -> Spec
 typeChecksPatternsSpec testCases ppType ppError =
   describe "All example patterns"
-  . mapM_ (\(name,testCase) -> typeCheckPatternSpec name (_isPattern testCase) (_underTypeCtx testCase) (_typed testCase) ppType ppError)
+  . mapM_ (\(name,testCase) -> typeCheckPatternSpec name (_isPattern testCase) (_typeCtx . _underTypeCheckCtx $ testCase) (_typed testCase) ppType ppError)
   . Map.toList
   $ testCases
 

@@ -24,6 +24,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Pattern
 
@@ -55,20 +56,14 @@ defaultSumPatternTestCase
   -> PatternTestCase
 defaultSumPatternTestCase src
   = PatternTestCase
-      {_underTypeCtx         = typeCtx
-      ,_underExprBindCtx     = exprBindCtx
-      ,_underTypeBindCtx     = typeBindCtx
-      ,_underTypeBindings    = typeBindings
-      ,_isPattern           = isPattern
+      {_underTypeCheckCtx    = topTypeCheckCtx typeCtx
+      ,_isPattern            = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = emptyCtx
-    typeBindCtx          = emptyCtx
-    typeBindings         = emptyBindings
 
     -- Pattern might not support matching on empty sums.
     -- One of the simplest patterns is therefore a single sum of an empty

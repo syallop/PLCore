@@ -67,7 +67,6 @@ module PL.Expr
   , DefaultPhase
 
   , mapSubExpressions
-  , topExprType
   , exprType
   , branchType
 
@@ -109,6 +108,7 @@ import PL.Var
 import PL.ReduceType
 import PL.TyVar
 import PL.Pattern
+import PL.TypeCheck
 
 import Control.Applicative
 import Data.List (intercalate)
@@ -554,9 +554,13 @@ pattern ExprExtensionExt :: ExprExtension phase ->  ExprFor phase
 pattern ExprExtensionExt ext <- FixPhase (ExprExtensionF ext)
   where ExprExtensionExt ext =  FixPhase (ExprExtensionF ext)
 
--- The DefaultPhase has no extensions to constructors or the expression itself
--- Bindings are Var's (indexes without names), abstractions are Types (with no names) and type
--- bindings are TyVars (indexes without names).
+-- In the Default phase:
+-- - Bindings are Var's (indexes without names)
+-- - Abstractions are Types (with no names)
+-- - Type Bindings are TyVars (indexes without names)
+-- - There are no other extensions (such as comments on constructors)
+-- This concrete phases can therefore be used for
+-- {typechecking,reducing,printing,storing} but not {parsing,resolving}.
 type instance LamExtension DefaultPhase = Void
 type instance AppExtension DefaultPhase = Void
 type instance BindingExtension DefaultPhase = Void
@@ -632,22 +636,12 @@ mapSubExpressions f e = case e of
     -> BigApp (f fExpr) xTy
   e -> e
 
--- | A top-level expression is an expression without a bindings context.
-topExprType
-  :: TypeCtx
-  -> Expr
-  -> Either (Error Expr Type Pattern TypeCtx) Type
-topExprType = exprType emptyCtx emptyCtx emptyBindings
-
 -- | Under a binding context, type check an expression.
 exprType
-  :: BindCtx Var Type         -- Associate expr bindings to their types
-  -> BindCtx TyVar Kind       -- Associate type bindings to their Kinds
-  -> Bindings Type            -- Associate type bindings to their bound or unbound types
-  -> TypeCtx -- Associate Named types to their TypeInfo
-  -> Expr                     -- Expression to type-check
+  :: TypeCheckCtx
+  -> Expr
   -> Either (Error Expr Type Pattern TypeCtx) Type
-exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
+exprType ctx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
   --                 They therefore can never be applied.
@@ -655,25 +649,24 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   --      x : absTy     expr : exprTy
   -- ----------------------------------
   --   Lam absTy expr : absTy -> exprTy
-  Lam abs expr
-    -> do let newExprBindCtx = addBinding abs exprBindCtx
-          exprTy <- exprType newExprBindCtx typeBindCtx typeBindings typeCtx expr
-          Right $ Arrow abs exprTy
+  Lam absTy bodyExpr
+    -> do exprTy <- exprType (underExpressionAbstraction absTy ctx) bodyExpr
+          Right $ Arrow absTy exprTy
 
   --
   --   f : a -> b    x : a
   -- -----------------------
   --       App f x : b
   App f x
-    -> do fTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx f -- Both f and x must type check
-          xTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx x
+    -> do fTy <- exprType ctx f -- Both f and x must type check
+          xTy <- exprType ctx x
 
-          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: function application") $ ETypeNotDefined name typeCtx) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: function application") $ ETypeNotDefined name (_typeCtx ctx)) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy (_typeCtx ctx)
 
           let errAppMismatch = Left $ EAppMismatch resFTy xTy
           case resFTy of
             -- Regular function application attempt
-            Arrow aTy bTy -> case typeEq typeBindCtx typeBindings typeCtx aTy xTy of
+            Arrow aTy bTy -> case checkEqual aTy xTy ctx of
                                  Left err -> Left err
                                  Right isSameType
                                    | isSameType -> Right bTy
@@ -684,14 +677,14 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- has that sum type.
   Sum expr ix inTypr
     -> do -- Expression must type check
-          exprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx expr
+          exprTy <- exprType ctx expr
 
           -- Expression must have the type of the index in the sum it claims to have...
           sumTy <- if  NE.length inTypr <= ix
                      then Left $ EMsg $ text "Can't type check a sum because the index is larger than the number of types in the sum"
                      else Right (inTypr NE.!! ix)
 
-          _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy sumTy of
+          _ <- case checkEqual exprTy sumTy ctx of
                    Left err -> Left err
                    Right isSameType
                      | isSameType -> Right ()
@@ -706,7 +699,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- A product is typed by the order of each expression it contains
   Product prodExprs
     -> do -- type check each successive expression
-          prodExprTys <- mapM (exprType exprBindCtx typeBindCtx typeBindings typeCtx) prodExprs
+          prodExprTys <- mapM (exprType ctx) prodExprs
 
           -- the type is the product of those types
           Right $ ProductT prodExprTys
@@ -716,17 +709,17 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- TODO: The same type appearing more than once should be an error?
   Union unionExpr unionTypeIndex unionTypes
     -> do -- type check injected expression
-          exprTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx unionExpr
+          exprTy <- exprType ctx unionExpr
 
           -- Type must be what we claim it is...
-          _ <- case typeEq typeBindCtx typeBindings typeCtx exprTy unionTypeIndex of
+          _ <- case checkEqual exprTy unionTypeIndex ctx of
                    Right True  -> Right ()
                    Right False -> Left $ EMsg $ text "Expression doesnt have the type within the union it claims to have"
                    Left err    -> Left err
 
           -- Type must be in the set somewhere...
           -- TODO
-          _ <- if Set.member (Right True :: Either (Error Expr Type Pattern TypeCtx) Bool) . Set.map (typeEq typeBindCtx typeBindings typeCtx exprTy) $ unionTypes
+          _ <- if Set.member (Right True :: Either (Error Expr Type Pattern TypeCtx) Bool) . Set.map (\t -> checkEqual exprTy t ctx) $ unionTypes
                  then Right ()
                  else Left $ EMsg $ text "Expressions type is not within the union"
 
@@ -740,12 +733,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   -- -----------------
   --      b : t
   Binding b
-    -> case lookupBindingTy b exprBindCtx of
-          Nothing
-            -> Left $ EContext (EMsg $ text "Type-checking expression") $ EBindCtxExprLookupFailure (fromEnum b) exprBindCtx
-          Just ty
-            -> Right ty
-
+    -> lookupVarType b ctx
 
   --        scrutineeExpr : t0   defExpr : t1
   -- -----------------------------------------------
@@ -761,27 +749,26 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   --                        branches
   --                        ?defExpr
   CaseAnalysis c
-    -> do -- scrutinee should be well typed
-          scrutineeTy <- exprType exprBindCtx typeBindCtx typeBindings typeCtx $ _caseScrutinee c
-          scrutineeTy <- reduceTypeWith typeBindings typeCtx (Just 100) scrutineeTy
+    -> do -- scrutinee should be well typed and reduce
+          scrutineeTy <- exprType ctx (_caseScrutinee c) >>= (`reduceTypeUnderCtx` ctx)
 
           case _caseCaseBranches c of
 
             -- The case expression is then typed by the default branch, if its well typed
             DefaultOnly defExpr
-              -> exprType exprBindCtx typeBindCtx typeBindings typeCtx defExpr
+              -> exprType ctx defExpr
 
             CaseBranches (branch0 :| branches) mDefExpr
               -> do -- Check the all the branches
-                    branch0Ty <- branchType branch0 exprType scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx
-                    branchTys <- mapM (\branch -> branchType branch exprType scrutineeTy exprBindCtx typeBindCtx typeBindings typeCtx) branches
+                    branch0Ty <- branchType branch0 exprType scrutineeTy ctx
+                    branchTys <- mapM (\branch -> branchType branch exprType scrutineeTy ctx) branches
 
                     -- Check the default branch if it exists
-                    mDefExprTy <- maybe (Right Nothing) (fmap Just . exprType exprBindCtx typeBindCtx typeBindings typeCtx) mDefExpr
+                    mDefExprTy <- maybe (Right Nothing) (fmap Just . exprType ctx) mDefExpr
 
                     -- If the default branch exists, its type must be the same as the first branch
                     _ <- maybe (Right ())
-                               (\defExprTy -> case typeEq typeBindCtx typeBindings typeCtx defExprTy branch0Ty of
+                               (\defExprTy -> case checkEqual defExprTy branch0Ty ctx of
                                                   Left err -> Left err
                                                   Right isSameType
                                                     | isSameType -> Right ()
@@ -790,7 +777,7 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
                                mDefExprTy
 
                     -- Any other branches must have the same type as the first
-                    _ <- mapM (\branchTy -> case typeEq typeBindCtx typeBindings typeCtx branchTy branch0Ty of
+                    _ <- mapM (\branchTy -> case checkEqual branchTy branch0Ty ctx of
                                                 Left err -> Left err
                                                 Right isSameType
                                                   | isSameType -> Right ()
@@ -805,26 +792,23 @@ exprType exprBindCtx typeBindCtx typeBindings typeCtx e = case e of
   --    absKind :: kind      expr : exprTy
   -- ---------------------------------------
   --   BigLam absKind expr : kind BigArrow exprTy
-  BigLam abs expr
-    -> do let newTypeBindCtx  = addBinding abs typeBindCtx
-              newTypeBindings = unbound $ bury typeBindings
-          exprTy <- exprType exprBindCtx newTypeBindCtx newTypeBindings typeCtx expr
-          Right $ BigArrow abs exprTy
+  BigLam absKind bodyExpr
+    -> do exprTy <- exprType (underTypeAbstraction absKind ctx) bodyExpr
+          Right $ BigArrow absKind exprTy
 
   --    f : aKind BigLamArrow bTy      xTy :: aKind
   -- ---------------------------------------------------
   --              BigApp f xTy : bTy
   BigApp f x
-    -> do xKy <- typeKind typeBindCtx typeCtx x
-          let newTypeBindCtx  = addBinding xKy typeBindCtx
-              newTypeBindings = bind x typeBindings
+    -> do xKy <- kindCheck x ctx
+          let newCtx' = underAppliedType (x,xKy) ctx
 
           -- Check f under x
-          fTy <- exprType exprBindCtx newTypeBindCtx newTypeBindings typeCtx f
+          fTy <- exprType newCtx' f
 
           -- TODO maybe verify the xTy we've been given to apply?
 
-          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: Big application") $ ETypeNotDefined name typeCtx) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy typeCtx
+          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: Big application") $ ETypeNotDefined name (_typeCtx ctx)) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy (_typeCtx ctx)
 
           case resFTy of
             -- Regular big application attempt

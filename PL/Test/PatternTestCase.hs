@@ -24,6 +24,7 @@ import PL.Type
 import PL.Pattern
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Bindings
 
@@ -49,10 +50,7 @@ type TestType = Type
 type TestPattern = Pattern
 
 data PatternTestCase = PatternTestCase
-  {_underTypeCtx         :: TypeCtx -- ^ Under this given typing context
-  ,_underExprBindCtx     :: BindCtx Var Type
-  ,_underTypeBindCtx     :: BindCtx TyVar Kind
-  ,_underTypeBindings    :: Bindings Type
+  {_underTypeCheckCtx    :: TypeCheckCtx
   ,_isPattern            :: PatternFor CommentedPhase -- ^ A Pattern
   ,_typed                :: Type                        -- ^ Has this type
   ,_checkMatchWithResult :: Either (Error Expr Type Pattern TypeCtx) [Type] -- ^ Either produces an error or a list of bound types.

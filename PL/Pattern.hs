@@ -67,6 +67,7 @@ import PL.TyVar
 import PL.Var
 import PL.Hash
 import PL.Binds
+import PL.TypeCheck
 import PL.Type.Eq
 import PL.Error
 import PL.ReduceType
@@ -298,16 +299,13 @@ type instance PatternExtension DefaultPhase = Void
 branchType
   :: (BindingFor DefaultPhase ~ Var)
   => CaseBranch expr Pattern
-  -> (BindCtx Var Type -> BindCtx TyVar Kind -> Bindings Type -> TypeCtx -> expr -> Either (Error expr Type Pattern TypeCtx) Type)
+  -> (TypeCheckCtx -> expr -> Either (Error expr Type Pattern TypeCtx) Type)
   -> Type
-  -> BindCtx Var Type
-  -> BindCtx TyVar Kind
-  -> Bindings Type
-  -> TypeCtx
+  -> TypeCheckCtx
   -> Either (Error expr Type Pattern TypeCtx) Type
-branchType (CaseBranch lhs rhs) exprType expectedTy exprBindCtx typeBindCtx typeBindings typeCtx = do
-  bindings <- checkWithPattern lhs expectedTy exprBindCtx typeBindCtx typeBindings typeCtx
-  exprType (addBindings bindings exprBindCtx) typeBindCtx typeBindings typeCtx rhs
+branchType (CaseBranch lhs rhs) exprType expectedTy ctx = do
+  bindings <- checkWithPattern lhs expectedTy ctx
+  exprType (underExpressionAbstractions bindings ctx) rhs
 
 -- | Check that a Pattern patternes the expected Type
 -- If so, return a list of types of any bound bindings.
@@ -315,15 +313,12 @@ checkWithPattern
   :: (BindingFor DefaultPhase ~ Var)
   => Pattern
   -> Type
-  -> BindCtx Var Type
-  -> BindCtx TyVar Kind
-  -> Bindings Type
-  -> TypeCtx
+  -> TypeCheckCtx
   -> Either (Error expr Type Pattern TypeCtx) [Type]
-checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
+checkWithPattern pat expectTy ctx = do
   -- If we've been given a named type, substitute it with its info, then ensure
   -- the type is reduced.
-  rExpectTy <- either (\name -> Left $ EContext (EMsg $ text "Checking pattern") $ ETypeNotDefined name typeCtx) Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy typeCtx
+  rExpectTy <- either (\name -> Left $ EContext (EMsg $ text "Checking pattern") $ ETypeNotDefined name (_typeCtx ctx)) Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy (_typeCtx ctx)
 
   case (pat,rExpectTy) of
 
@@ -334,8 +329,8 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
     -- BindingPatterns match when the binding is bound and has the same type.
     (BindingPattern b, expectTy)
       -> do -- the type of the binding
-            bTy <- maybe (Left $ EContext (EMsg $ text "Pattern matching expression") $ EBindCtxExprLookupFailure (fromEnum b) exprBindCtx) Right $ lookupBindingTy b exprBindCtx
-            case typeEq typeBindCtx typeBindings typeCtx bTy expectTy of
+            bTy <- lookupVarType b ctx
+            case checkEqual bTy expectTy ctx of
                 Left err
                   -> Left err
 
@@ -351,10 +346,10 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                            else Right (sumTypes NE.!! sumIndex)
 
             -- must have the expected index type
-            checkWithPattern nestedPattern patternedTy exprBindCtx typeBindCtx typeBindings typeCtx
+            checkWithPattern nestedPattern patternedTy ctx
 
     (ProductPattern nestedPatterns, ProductT prodTypes)
-      -> checkWithPatterns nestedPatterns prodTypes exprBindCtx typeBindCtx typeBindings typeCtx
+      -> checkWithPatterns nestedPatterns prodTypes ctx
 
     -- Type index must be equal to exactly one of the alternatives.
     (UnionPattern unionIndexTy nestedPattern, UnionT unionTypes)
@@ -366,7 +361,7 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                                             Left err
                                               -> Left err
                                             Right s
-                                              -> case typeEq typeBindCtx typeBindings typeCtx unionIndexTy unionTy of
+                                              -> case checkEqual unionIndexTy unionTy ctx of
                                                    Left err
                                                      -> (Left err)
 
@@ -396,7 +391,7 @@ checkWithPattern pat expectTy exprBindCtx typeBindCtx typeBindings typeCtx = do
                        -> Left . EContext (EPatternMismatch rExpectTy pat) $ EMultipleMatchesInUnion matches
 
             -- must actually pattern on the expected type
-            checkWithPattern nestedPattern unionIndexTy exprBindCtx typeBindCtx typeBindings typeCtx
+            checkWithPattern nestedPattern unionIndexTy ctx
 
     (pat,expectTy)
       -> Left . EPatternMismatch expectTy $ pat
@@ -405,15 +400,12 @@ checkWithPatterns
   :: (BindingFor DefaultPhase ~ Var)
   => [Pattern]
   -> [Type]
-  -> BindCtx Var Type
-  -> BindCtx TyVar Kind
-  -> Bindings Type
-  -> TypeCtx
+  -> TypeCheckCtx
   -> Either (Error expr Type Pattern TypeCtx) [Type]
-checkWithPatterns pat types exprBindCtx typeBindCtx typeBindings typeCtx = case (pat,types) of
+checkWithPatterns pat types ctx = case (pat,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg $ text "Expected more patterns in pattern"
   (_,[])  -> Left $ EMsg $ text "Too many patterns in pattern"
   (m:ms,t:ts)
-    -> checkWithPattern m t exprBindCtx typeBindCtx typeBindings typeCtx >>= \boundTs -> checkWithPatterns ms ts exprBindCtx typeBindCtx typeBindings typeCtx >>= Right . (boundTs ++)
+    -> checkWithPattern m t ctx >>= \boundTs -> checkWithPatterns ms ts ctx >>= Right . (boundTs ++)
 

@@ -46,6 +46,7 @@ import PL.Type
 import PL.Type.Eq
 import PL.Pattern
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Text (Text)
@@ -79,16 +80,15 @@ subTwoExprTestCase
   -> ExprTestCase
 subTwoExprTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
-
-      , _reducesTo = stripComments e
+      { _underTypeCheckCtx    = ctx
+      , _isExpr               = e
+      , _typed                = ty
+      , _parsesFrom           = src
+      , _reducesTo            = stripComments e
       , _reducesToWhenApplied = reduces
       }
   where
-    ctx = natTypeCtx
+    ctx = topTypeCheckCtx natTypeCtx
 
     e :: CommentedExpr
     e =

@@ -26,6 +26,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -61,7 +62,7 @@ bindingTestCase
   -> ExprTestCase
 bindingTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -92,7 +93,7 @@ buriedBindingTestCase
   -> ExprTestCase
 buriedBindingTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -136,7 +137,7 @@ doubleBuriedBindingTestCase
   -> ExprTestCase
 doubleBuriedBindingTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -182,7 +183,7 @@ buriedBindingsDontMoveTestCase
   -> ExprTestCase
 buriedBindingsDontMoveTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src

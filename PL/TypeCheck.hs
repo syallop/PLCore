@@ -1,0 +1,157 @@
+{-|
+Module      : PL.TypeCheck
+Copyright   : (c) Samuel A. Yallop, 2020
+Maintainer  : syallop@gmail.com
+Stability   : experimental
+
+Data structures and functions for type-checking.
+
+TypeCheckCtx maintains state for:
+- Expression bindings (such as variables) type.
+- Type Bindings (such as type variables) kind.
+- Types that have been applied.
+- Type definitions in scope
+
+By co-ordinating BindCtx, Bindings, TypeCtx.
+
+Functions are provided to:
+- Check the type of top-level expressions
+- Validate whether types are equal
+- Check types Kinds
+- Query variables type/ kind
+- Reduce Type definitions
+- And modify the type context to check types under abstractions.
+
+The internals of TypeCheckCtx are exposed so they can be provided to external
+functions which have not yet been folded into this api.
+
+-}
+
+module PL.TypeCheck
+  ( TypeCheckCtx (..)
+
+  , topTypeCheckCtx
+
+  , underExpressionAbstraction
+  , underExpressionAbstractions
+  , underTypeAbstraction
+
+  , underAppliedType
+
+  , kindCheck
+
+  , checkEqual
+
+  , lookupVarType
+
+  , reduceTypeUnderCtx
+  )
+  where
+
+import PL.Bindings
+import PL.Binds
+import PL.Error
+import PL.Kind
+import PL.ReduceType
+import PL.TyVar
+import PL.Type
+import PL.Type.Eq
+import PL.TypeCtx
+import PL.Var
+
+-- | TypeCheckCtx contains information used/ generated while type-checking an
+-- expression.
+data TypeCheckCtx = TypeCheckCtx
+  { _exprBindCtx  :: BindCtx Var Type   -- ^ Associate expression bindings to their types. E.G. Var 0 to Bool.
+  , _typeBindCtx  :: BindCtx TyVar Kind -- ^ Associate type bindings to their kinds. E.G. TyVar 0 to (Kind->Kind).
+  , _typeBindings :: Bindings Type      -- ^ When type-checking under a binder, types are either bound with some known type or are unbound
+  , _typeCtx      :: TypeCtx            -- ^ Associated named types to their TypeInfo definitions
+  }
+  deriving Show
+
+-- | Type check a top-level expression with some type definitions.
+topTypeCheckCtx
+  :: TypeCtx
+  -> TypeCheckCtx
+topTypeCheckCtx typeCtx = TypeCheckCtx
+  { _exprBindCtx  = emptyCtx
+  , _typeBindCtx  = emptyCtx
+  , _typeBindings = emptyBindings
+  , _typeCtx      = typeCtx
+  }
+
+-- | Context under an abstraction of expressions with a given type.
+underExpressionAbstraction
+  :: Type
+  -> TypeCheckCtx
+  -> TypeCheckCtx
+underExpressionAbstraction underAbstractionType ctx = ctx{_exprBindCtx = addBinding underAbstractionType $ _exprBindCtx ctx}
+
+-- | Context under multiple abstractions of expressions with given types.
+underExpressionAbstractions
+  :: [Type]
+  -> TypeCheckCtx
+  -> TypeCheckCtx
+underExpressionAbstractions underAbstractionTypes ctx = ctx{_exprBindCtx = addBindings underAbstractionTypes $ _exprBindCtx ctx}
+
+-- | Context under an abstraction of types with a given kind.
+underTypeAbstraction
+  :: Kind
+  -> TypeCheckCtx
+  -> TypeCheckCtx
+underTypeAbstraction underAbstractionKind ctx = ctx{ _typeBindCtx  = addBinding underAbstractionKind $ _typeBindCtx ctx
+                                                   , _typeBindings = unbound . bury . _typeBindings $ ctx
+                                                   }
+
+-- | Check that a type has a valid kind (and return it) under a context of type
+-- bindings and definitions.
+kindCheck
+  :: Type
+  -> TypeCheckCtx
+  -> Either (Error expr Type p TypeCtx) Kind
+kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_typeCtx ctx) ty
+
+-- | Context after a Type with Kind is applied.
+--
+-- The Kind is assumed to be correct and should probably be equal to the result
+-- of kindCheck.
+underAppliedType
+  :: (Type, Kind)
+  -> TypeCheckCtx
+  -> TypeCheckCtx
+underAppliedType (ty,hasKind) ctx = ctx
+  {_typeBindCtx  = addBinding hasKind $ _typeBindCtx ctx
+  ,_typeBindings = bind ty $ _typeBindings ctx
+  }
+
+-- | Check that two types are equal under a context.
+checkEqual
+  :: Type
+  -> Type
+  -> TypeCheckCtx
+  -> Either (Error expr Type patternFor TypeCtx) Bool
+checkEqual aTy bTy ctx = typeEq (_typeBindCtx ctx) (_typeBindings ctx) (_typeCtx ctx) aTy bTy
+
+-- | Lookup the Type associated with an expression variable.
+lookupVarType
+  :: Var
+  -> TypeCheckCtx
+  -> Either (Error expr Type patternFor TypeCtx) Type
+lookupVarType v ctx = case lookupBindingTy v (_exprBindCtx ctx) of
+  Nothing
+    -> Left $ EBindCtxExprLookupFailure (fromEnum v) (_exprBindCtx ctx)
+  Just ty
+    -> Right ty
+
+-- | Recursivly reduce a type to it's initial definition.
+-- Meaning all non-recursive types are substituted for their definition.
+-- Recursive types are not substituted.
+--
+-- If used (very) carefully this function can be used to check equality of
+-- recursive types. Probably not in the general case.
+reduceTypeUnderCtx
+  :: Type
+  -> TypeCheckCtx
+  -> Either (Error expr Type patternFor TypeCtx) Type
+reduceTypeUnderCtx ty ctx = reduceTypeWith (_typeBindings ctx) (_typeCtx ctx) (Just 100) ty
+

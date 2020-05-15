@@ -23,6 +23,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Pattern
 
@@ -53,20 +54,18 @@ defaultBindingPatternTestCase
   -> PatternTestCase
 defaultBindingPatternTestCase src
   = PatternTestCase
-      {_underTypeCtx         = typeCtx
-      ,_underExprBindCtx     = exprBindCtx
-      ,_underTypeBindCtx     = typeBindCtx
-      ,_underTypeBindings    = typeBindings
-      ,_isPattern           = isPattern
+      {_underTypeCheckCtx    = TypeCheckCtx
+         {_typeCtx      = emptyTypeCtx
+         ,_exprBindCtx  = addBinding EmptyProductT $ emptyCtx
+         ,_typeBindCtx  = emptyCtx
+         ,_typeBindings = emptyBindings
+         }
+      ,_isPattern            = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
       }
   where
-    typeCtx              = emptyTypeCtx
-    exprBindCtx          = addBinding EmptyProductT $ emptyCtx
-    typeBindCtx          = emptyCtx
-    typeBindings         = emptyBindings
     isPattern           = BindingPattern VZ
     typed                = EmptyProductT
     checkMatchWithResult = Right []

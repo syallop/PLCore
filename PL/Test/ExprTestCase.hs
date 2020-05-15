@@ -30,6 +30,7 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Bindings
 
@@ -58,13 +59,11 @@ import PL.Test.Util
 --
 -- It's likely factored badly.
 data ExprTestCase = ExprTestCase
-  {_underTypeCtx :: TypeCtx                -- ^ Under this given typing context
-  ,_isExpr       :: ExprFor CommentedPhase -- ^ An Expr
-  ,_typed        :: Type                   -- ^ Has this type
-  ,_parsesFrom   :: Text                   -- ^ And also parses from this textual representation
-
-  ,_reducesTo :: Expr -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
-
+  {_underTypeCheckCtx    :: TypeCheckCtx           -- ^ Under this given typing context
+  ,_isExpr               :: ExprFor CommentedPhase -- ^ An Expr
+  ,_typed                :: Type                   -- ^ Has this type
+  ,_parsesFrom           :: Text                   -- ^ And also parses from this textual representation
+  ,_reducesTo            :: Expr                   -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
   ,_reducesToWhenApplied :: [ReductionTestCase]
   }
 

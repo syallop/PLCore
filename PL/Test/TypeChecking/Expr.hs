@@ -22,6 +22,7 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Bindings
 import PL.Pattern
@@ -56,7 +57,7 @@ typeChecksSpec
   -> Spec
 typeChecksSpec testCases ppType ppError
   = describe "All example programs"
-  . mapM_ (\(name,testCase) -> typeCheckSpec name (_isExpr testCase) (_underTypeCtx testCase) (_typed testCase) ppType ppError)
+  . mapM_ (\(name,testCase) -> typeCheckSpec name (_isExpr testCase) (_underTypeCheckCtx testCase) (_typed testCase) ppType ppError)
   . Map.toList
   $ testCases
 
@@ -64,17 +65,17 @@ typeChecksSpec testCases ppType ppError
 typeCheckSpec
   :: Text.Text
   -> ExprFor CommentedPhase
-  -> TypeCtx
+  -> TypeCheckCtx
   -> Type
   -> (Type -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
-typeCheckSpec name inputExpr underTypeCtx expectedType ppType ppError = it (Text.unpack name) $ case topExprType underTypeCtx (stripComments inputExpr) of
+typeCheckSpec name inputExpr ctx expectedType ppType ppError = it (Text.unpack name) $ case exprType ctx (stripComments inputExpr) of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 
   Right resultType
-    -> case typeEq emptyCtx emptyBindings underTypeCtx resultType expectedType of
+    -> case checkEqual resultType expectedType ctx of
          Left err
            -> expectationFailure . Text.unpack . render $ text "A given type name does not exist in the context"
 

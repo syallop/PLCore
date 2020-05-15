@@ -25,6 +25,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -61,7 +62,7 @@ singleLamTestCase
   -> ExprTestCase
 singleLamTestCase src
   = ExprTestCase
-  {_underTypeCtx = ctx
+  {_underTypeCheckCtx = topTypeCheckCtx ctx
   ,_isExpr       = e
   ,_typed        = ty
   ,_parsesFrom   = src
@@ -95,7 +96,7 @@ nestedLamTestCase
   -> ExprTestCase
 nestedLamTestCase src
   = ExprTestCase
-      {_underTypeCtx = ctx
+      {_underTypeCheckCtx = topTypeCheckCtx ctx
       ,_isExpr       = e
       ,_typed        = ty
       ,_parsesFrom   = src
@@ -132,7 +133,7 @@ chainedLamTestCase
   -> ExprTestCase
 chainedLamTestCase src
   = (nestedLamTestCase src)
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src

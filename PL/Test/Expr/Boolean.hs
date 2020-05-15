@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -57,7 +58,7 @@ andExprTestCase
   -> ExprTestCase
 andExprTestCase src
   = ExprTestCase
-      { _underTypeCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src

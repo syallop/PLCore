@@ -24,6 +24,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 import PL.Pattern
 
@@ -56,21 +57,13 @@ defaultUnionPatternTestCase
   -> PatternTestCase
 defaultUnionPatternTestCase src
   = PatternTestCase
-      {_underTypeCtx         = typeCtx
-      ,_underExprBindCtx     = exprBindCtx
-      ,_underTypeBindCtx     = typeBindCtx
-      ,_underTypeBindings    = typeBindings
-      ,_isPattern           = isPattern
+      {_underTypeCheckCtx    = topTypeCheckCtx emptyTypeCtx
+      ,_isPattern            = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
       }
   where
-    typeCtx              = emptyTypeCtx
-    exprBindCtx          = emptyCtx
-    typeBindCtx          = emptyCtx
-    typeBindings         = emptyBindings
-
     isPattern           = UnionPattern EmptyProductT EmptyProductPattern
     typed                = UnionT $ Set.fromList $ [EmptyProductT]
     checkMatchWithResult = Right []

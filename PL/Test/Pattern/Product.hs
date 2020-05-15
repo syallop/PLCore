@@ -25,6 +25,7 @@ import PL.Type
 import PL.Type.Eq
 import PL.Pattern
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Text (Text)
@@ -55,10 +56,7 @@ defaultProductPatternTestCase
   -> PatternTestCase
 defaultProductPatternTestCase src
   = PatternTestCase
-      {_underTypeCtx         = typeCtx
-      ,_underExprBindCtx     = exprBindCtx
-      ,_underTypeBindCtx     = typeBindCtx
-      ,_underTypeBindings    = typeBindings
+      {_underTypeCheckCtx    = topTypeCheckCtx typeCtx
       ,_isPattern           = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
@@ -66,11 +64,7 @@ defaultProductPatternTestCase src
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = emptyCtx
-    typeBindCtx          = emptyCtx
-    typeBindings         = emptyBindings
-
-    isPattern           = EmptyProductPattern
+    isPattern            = EmptyProductPattern
     typed                = EmptyProductT
     checkMatchWithResult = Right []
     parsesFrom           = src

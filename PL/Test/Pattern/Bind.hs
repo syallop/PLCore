@@ -22,9 +22,11 @@ import PL.Kind
 import PL.Pattern
 import PL.Reduce
 import PL.TyVar
+import PL.TypeCtx
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Text (Text)
@@ -56,21 +58,15 @@ defaultBindPatternTestCase
   -> PatternTestCase
 defaultBindPatternTestCase src
   = PatternTestCase
-      {_underTypeCtx         = typeCtx
-      ,_underExprBindCtx     = exprBindCtx
-      ,_underTypeBindCtx     = typeBindCtx
-      ,_underTypeBindings    = typeBindings
-      ,_isPattern           = isPattern
+      {_underTypeCheckCtx    = topTypeCheckCtx emptyTypeCtx
+      ,_isPattern            = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
       }
   where
     typeCtx              = emptyTypeCtx
-    exprBindCtx          = emptyCtx
-    typeBindCtx          = emptyCtx
-    typeBindings         = emptyBindings
-    isPattern           = Bind
+    isPattern            = Bind
     typed                = SumT $ NE.fromList [EmptyProductT]
     checkMatchWithResult = Right [SumT $ NE.fromList [EmptyProductT]]
     parsesFrom           = src
@@ -94,7 +90,7 @@ bindBoolPatternTestCase
   :: Source
   -> PatternTestCase
 bindBoolPatternTestCase src = (defaultBindPatternTestCase src)
-  { _underTypeCtx         = boolTypeCtx
+  { _underTypeCheckCtx    = topTypeCheckCtx boolTypeCtx
   , _typed                = boolTypeName
   , _checkMatchWithResult = Right [boolType]
   }

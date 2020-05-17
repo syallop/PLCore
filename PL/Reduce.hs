@@ -160,6 +160,26 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
           Nothing
             -> Left . EContext (EMsg . text $ "Reducing expression") . EBindExprLookupFailure ix $ bindings
 
+  -- ContentBindings are not (currently) reduced - they're sticking points for
+  -- evaluation.
+  --
+  -- They _could_ be as the lack of self-reference and mutual recursion means
+  -- reduction would terminate.
+  --
+  -- We choose not to as:
+  -- - We expect them to be substituted in the evaluation phase (which does not
+  --   exist).
+  -- - Leaving un-reduced allows them to be made recursive/ self-referential in
+  --  the future without changing behaviour here.
+  -- - The final result of a reduction may be stored and currently serves the
+  --   purpose of both the 'compiled' and human(ish) readable form. Some
+  --   expressions would look unrecognisable after reducing under names making
+  --   modification hard. It is likely we'll end up storing multiple
+  --   representations of the 'same' code to deal with this. For now, we
+  --   prioritise readability over full reduction.
+  ContentBinding c
+    -> pure $ ContentBinding c
+
   -- Reduce a single step under the sum expression.
   Sum sumExpr sumIx sumTy
     -> Sum <$> reduceStep bindings typeBindings typeCtx sumExpr

@@ -1,3 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-|
 Module      : PL.TypeCheck
 Copyright   : (c) Samuel A. Yallop, 2020
@@ -11,6 +15,7 @@ TypeCheckCtx maintains state for:
 - Type Bindings (such as type variables) kind.
 - Types that have been applied.
 - Type definitions in scope
+- The Type of expressions that are refered to by ContentNames
 
 By co-ordinating BindCtx, Bindings, TypeCtx.
 
@@ -19,6 +24,7 @@ Functions are provided to:
 - Validate whether types are equal
 - Check types Kinds
 - Query variables type/ kind
+- Query named expressions types
 - Reduce Type definitions
 - And modify the type context to check types under abstractions.
 
@@ -43,6 +49,7 @@ module PL.TypeCheck
   , checkEqual
 
   , lookupVarType
+  , lookupContentType
 
   , reduceTypeUnderCtx
   )
@@ -57,27 +64,35 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.Name
 import PL.Var
+
+import PLPrinter
+
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 -- | TypeCheckCtx contains information used/ generated while type-checking an
 -- expression.
 data TypeCheckCtx = TypeCheckCtx
-  { _exprBindCtx  :: BindCtx Var Type   -- ^ Associate expression bindings to their types. E.G. Var 0 to Bool.
-  , _typeBindCtx  :: BindCtx TyVar Kind -- ^ Associate type bindings to their kinds. E.G. TyVar 0 to (Kind->Kind).
-  , _typeBindings :: Bindings Type      -- ^ When type-checking under a binder, types are either bound with some known type or are unbound
-  , _typeCtx      :: TypeCtx            -- ^ Associated named types to their TypeInfo definitions
+  { _exprBindCtx    :: BindCtx Var Type     -- ^ Associate expression bindings to their types. E.G. Var 0 to Bool.
+  , _typeBindCtx    :: BindCtx TyVar Kind   -- ^ Associate type bindings to their kinds. E.G. TyVar 0 to (Kind->Kind).
+  , _typeBindings   :: Bindings Type        -- ^ When type-checking under a binder, types are either bound with some known type or are unbound
+  , _typeCtx        :: TypeCtx              -- ^ Associated named types to their TypeInfo definitions
+  , _contentHasType :: Map ContentName Type -- ^ Cache a mapping of known expression content names to their checked Type. We have a cache here to avoid doing IO in type-checking which feels wrong. It implies we must resolve names in an earlier phase.
   }
   deriving Show
 
--- | Type check a top-level expression with some type definitions.
+-- | Type check a top-level expression with a TypeCtx mapping type names to type definitions.
 topTypeCheckCtx
   :: TypeCtx
   -> TypeCheckCtx
 topTypeCheckCtx typeCtx = TypeCheckCtx
-  { _exprBindCtx  = emptyCtx
-  , _typeBindCtx  = emptyCtx
-  , _typeBindings = emptyBindings
-  , _typeCtx      = typeCtx
+  { _exprBindCtx    = emptyCtx
+  , _typeBindCtx    = emptyCtx
+  , _typeBindings   = emptyBindings
+  , _typeCtx        = typeCtx
+  , _contentHasType = mempty
   }
 
 -- | Context under an abstraction of expressions with a given type.
@@ -142,6 +157,23 @@ lookupVarType v ctx = case lookupBindingTy v (_exprBindCtx ctx) of
     -> Left $ EBindCtxExprLookupFailure (fromEnum v) (_exprBindCtx ctx)
   Just ty
     -> Right ty
+
+-- | Lookup the Type associated with a named expression.
+lookupContentType
+  :: ContentName
+  -> TypeCheckCtx
+  -> Either (Error expr Type patternFor TypeCtx) Type
+lookupContentType contentName ctx = case Map.lookup contentName . _contentHasType $ ctx of
+  Nothing
+    -> Left . EMsg . mconcat $
+         [ text "Could not find a type association for content named: "
+         , lineBreak
+         , indent1 . string . show $ contentName
+         , lineBreak
+         ]
+
+  Just t
+    -> Right t
 
 -- | Recursivly reduce a type to it's initial definition.
 -- Meaning all non-recursive types are substituted for their definition.

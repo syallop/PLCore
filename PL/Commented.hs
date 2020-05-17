@@ -140,6 +140,7 @@ type instance TypeBindingExtension CommentedPhase = Void
 type instance LamExtension CommentedPhase = Void
 type instance AppExtension CommentedPhase = Void
 type instance BindingExtension CommentedPhase = Void
+type instance ContentBindingExtension CommentedPhase = Void
 type instance CaseAnalysisExtension CommentedPhase = Void
 type instance SumExtension CommentedPhase = Void
 type instance ProductExtension CommentedPhase = Void
@@ -216,6 +217,9 @@ stripComments = \case
 
   Binding b
     -> Binding b
+
+  ContentBinding c
+    -> ContentBinding c
 
   BigLam takeTy expr
     -> BigLam takeTy (stripComments expr)
@@ -332,6 +336,9 @@ addComments = \case
 
   Binding b
     -> Binding b
+
+  ContentBinding c
+    -> ContentBinding c
 
   BigLam takeTy expr
     -> BigLam takeTy (addComments expr)

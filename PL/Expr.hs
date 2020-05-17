@@ -44,6 +44,8 @@ module PL.Expr
   , pattern AppExt
   , pattern Binding
   , pattern BindingExt
+  , pattern ContentBinding
+  , pattern ContentBindingExt
   , pattern CaseAnalysis
   , pattern CaseAnalysisExt
   , pattern Sum
@@ -76,6 +78,7 @@ module PL.Expr
   , LamExtension
   , AppExtension
   , BindingExtension
+  , ContentBindingExtension
   , CaseAnalysisExtension
   , SumExtension
   , ProductExtension
@@ -196,6 +199,18 @@ data ExprF phase expr
       , _binding          :: BindingFor phase
       }
 
+    -- | Bind an expression uniquely named by its content.
+    --
+    -- E.G. sha512/BGpbCZNFqE6aQE1
+    --
+    -- These hashes are (currently) non-cyclic and there is no way for an
+    -- expression to refer to itself meaning this does not introduce
+    -- recursion.
+    | ContentBindingF
+      { _nameBindingExtension :: ContentBindingExtension phase
+      , _name                 :: ContentName
+      }
+
     -- | Case analysis of an expression.
     --
     -- An 'expr'ession can be scrutinised, and matches attempted against a
@@ -300,6 +315,7 @@ deriving instance
   (Eq (LamExtension phase)
   ,Eq (AppExtension phase)
   ,Eq (BindingExtension phase)
+  ,Eq (ContentBindingExtension phase)
   ,Eq (CaseAnalysisExtension phase)
   ,Eq (SumExtension phase)
   ,Eq (ProductExtension phase)
@@ -320,6 +336,7 @@ deriving instance
   (Ord (LamExtension phase)
   ,Ord (AppExtension phase)
   ,Ord (BindingExtension phase)
+  ,Ord (ContentBindingExtension phase)
   ,Ord (CaseAnalysisExtension phase)
   ,Ord (SumExtension phase)
   ,Ord (ProductExtension phase)
@@ -341,6 +358,7 @@ instance
   (Show (LamExtension phase)
   ,Show (AppExtension phase)
   ,Show (BindingExtension phase)
+  ,Show (ContentBindingExtension phase)
   ,Show (CaseAnalysisExtension phase)
   ,Show (SumExtension phase)
   ,Show (ProductExtension phase)
@@ -365,6 +383,9 @@ instance
 
     BindingF ext b
       -> ["{Binding ", show ext, " ", show b, "}"]
+
+    ContentBindingF ext name
+      -> ["{ContentBinding ", show ext, " ", show name, "}"]
 
     CaseAnalysisF ext c
       -> ["{CaseAnalysis ", show ext, " ", show c, "}"]
@@ -391,6 +412,7 @@ instance
   (Hashable (LamExtension phase)
   ,Hashable (AppExtension phase)
   ,Hashable (BindingExtension phase)
+  ,Hashable (ContentBindingExtension phase)
   ,Hashable (CaseAnalysisExtension phase)
   ,Hashable (SumExtension phase)
   ,Hashable (ProductExtension phase)
@@ -415,6 +437,9 @@ instance
 
     BindingF ext b
       -> HashTag "Expr.Binding" [toHashToken ext,toHashToken b]
+
+    ContentBindingF ext c
+      -> HashTag "Expr.ContentBinding" [toHashToken ext,toHashToken c]
 
     CaseAnalysisF ext c
       -> HashTag "Expr.Case" [toHashToken ext,toHashToken c]
@@ -442,6 +467,7 @@ instance
 type family LamExtension phase
 type family AppExtension phase
 type family BindingExtension phase
+type family ContentBindingExtension phase
 type family CaseAnalysisExtension phase
 type family SumExtension phase
 type family ProductExtension phase
@@ -481,6 +507,15 @@ pattern Binding b <- FixPhase (BindingF _ b)
 pattern BindingExt :: BindingExtension phase -> BindingFor phase -> ExprFor phase
 pattern BindingExt ext b <- FixPhase (BindingF ext b)
   where BindingExt ext b = FixPhase (BindingF ext b)
+
+-- ContentBindingF for phases where there is no extension to the constructor.
+pattern ContentBinding :: ContentBindingExtension phase ~ Void => ContentName -> ExprFor phase
+pattern ContentBinding c <- FixPhase (ContentBindingF _ c)
+  where ContentBinding c = FixPhase (ContentBindingF void c)
+
+pattern ContentBindingExt :: ContentBindingExtension phase -> ContentName -> ExprFor phase
+pattern ContentBindingExt ext c <- FixPhase (ContentBindingF ext c)
+  where ContentBindingExt ext c = FixPhase (ContentBindingF ext c)
 
 -- CaseAnalysisF for phases where there is no extension to the constructor.
 pattern CaseAnalysis :: CaseAnalysisExtension phase ~ Void => Case (ExprFor phase) (PatternFor phase) -> ExprFor phase
@@ -558,12 +593,14 @@ pattern ExprExtensionExt ext <- FixPhase (ExprExtensionF ext)
 -- - Bindings are Var's (indexes without names)
 -- - Abstractions are Types (with no names)
 -- - Type Bindings are TyVars (indexes without names)
+-- - ContentBindings are extended with their checked Type
 -- - There are no other extensions (such as comments on constructors)
 -- This concrete phases can therefore be used for
 -- {typechecking,reducing,printing,storing} but not {parsing,resolving}.
 type instance LamExtension DefaultPhase = Void
 type instance AppExtension DefaultPhase = Void
 type instance BindingExtension DefaultPhase = Void
+type instance ContentBindingExtension DefaultPhase = Void
 type instance CaseAnalysisExtension DefaultPhase = Void
 type instance SumExtension DefaultPhase = Void
 type instance ProductExtension DefaultPhase = Void
@@ -588,6 +625,10 @@ instance HasAbs Expr where
 -- An Expr binds with Vars
 instance HasBinding Expr Var where
   applyToBinding f (Binding e) = Binding (f e)
+  applyToBinding _ e           = e
+
+instance HasBinding Expr ContentName where
+  applyToBinding f (ContentBindingExt typ c) = ContentBindingExt typ (f c)
   applyToBinding _ e           = e
 
 -- An Expr contains NON-abstracted sub-expressions
@@ -734,6 +775,18 @@ exprType ctx e = case e of
   --      b : t
   Binding b
     -> lookupVarType b ctx
+
+  -- At the type-checking phase we should have already resolved the name to
+  -- ensure it's valid and extended the Content constructor with the contents
+  -- type.
+  --
+  -- It is assumed the type has been type checked.
+  --
+  -- c : t
+  -- -----
+  -- c : t
+  ContentBinding c
+    -> lookupContentType c ctx
 
   --        scrutineeExpr : t0   defExpr : t1
   -- -----------------------------------------------

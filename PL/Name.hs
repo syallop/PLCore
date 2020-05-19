@@ -118,8 +118,8 @@ newtype ContentName = ContentName {contentName :: Hash} deriving (Eq,Ord)
 mkContentName
   :: Hashable h
   => h
-  -> Maybe ContentName
-mkContentName = Just . ContentName . hash
+  -> ContentName
+mkContentName = ContentName . hash
 
 instance Show ContentName where show (ContentName n) = show $ n
 instance Document ContentName where document (ContentName n) = text . showBase58 $ n

@@ -55,7 +55,7 @@ data FileStore k v = Ord v => FileStore
   }
 
 instance Show (FileStore k v) where
-  show = undefined
+  show _ = "FileStore"
 
 -- | Create a filestore from a directory path
 newSimpleFileStore

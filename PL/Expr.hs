@@ -72,6 +72,8 @@ module PL.Expr
   , exprType
   , branchType
 
+  , gatherNames
+
   , appise
   , lamise
 
@@ -122,6 +124,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import Data.Set (Set)
 
 -- | Expr is an 'ExprF' that:
 -- - Uses itself for sub-expressions
@@ -872,6 +875,63 @@ exprType ctx e = case e of
             _ -> Left $ EMsg $ text "In big application, function must have a big arrow type"
 
   e -> error "Non-exhaustive pattern in type check"
+
+-- | Gather the Set of all ContentBinding names used within an Expression
+-- _without_ looking under any of the returned names themselves.
+gatherNames
+  :: ExprFor phase
+  -> Set ContentName
+gatherNames = gatherNames' Set.empty
+  where
+    gatherNames' :: Set ContentName -> ExprFor phase -> Set ContentName
+    gatherNames' accNames = \case
+      ContentBindingExt _ext c
+        -> Set.insert c accNames
+
+      LamExt _ext abs expr
+        -> gatherNames' accNames expr
+
+      AppExt _ext f x
+        -> gatherNames' (gatherNames' accNames x) f
+
+      BindingExt _ext b
+        -> Set.empty
+
+      CaseAnalysisExt _ext c
+        -> gatherCaseNames' accNames c
+
+      SumExt _ext expr _ix _types
+        -> gatherNames' accNames expr
+
+      ProductExt _ext exprs
+        -> foldr (flip gatherNames') accNames exprs
+
+      UnionExt _ext expr _typeIx _types
+        -> gatherNames' accNames expr
+
+      BigLamExt _ext _kind expr
+        -> gatherNames' accNames expr
+
+      BigAppExt _ext fExpr _xType
+        -> gatherNames' accNames fExpr
+
+      _ -> error "Non-exhaustive pattern gathering names"
+
+    gatherCaseNames' :: Set ContentName -> Case (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseNames' accNames (Case expr branches) = gatherCaseBranchesNames' (gatherNames' accNames expr) branches
+
+    gatherCaseBranchesNames' :: Set ContentName -> CaseBranches (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseBranchesNames' accNames = \case
+      DefaultOnly expr
+        -> gatherNames' accNames expr
+
+      CaseBranches neBranches mDef
+        -> let accNames' = maybe accNames (gatherNames' accNames) mDef
+            in foldr (flip gatherCaseBranchNames') accNames' neBranches
+
+    gatherCaseBranchNames' :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseBranchNames' accNames (CaseBranch _pattern exprResult) = gatherNames' accNames exprResult
+
 
 appise :: [Expr] -> Expr
 appise []        = error "Cant appise empty list of expressions"

@@ -2,6 +2,7 @@
            , FlexibleInstances
            , RankNTypes
            , OverloadedStrings
+           , GADTs
   #-}
 {-|
 Module      : PL.Store.File
@@ -14,9 +15,13 @@ Implementation of PL.Store backed by a file system.
 module PL.Store.File
   ( FileStore ()
   , newFileStore
-  , ensureInitialized
+  , newSimpleFileStore
   , storeAsFile
   , lookupFromFile
+
+  -- Util
+  , ensureInitialized
+  , keyFilePath
   )
   where
 
@@ -39,55 +44,62 @@ import PL.Serialize
 
 -- | Store key-values under a particular location in the filesystem.
 --
--- When truncate is set, up to n characters from a serialized files name will be
--- truncated and used as a leading subdirectory.
---
--- E.G. Set to 4, if a key serialized to `subdir/withlongname`, then the value
--- would instead be written to a file named `subdir/with/longname`.
---
--- If set to Nothing, the file name is not split.
---
--- This option is useful for:
--- - Making prefixes slightly more readable
--- - Adding a small amount of balance to the number of files at the top level
--- - Filenames that are between 1 and 2 times the file name limit.
---
 -- Re-initialising a store with a different prefix should have no negative
 -- effect (other than making previous files inaccessbile). There is currently no
 -- attempt to detect or mitigate this.
-data FileStore k v = FileStore
-  { _directory      :: ByteString
-  , _truncatePrefix :: Maybe Int   -- ^ Truncate n characters of a file name into a subdirectory.
+data FileStore k v = Ord v => FileStore
+  { _filePath             :: k -> FilePath
+  , _serializeFileBytes   :: v -> ByteString
+  , _deserializeFileBytes :: ByteString -> Maybe v
+  , _valuesEqual          :: v -> v -> Bool
   }
-  deriving Show
+
+instance Show (FileStore k v) where
+  show = undefined
 
 -- | Create a filestore from a directory path
-newFileStore
-  :: ByteString
+newSimpleFileStore
+  :: (Serialize k, Serialize v, Eq v, Ord v)
+  => ByteString
   -> Maybe Int
   -> FileStore k v
-newFileStore = FileStore
+newSimpleFileStore dir truncate = FileStore
+  { _filePath             = keyFilePath dir truncate
+  , _serializeFileBytes   = serialize
+  , _deserializeFileBytes = deserialize
+  , _valuesEqual          = (==)
+  }
 
-instance (Serialize k, Serialize v, Eq v, Ord v) => Store FileStore k v where
+newFileStore
+  :: Ord v
+  => (k -> FilePath)
+  -> (v -> ByteString)
+  -> (ByteString -> Maybe v)
+  -> (v -> v -> Bool)
+  -> FileStore k v
+newFileStore filePath serializeBytes deserializeBytes valuesEqual = FileStore
+  { _filePath             = filePath
+  , _serializeFileBytes   = serializeBytes
+  , _deserializeFileBytes = deserializeBytes
+  , _valuesEqual          = valuesEqual
+  }
+
+instance Ord v => Store FileStore k v where
   store  = storeAsFile
   lookup = lookupFromFile
 
 -- | Store a key-value association by serializing the value and writing it to a
 -- file in the filestore named by the key.
 storeAsFile
-  :: ( Serialize k
-     , Serialize v
-     , Eq v
-     , Ord v
-     )
+  :: (Ord v)
   => FileStore k v
   -> k
   -> v
   -> IO (Maybe (FileStore k v, StoreResult v))
 storeAsFile filestore key value = do
   -- TODO: Consider mapping relevant filesystem exceptions to Nothing.
-  let keyPath = keyFilePath filestore key
-      serializedValue = serialize value
+  let keyPath = (_filePath filestore) key
+      serializedValue = _serializeFileBytes filestore value
 
   alreadyExists <- doesPathExist keyPath
   if alreadyExists
@@ -95,7 +107,7 @@ storeAsFile filestore key value = do
     -- If it contains the same content, we don't need to do anything.
     -- If it differs we replace and return the old value.
     then do existingBytes <- readFile keyPath
-            case deserialize existingBytes of
+            case _deserializeFileBytes filestore existingBytes of
               -- Whatever is in the file does not deserialize.
               -- Either:
               -- - Serialization does not round trip correctly
@@ -113,7 +125,7 @@ storeAsFile filestore key value = do
                                    ]
 
               Just existingValue
-                | existingValue == value
+                | _valuesEqual filestore existingValue value
                  -> pure $ Just (filestore, AlreadyStored)
 
                 | otherwise
@@ -126,28 +138,43 @@ storeAsFile filestore key value = do
 
 -- | Read a value by consulting a file in the filestore named by the key.
 lookupFromFile
-  :: ( Serialize k
-     , Serialize v
-     )
-  => FileStore k v
+  :: FileStore k v
   -> k
   -> IO (Maybe (FileStore k v, v))
 lookupFromFile filestore key = do
-  let keyPath = keyFilePath filestore key
+  let keyPath = (_filePath filestore) key
 
   exists <- doesFileExist keyPath
   if not exists
     then pure Nothing
     else do fileBytes <- readFile keyPath
-            case deserialize fileBytes of
+            case _deserializeFileBytes filestore fileBytes of
               Nothing
                 -> pure Nothing
               Just value
                 -> pure $ Just $ (filestore, value)
 
 -- Compute a keys file path in a file store
-keyFilePath :: Serialize k => FileStore k v -> k -> FilePath
-keyFilePath (FileStore dir mTruncateTo) key =
+--
+-- When truncate is set, up to n characters from a serialized files name will be
+-- truncated and used as a leading subdirectory.
+--
+-- E.G. Set to 4, if a key serialized to `subdir/withlongname`, then the value
+-- would instead be written to a file named `subdir/with/longname`.
+--
+-- If set to Nothing, the file name is not split.
+--
+-- This option is useful for:
+-- - Making prefixes slightly more readable
+-- - Adding a small amount of balance to the number of files at the top level
+-- - Filenames that are between 1 and 2 times the file name limit.
+keyFilePath
+  :: Serialize k
+  => ByteString
+  -> Maybe Int
+  -> k
+  -> FilePath
+keyFilePath dir mTruncateTo key =
   let -- SHA512/SHORTLONGNAME
       fullNamePath = serialize key
 
@@ -169,8 +196,8 @@ splitMaybe Nothing  bs = (bs, "")
 splitMaybe (Just i) bs = (take i bs, drop i bs)
 
 -- Ensure a FileStores directory exists - create it if it does not.
-ensureInitialized :: FileStore k v -> IO ()
-ensureInitialized (FileStore dir mTruncate) = createDirectoryIfMissing True $ decodeFilePath dir
+ensureInitialized :: FilePath -> IO ()
+ensureInitialized filepath = createDirectoryIfMissing True filepath
 
 -- Write a file including any missing subdirectorys in the path.
 writeFileAndAnyMissingDirs :: FilePath -> ByteString -> IO ()

@@ -439,7 +439,7 @@ instance
       -> HashTag "Expr.Binding" [toHashToken ext,toHashToken b]
 
     ContentBindingF ext c
-      -> HashTag "Expr.ContentBinding" [toHashToken ext,toHashToken c]
+      -> HashIs . contentName $ c
 
     CaseAnalysisF ext c
       -> HashTag "Expr.Case" [toHashToken ext,toHashToken c]

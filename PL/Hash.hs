@@ -68,10 +68,11 @@ import qualified Data.Set as Set
 -- | A Hash uniquely identifies a 'hash'ed thing.
 data Hash = Hash
   { _hashAlgorithm :: HashAlgorithm -- ^ By storing the algorithm used to generate the hash we can more easily regenerate/ and switch the algorithm if necessary.
-  , _unHash        :: BS.ByteString -- ^ The hashed bytes
+  , _unHash        :: BS.ByteString -- ^ The hashed bytes. Not necessarily human readable.
   }
   deriving (Eq,Ord)
 
+-- | By default hashes are shown in a full base58 encoding.
 instance Show Hash where
   show = Text.unpack . showBase58
 
@@ -88,7 +89,7 @@ hashWith
 hashWith alg = hashToken alg . toHashToken
 
 -- | Render a Hash as human-readable text with it's algorithm identifier
--- separated by a ':' and followed by a base58 interpretation of the hash
+-- separated by a '/' and followed by a base58 interpretation of the hash
 -- itself.
 showBase58 :: Hash -> Text
 showBase58 (Hash alg h) = mconcat
@@ -111,7 +112,6 @@ readBase58 txt = do
                      else Just $ Hash SHA512 bytes
            _
              -> error "Unrecognised hashing algorithm"
-
     _
       -> Nothing
 
@@ -156,7 +156,7 @@ hashFunction a = case a of
 --
 -- When constructing:
 -- - Use 'HashText', 'HashInt', etc for plain primitives.
--- - Use 'HashIs' to embed already known hashes.
+-- - Use 'HashIs' to embed already known hashes. These will not be rehashed.
 -- - Use HashTag to encode unique data types or constructors. E.G.
 --
 -- data T = A
@@ -175,46 +175,44 @@ data HashToken
   | HashInt Int
   | HashIs Hash
 
--- Realize a HashToken to it's compact Hash using SHA512
+-- Realize a HashToken to it's compact Hash using the provided algorithm.
+--
+-- HashIs tokens should be unmodified meaning values should be able to be
+-- substituted for their hash without changing the output.
 hashToken
   :: HashAlgorithm
   -> HashToken
   -> Hash
-hashToken alg
-  = Hash alg
-  . hashFunction alg
-  . toLazyByteString
-  . buildUnhashed
-
--- Build an unhashed representation of a Hash, taking care to give unique Hash's
--- a unique representation.
-buildUnhashed :: HashToken -> Builder
-buildUnhashed h = mconcat $ case h of
+hashToken alg h = case h of
   HashInt i
-    -> [ byteString "int"
-       , int64BE . fromIntegral $ i
-       ]
+    -> Hash alg . hashFunction alg . toLazyByteString . mconcat $
+         [ byteString "int"
+         , int64BE . fromIntegral $ i
+         ]
 
   HashText txt
-    -> [ byteString "text"
-       , byteString . encodeUtf8 $ txt
-       ]
+    -> Hash alg . hashFunction alg . toLazyByteString . mconcat $
+         [ byteString "text"
+         , byteString . encodeUtf8 $ txt
+         ]
 
   HashTag tagTxt args
-    -> [ byteString "tag"
-       , byteString . encodeUtf8 $ tagTxt
-       , int64BE . fromIntegral . length $ args
-       , byteString "["
-       , mconcat . intersperse (byteString ",") . fmap buildUnhashed $ args
-       , byteString "]"
-       ]
+    -> let hashedArgs :: [Hash]
+           hashedArgs = fmap (hashToken alg) args
 
-  -- TODO: Test if we'd prefer something that incorporates the algorithm like:
-  -- [ byteString . encodeUtf8 . hashIdentifier $ alg
-  -- , byteString h
-  -- ]
-  HashIs (Hash alg h)
-    -> [byteString h]
+           bsArgs :: [BS.ByteString]
+           bsArgs = fmap _unHash hashedArgs
+        in Hash alg . hashFunction alg . toLazyByteString . mconcat $
+             [ byteString "tag"
+             , byteString . encodeUtf8 $ tagTxt
+             , int64BE . fromIntegral . length $ args
+             , byteString "["
+             , mconcat . fmap byteString . intersperse "," $ bsArgs
+             , byteString "]"
+             ]
+
+  HashIs (Hash alg bs)
+    -> Hash alg bs
 
 class Hashable h where
   toHashToken :: h -> HashToken

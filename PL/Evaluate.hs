@@ -74,6 +74,7 @@ data EvaluationCtx = EvaluationCtx
   { _evaluationCodeStore    :: CodeStore
   , _evaluationExprBindings :: Bindings Expr
   , _evaluationTypeBindings :: Bindings Type
+  , _evaluationTypeCtx      :: TypeCtx
   , _evaluationGas          :: Maybe Int
   }
 
@@ -81,12 +82,14 @@ data EvaluationCtx = EvaluationCtx
 -- - Type checked
 -- - Reduced
 topEvaluationCtx
-  :: CodeStore
+  :: TypeCtx
+  -> CodeStore
   -> EvaluationCtx
-topEvaluationCtx codeStore = EvaluationCtx
+topEvaluationCtx typeCtx codeStore = EvaluationCtx
   { _evaluationCodeStore    = codeStore
   , _evaluationExprBindings = emptyBindings
   , _evaluationTypeBindings = emptyBindings
+  , _evaluationTypeCtx      = typeCtx
   , _evaluationGas          = Nothing
   }
 
@@ -170,7 +173,7 @@ reduceEvaluationLimit = Evaluate $ \ctx -> pure $ Right (ctx{_evaluationGas = fm
 -- This is what allows types at the expression level to be passed into types.
 toTypeReductionCtx
   :: Evaluate TypeReductionCtx
-toTypeReductionCtx = undefined
+toTypeReductionCtx = Evaluate $ \ctx -> pure $ Right (ctx, TypeReductionCtx (_evaluationTypeBindings ctx) (_evaluationTypeCtx ctx) (_evaluationGas ctx))
 
 -- | Query for the Bound Expr associated with a variable binding.
 --

@@ -66,7 +66,11 @@ topTypeReductionCtx typeCtx = TypeReductionCtx
 hitTypeReductionLimit
   :: TypeReductionCtx
   -> Bool
-hitTypeReductionLimit ctx = _typeReductionGas ctx <= Just 0
+hitTypeReductionLimit ctx = case _typeReductionGas ctx of
+  Nothing
+    -> False
+  Just g
+    -> g <= 0
 
 -- | If the amount of reductions has a gas limit, reduce the amount available.
 reduceTypeReductionLimit

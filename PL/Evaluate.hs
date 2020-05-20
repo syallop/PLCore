@@ -152,7 +152,12 @@ instance Monad Evaluate where
 -- depleted.
 hitEvaluationLimit
   :: Evaluate Bool
-hitEvaluationLimit  = Evaluate $ \ctx -> pure $ Right (ctx, _evaluationGas ctx <= Just 0)
+hitEvaluationLimit  = Evaluate $ \ctx -> pure $ Right (ctx, case _evaluationGas ctx of
+                                                              Nothing
+                                                                -> False
+                                                              Just g
+                                                                -> g <= 0
+                                                      )
 
 -- | If the amount of evaluation steps has a gas limit, reduce the amount available.
 reduceEvaluationLimit

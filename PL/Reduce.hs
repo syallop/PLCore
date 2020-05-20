@@ -87,7 +87,11 @@ topReductionCtx typeCtx = ReductionCtx
 hitReductionLimit
   :: ReductionCtx
   -> Bool
-hitReductionLimit ctx = _reductionGas ctx <= Just 0
+hitReductionLimit ctx = case _reductionGas ctx of
+  Nothing
+    -> False
+  Just g
+    -> g <= 0
 
 -- | If the amount of reductions has a gas limit, reduce the amount available.
 reduceReductionLimit

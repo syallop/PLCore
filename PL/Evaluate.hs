@@ -367,6 +367,8 @@ evaluateStep initialExpr = case initialExpr of
             -- application should make progress.
             Binding var
               -> pure $ App (Binding var) x'
+            ContentBinding c
+              -> pure $ App (ContentBinding c) x'
 
             -- An error here indicates type checking has not been performed/ has
             -- been performed incorrectly as the expression in function

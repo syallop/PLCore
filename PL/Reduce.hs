@@ -311,6 +311,10 @@ reduceStep ctx initialExpr = case initialExpr of
             Binding var
               -> pure $ App (Binding var) x'
 
+            -- We don't reduce under content bindings
+            ContentBinding c
+              -> pure $ App (ContentBinding c) x
+
             -- An error here indicates type checking has not been performed/ has
             -- been performed incorrectly as the expression in function
             -- position is not a lambda.
@@ -353,6 +357,10 @@ reduceStep ctx initialExpr = case initialExpr of
             Binding var
               -> pure $ BigApp (Binding var) ty'
 
+            -- We don't reduce under ContentBindings
+            ContentBinding c
+              -> pure $ BigApp (ContentBinding c) ty'
+
             -- An error here indicates type/ kind checking has not been performed/ has
             -- been performed incorrectly as the expression in function
             -- position is not a big lambda.
@@ -372,6 +380,8 @@ reduceStep ctx initialExpr = case initialExpr of
             -- If the scrutinee is a binding that is unbound, we can still
             -- reduce each of the possible branches a step.
             Binding _
+              -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSStep ctx caseBranches
+            ContentBinding _
               -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSStep ctx caseBranches
 
             -- Otherwise we can proceed to identify a matching branch which we

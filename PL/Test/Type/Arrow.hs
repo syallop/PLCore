@@ -22,6 +22,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
@@ -56,7 +57,7 @@ simpleArrowTestCase
   -> TypeTestCase
 simpleArrowTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -71,8 +72,8 @@ simpleArrowTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Can be nested in the first argument"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`Arrow` boolTypeName)
               ]
@@ -84,8 +85,8 @@ simpleArrowTestCase src
 
       , TypeReductionTestCase
           { _typeReductionName = "Can be nested in the second argument"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (boolTypeName `Arrow`)
               ]

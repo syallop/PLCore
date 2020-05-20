@@ -25,6 +25,7 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
+import PL.ReduceType
 
 import PL.Test.TypeTestCase
 
@@ -61,8 +62,8 @@ typeChecksTypesSpec testCases ppKind ppError =
             -> typeCheckTypeSpec name
                                  (_isType testCase)
                                  (_underTypeBindCtx testCase)
-                                 (_underTypeCtx testCase)
-                                 (_underBindings testCase)
+                                 (_typeReductionTypeCtx . _underTypeReductionCtx $ testCase)
+                                 (_typeReductionTypeBindings . _underTypeReductionCtx $ testCase)
                                  (_hasKind testCase)
                                  ppKind
                                  ppError

@@ -157,6 +157,14 @@ lookupVarBinding ctx b =
         Just binding
           -> Right binding
 
+-- | Create a context for reducing types, built upon the current context for
+-- building expressions.
+--
+-- This is what allows types at the expression level to be passed into types.
+toTypeReductionCtx
+  :: ReductionCtx
+  -> TypeReductionCtx
+toTypeReductionCtx ctx = TypeReductionCtx (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (_reductionGas ctx)
 
 -- | Reducing an 'Expr'ession means to walk down the AST that is presumed to be:
 -- - Type checked
@@ -255,7 +263,7 @@ reduceStep ctx initialExpr = case initialExpr of
   Sum sumExpr sumIx sumTy
     -> Sum <$> reduceStep ctx sumExpr
            <*> pure sumIx
-           <*> mapM (reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100)) sumTy
+           <*> mapM (reduceType (toTypeReductionCtx ctx)) sumTy
 
   -- Reduce a single step under all product expressions.
   Product productExprs
@@ -264,12 +272,12 @@ reduceStep ctx initialExpr = case initialExpr of
   -- Reduce a single step under the union expression.
   Union unionExpr unionTyIx unionTys
     -> Union <$> reduceStep ctx unionExpr
-             <*> reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100) unionTyIx
-             <*> ((fmap Set.fromList) <$> mapM (reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100)) . Set.toList $ unionTys)
+             <*> reduceType (toTypeReductionCtx ctx) unionTyIx
+             <*> ((fmap Set.fromList) <$> mapM (reduceType (toTypeReductionCtx ctx)) . Set.toList $ unionTys)
 
   -- Reduce a single step under the lambda expression.
   Lam takeTy lamExpr
-    -> Lam <$> reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100) takeTy
+    -> Lam <$> reduceType (toTypeReductionCtx ctx) takeTy
            <*> reduceStep (underExpressionAbstraction ctx) lamExpr
 
   -- Reduce using strictish semantics:
@@ -323,7 +331,7 @@ reduceStep ctx initialExpr = case initialExpr of
           -- - Should we reduce the type before applying it?
           -- - Should we be reducing types everywhere else inside expression
           --   reduction?
-          ty' <- reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100) ty
+          ty' <- reduceType (toTypeReductionCtx ctx) ty
           f'  <- reduceStep ctx f
           case f' of
             -- Big Lambdas are reduced by binding applied types into the body

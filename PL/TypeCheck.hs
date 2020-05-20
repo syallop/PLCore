@@ -185,5 +185,5 @@ reduceTypeUnderCtx
   :: Type
   -> TypeCheckCtx
   -> Either (Error expr Type patternFor TypeCtx) Type
-reduceTypeUnderCtx ty ctx = reduceTypeWith (_typeBindings ctx) (_typeCtx ctx) (Just 100) ty
+reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_typeCtx ctx) (Just 100)) ty
 

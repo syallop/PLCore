@@ -22,6 +22,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
@@ -62,7 +63,7 @@ emptyProductTestCase
   -> TypeTestCase
 emptyProductTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -83,7 +84,7 @@ singletonProductTestCase
   -> TypeTestCase
 singletonProductTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -104,7 +105,7 @@ twoProductTestCase
   -> TypeTestCase
 twoProductTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -119,8 +120,8 @@ twoProductTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Is not the same as it's reverse"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]
@@ -134,7 +135,7 @@ duplicateProductTestCase
   -> TypeTestCase
 duplicateProductTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -149,8 +150,8 @@ duplicateProductTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Does not lose duplicates"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]

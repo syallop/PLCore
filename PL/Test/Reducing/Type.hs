@@ -68,9 +68,8 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
                                   (_isType testCase)
                                   ((TypeReductionTestCase
                                       { _typeReductionName = "Reduces"
-                                      , _typeReductionUnderTypeCtx = _underTypeCtx testCase
+                                      , _typeReductionUnderTypeReductionCtx = _underTypeReductionCtx testCase
                                       , _typeReductionUnderTypeBindCtx = _underTypeBindCtx testCase
-                                      , _typeReductionUnderTypeBindings = _underBindings testCase
                                       , _typeReductionMutateType = []
                                       , _typeReductionMatches = [TypeEquals $ _reducesTo testCase]
                                    }) : _reducesToWhenApplied testCase)
@@ -98,20 +97,20 @@ reduceTypeToSpec
   -> (TyVar -> Doc)
   -> Spec
 reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
-  mapM_ (\(TypeReductionTestCase name underCtx underTypeBindCtx underTypeBindings mutations expectReduction)
+  mapM_ (\(TypeReductionTestCase name underCtx underTypeBindCtx mutations expectReduction)
           -> let mutatedType = apply (stripTypeComments inputType) mutations
-              in reduceSpec name underCtx underTypeBindCtx underTypeBindings mutatedType expectReduction) reductions
+              in reduceSpec name underCtx underTypeBindCtx (_typeReductionTypeBindings underCtx) mutatedType expectReduction) reductions
   where
     reduceSpec
       :: Text.Text
-      -> TypeCtx
+      -> TypeReductionCtx
       -> BindCtx TyVar Kind
       -> Bindings Type
       -> Type
       -> [TypeMatch]
       -> Spec
     reduceSpec name underCtx underTypeBindCtx underTypeBindings typ typeMatches = it (Text.unpack name) $
-      let reducedType = reduceTypeWith underTypeBindings underCtx Nothing typ
+      let reducedType = reduceType underCtx typ
        in mapM_ (test reducedType) typeMatches
 
       where
@@ -141,7 +140,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                  ]
 
           (Right redType, TypeEquals expectedType)
-            -> case typeEq underTypeBindCtx underTypeBindings underCtx redType expectedType of
+            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) redType expectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"
@@ -172,7 +171,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                    -> pure ()
 
           (Right redType, TypeDoesNotEqual notExpectedType)
-            -> case typeEq underTypeBindCtx underTypeBindings underCtx redType notExpectedType of
+            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) redType notExpectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"

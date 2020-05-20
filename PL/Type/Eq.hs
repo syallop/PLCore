@@ -34,6 +34,8 @@ import qualified Data.Text as Text
 
 import Debug.Trace
 
+-- TODO: Consider adding/ sharing a Ctx type to thread through these functions.
+
 -- Are two types equivalent under a typectx?
 -- TODO: Should check equality under a BindCtx tb Kind
 typeEq
@@ -131,7 +133,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type0 type1
        (ty0, TypeApp _ _)
          -> typeEqWith typeBindCtx typeBindings typeNameCtx reductionLimit type1 ty0
        (TypeApp f0 x0, ty1)
-         -> case reduceTypeStep typeBindings typeNameCtx f0 of
+         -> case reduceTypeStep (TypeReductionCtx typeBindings typeNameCtx (Just 100)) f0 of
               Left e
                 -> Left e
 

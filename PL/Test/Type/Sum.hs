@@ -22,6 +22,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
@@ -60,7 +61,7 @@ sumTwoTestCase
   -> TypeTestCase
 sumTwoTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -75,8 +76,8 @@ sumTwoTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Is NOT the same as the reverse sum"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]
@@ -92,7 +93,7 @@ singletonSumTestCase
   -> TypeTestCase
 singletonSumTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -107,8 +108,8 @@ singletonSumTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Sum(Unit) != Sum(Unit,Unit)"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               []
           , _typeReductionMatches =
@@ -121,7 +122,7 @@ duplicateSumTestCase
   -> TypeTestCase
 duplicateSumTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -136,8 +137,8 @@ duplicateSumTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Sum(Unit,Unit) != Sum(Unit)"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]

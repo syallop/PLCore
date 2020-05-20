@@ -22,6 +22,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
@@ -61,12 +62,12 @@ unionTwoTestCase
   -> TypeTestCase
 unionTwoTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
+  ,_isType                = ty
+  ,_parsesFrom            = src
+  ,_hasKind               = k
+  ,_reducesTo             = stripTypeComments ty
+  ,_reducesToWhenApplied  = reduces
   }
   where
     ctx = sharedTypeCtx
@@ -76,8 +77,8 @@ unionTwoTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Is the same as the reverse union"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]
@@ -91,12 +92,12 @@ singletonUnionTestCase
   -> TypeTestCase
 singletonUnionTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
+  ,_isType                = ty
+  ,_parsesFrom            = src
+  ,_hasKind               = k
+  ,_reducesTo             = stripTypeComments ty
+  ,_reducesToWhenApplied  = reduces
   }
   where
     ctx = sharedTypeCtx
@@ -106,8 +107,8 @@ singletonUnionTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "union(Unit) == union(Unit,Unit)"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]
@@ -121,7 +122,7 @@ duplicateUnionTestCase
   -> TypeTestCase
 duplicateUnionTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_isType               = ty
   ,_parsesFrom           = src
   ,_hasKind              = k
@@ -140,8 +141,8 @@ duplicateUnionTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Union cannot contain the same type multiple times"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]

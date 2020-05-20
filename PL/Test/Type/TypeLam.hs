@@ -22,6 +22,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
@@ -58,7 +59,7 @@ simpleTypeLamTestCase
   -> TypeTestCase
 simpleTypeLamTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_underTypeBindCtx     = emptyCtx
   ,_isType               = ty
   ,_parsesFrom           = src
@@ -74,8 +75,7 @@ simpleTypeLamTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Bind types when applied"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` unitTypeName)
@@ -92,7 +92,7 @@ nestedTypeLamTestCase
   -> TypeTestCase
 nestedTypeLamTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
   ,_underTypeBindCtx     = emptyCtx
   ,_isType               = ty
   ,_parsesFrom           = src
@@ -108,8 +108,7 @@ nestedTypeLamTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Reduces to outer type"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` boolTypeName)
@@ -122,8 +121,7 @@ nestedTypeLamTestCase src
 
       , TypeReductionTestCase
           { _typeReductionName = "Reduces under type lambda"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` boolTypeName)

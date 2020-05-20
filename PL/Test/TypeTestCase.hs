@@ -26,6 +26,7 @@ import PL.Expr
 import PL.Commented
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Name
@@ -56,26 +57,21 @@ import PL.Test.Source
 import PL.Test.Util
 
 data TypeTestCase = TypeTestCase
-  { _underTypeCtx          :: TypeCtx -- ^ Under this given typing context
+  { _underTypeReductionCtx :: TypeReductionCtx
   , _underTypeBindCtx      :: BindCtx TyVar Kind
-  , _underBindings         :: Bindings Type
-
   , _isType                :: TypeFor CommentedPhase -- ^ An Expr
   , _parsesFrom            :: Text                  -- ^ And also parses from this textual representation
   , _hasKind               :: Kind
-  , _reducesTo            :: Type -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
-  , _reducesToWhenApplied :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
+  , _reducesTo             :: Type -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
+  , _reducesToWhenApplied  :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
   }
 
 data TypeReductionTestCase = TypeReductionTestCase
-  { _typeReductionName              :: Text
-
-  , _typeReductionUnderTypeCtx      :: TypeCtx
-  , _typeReductionUnderTypeBindCtx  :: BindCtx TyVar Kind
-  , _typeReductionUnderTypeBindings :: Bindings Type
-
-  , _typeReductionMutateType        :: [Type -> Type]
-  , _typeReductionMatches           :: [TypeMatch]
+  { _typeReductionName                  :: Text
+  , _typeReductionUnderTypeReductionCtx :: TypeReductionCtx
+  , _typeReductionUnderTypeBindCtx      :: BindCtx TyVar Kind
+  , _typeReductionMutateType            :: [Type -> Type]
+  , _typeReductionMatches               :: [TypeMatch]
   }
 
 data TypeMatch

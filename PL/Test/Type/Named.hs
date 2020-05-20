@@ -24,6 +24,7 @@ import PL.Expr
 import PL.FixPhase
 import PL.Kind
 import PL.Reduce
+import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
@@ -87,12 +88,13 @@ simpleNameTestCase
   -> TypeTestCase
 simpleNameTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
+  ,_underTypeBindCtx      = emptyCtx
+  ,_isType                = ty
+  ,_parsesFrom            = src
+  ,_hasKind               = k
+  ,_reducesTo             = stripTypeComments ty
+  ,_reducesToWhenApplied  = reduces
   }
   where
     ctx = namedTypeCtx
@@ -102,8 +104,8 @@ simpleNameTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Named types reduce to their definition"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]
@@ -118,12 +120,12 @@ recursiveNameTestCase
   -> TypeTestCase
 recursiveNameTestCase src
   = TypeTestCase
-  {_underTypeCtx         = ctx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
+  {_underTypeReductionCtx = topTypeReductionCtx ctx
+  ,_isType                = ty
+  ,_parsesFrom            = src
+  ,_hasKind               = k
+  ,_reducesTo             = stripTypeComments ty
+  ,_reducesToWhenApplied  = reduces
   }
   where
     ctx = namedTypeCtx
@@ -133,8 +135,8 @@ recursiveNameTestCase src
     reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Equal themselves"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]
@@ -144,8 +146,8 @@ recursiveNameTestCase src
           }
       , TypeReductionTestCase
           { _typeReductionName = "Equal unwrappings of themselves"
-          , _typeReductionUnderTypeCtx = ctx
-          , _typeReductionUnderTypeBindings = emptyBindings
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
               ]

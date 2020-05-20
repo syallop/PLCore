@@ -246,8 +246,7 @@ reduceStep ctx initialExpr = case initialExpr of
   -- reduction would terminate.
   --
   -- We choose not to as:
-  -- - We expect them to be substituted in the evaluation phase (which does not
-  --   exist).
+  -- - We expect them to be substituted in the evaluation phase.
   -- - Leaving un-reduced allows them to be made recursive/ self-referential in
   --  the future without changing behaviour here.
   -- - The final result of a reduction may be stored and currently serves the

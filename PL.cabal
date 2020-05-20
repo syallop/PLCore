@@ -30,6 +30,7 @@ library
                      , PL.Store.Nested
                      , PL.Store.File
                      , PL.FixPhase
+                     , PL.Evaluate
                      , PL.ExprLike
                      , PL.Kind
                      , PL.TypeCheck

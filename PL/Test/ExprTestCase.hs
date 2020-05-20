@@ -33,6 +33,7 @@ import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
 import PL.Bindings
+import PL.Evaluate
 
 
 import PLGrammar
@@ -59,16 +60,30 @@ import PL.Test.Util
 --
 -- It's likely factored badly.
 data ExprTestCase = ExprTestCase
-  {_underTypeCheckCtx    :: TypeCheckCtx           -- ^ Under this given typing context
+  { _isExpr :: ExprFor CommentedPhase -- ^ An Expr
+
+  -- Parsing tests
+  ,_parsesFrom :: Text -- ^ And also parses from this textual representation
+
+  -- Type-checking tests
+  ,_underTypeCheckCtx :: TypeCheckCtx -- ^ Under this given typing context
+  ,_typed             :: Type -- ^ Has this type
+
+  -- Reduction tests
   ,_underReductionCtx    :: ReductionCtx
-  ,_isExpr               :: ExprFor CommentedPhase -- ^ An Expr
-  ,_typed                :: Type                   -- ^ Has this type
-  ,_parsesFrom           :: Text                   -- ^ And also parses from this textual representation
-  ,_reducesTo            :: Expr                   -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
+  ,_reducesTo            :: Expr                -- ^ Expr reduces to this form. E.G. when it contains lambdas applied to expressions.
   ,_reducesToWhenApplied :: [ReductionTestCase]
+
+  -- Evaluation tests
+  ,_underEvaluationCtx     :: EvaluationCtx
+  ,_evaluatesTo            :: Expr
+  ,_evaluatesToWhenApplied :: [EvaluationTestCase]
   }
 
 -- A Reduction test has a name, a list of transformations and is expected to
 -- fail or succeed with some reduced expression.
 type ReductionTestCase = (Text, [Expr -> Expr], Maybe Expr)
 
+-- |n Evaluation test has a name, a list of transformations and is expected to
+-- fail or succeed with some evaluated expression.
+type EvaluationTestCase = (Text, [Expr -> Expr], Maybe Expr)

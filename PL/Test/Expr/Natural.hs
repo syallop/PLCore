@@ -80,7 +80,8 @@ subTwoExprTestCase
   -> ExprTestCase
 subTwoExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx    = ctx
+      { _underTypeCheckCtx    = topTypeCheckCtx ctx
+      , _underReductionCtx    = topReductionCtx ctx
       , _isExpr               = e
       , _typed                = ty
       , _parsesFrom           = src
@@ -88,7 +89,7 @@ subTwoExprTestCase src
       , _reducesToWhenApplied = reduces
       }
   where
-    ctx = topTypeCheckCtx natTypeCtx
+    ctx = natTypeCtx
 
     e :: CommentedExpr
     e =

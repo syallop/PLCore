@@ -63,7 +63,7 @@ reducesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
   describe "All example programs"
     . mapM_ (\(name,testCase)
               -> reduceToSpec name
-                              (_underTypeCheckCtx testCase)
+                              (_underReductionCtx testCase)
                               (_isExpr testCase)
                               (("Reduces",[],Just . _reducesTo $ testCase) : _reducesToWhenApplied testCase)
                               ppExpr
@@ -81,7 +81,7 @@ reducesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
 -- Where the expression in turn applied to each list of arguments must reduce to the given expected result
 reduceToSpec
   :: Text.Text
-  -> TypeCheckCtx
+  -> ReductionCtx
   -> ExprFor CommentedPhase
   -> [ReductionTestCase]
   -> (Expr -> Doc)
@@ -98,7 +98,7 @@ reduceToSpec name ctx inputExpr reductions ppExpr ppType ppPattern ppVar ppTyVar
       -> ExprFor DefaultPhase
       -> Maybe (ExprFor DefaultPhase)
       -> Spec
-    reduceSpec name expr eqExpr = it (Text.unpack name) $ case (reduce (_typeCtx ctx) expr, eqExpr) of
+    reduceSpec name expr eqExpr = it (Text.unpack name) $ case (reduce ctx expr, eqExpr) of
       (Left exprErr, Just expectedExpr)
         -> expectationFailure . Text.unpack . render $ mconcat
              [ text "Could not reduce:"
@@ -127,7 +127,7 @@ reduceToSpec name ctx inputExpr reductions ppExpr ppType ppPattern ppVar ppTyVar
              ]
 
       (Right redExpr, Just expectedExpr)
-        -> case exprEq emptyBindings (_typeBindings ctx) (_typeCtx ctx) redExpr expectedExpr of
+        -> case exprEq ctx redExpr expectedExpr of
              Left err
                -> expectationFailure . Text.unpack . render $ mconcat
                     [ text "The expression reduced to:"

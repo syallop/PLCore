@@ -59,7 +59,8 @@ defaultNatTestCase
   -> ExprTestCase
 defaultNatTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = ctx
+      { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -68,7 +69,7 @@ defaultNatTestCase src
       ,_reducesToWhenApplied = reductions
       }
   where
-    ctx = topTypeCheckCtx $ maybeTypeCtx <> natTypeCtx
+    ctx = maybeTypeCtx <> natTypeCtx
 
     -- \x:Maybe Nat ->
     -- case x of

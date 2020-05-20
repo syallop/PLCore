@@ -16,8 +16,10 @@ Reduce expressions by maintaining a binding ctx and performing substitution
 and recursive reduction when necessary.
 -}
 module PL.Reduce
-  ( reduce
-  , reduceWith
+  ( ReductionCtx (..)
+  , topReductionCtx
+
+  , reduce
   , reduceStep
 
   , reducePossibleCaseBranchesStep
@@ -58,6 +60,104 @@ import qualified Data.Set as Set
 
 import PLPrinter
 
+-- | ReductionCtx contains information used/ generated when reducing an
+-- expression.
+data ReductionCtx = ReductionCtx
+  { _reductionExprBindings :: Bindings Expr -- ^ Expressions that are either Bound or Unbound by an outer abstraction.
+  , _reductionTypeBindings :: Bindings Type -- ^ Types that are either Bound or Unbound by an outer type abstraction.
+  , _reductionTypeCtx      :: TypeCtx       -- ^ Associated named types to their TypeInfo definitions.
+  , _reductionGas          :: Maybe Int     -- ^ Proportional to the amount of reduction steps allowed before reduction is aborted. All reduction steps should terminate eventually however this parameter can be used to detect bugs, I.E. diverging reduction or inefficient reduction paths.
+  }
+  deriving Show
+
+-- | Reduce a top-level expression with a TypeCtx mapping type-names to type
+-- definitions.
+topReductionCtx
+  :: TypeCtx
+  -> ReductionCtx
+topReductionCtx typeCtx = ReductionCtx
+  { _reductionExprBindings = emptyBindings
+  , _reductionTypeBindings = emptyBindings
+  , _reductionTypeCtx      = typeCtx
+  , _reductionGas          = Just 100
+  }
+
+-- | True when the ReductionCtx has been provided limited gas which has been
+-- depleted.
+hitReductionLimit
+  :: ReductionCtx
+  -> Bool
+hitReductionLimit ctx = _reductionGas ctx <= Just 0
+
+-- | If the amount of reductions has a gas limit, reduce the amount available.
+reduceReductionLimit
+  :: ReductionCtx
+  -> ReductionCtx
+reduceReductionLimit ctx = ctx{_reductionGas = fmap (subtract 1) $ _reductionGas ctx}
+
+-- | Context under some abstraction where the variable has _not_ been bound.
+underExpressionAbstraction
+  :: ReductionCtx
+  -> ReductionCtx
+underExpressionAbstraction ctx = ctx{_reductionExprBindings = unbound . bury . _reductionExprBindings $ ctx}
+
+-- | Context after an Expr is applied.
+underAppliedExpression
+  :: Expr
+  -> ReductionCtx
+  -> ReductionCtx
+underAppliedExpression appliedExpr ctx = ctx{_reductionExprBindings = bind appliedExpr . _reductionExprBindings $ ctx}
+
+-- | Context after multiple Exprs are applied left-to-right.
+-- (I.E. right-most becomes the nearest binding).
+underAppliedExpressions
+  :: [Expr]
+  -> ReductionCtx
+  -> ReductionCtx
+underAppliedExpressions appliedExprs ctx = ctx{_reductionExprBindings = bindAll appliedExprs . _reductionExprBindings $ ctx}
+
+-- | Context under some type abstraction where the type variable has _not_ been
+-- bound.
+underTypeAbstraction
+  :: ReductionCtx
+  -> ReductionCtx
+underTypeAbstraction ctx = ctx{_reductionTypeBindings = unbound . bury . _reductionTypeBindings $ ctx}
+
+-- | Context after a Type is applied.
+underAppliedType
+  :: Type
+  -> ReductionCtx
+  -> ReductionCtx
+underAppliedType appliedType ctx = ctx{_reductionTypeBindings = bind appliedType . _reductionTypeBindings $ ctx}
+
+-- | Query for the Bound/Unbound Expr associated with a variable binding.
+--
+-- Fails when the variable supplied is too large.
+lookupVarBinding
+  :: ReductionCtx
+  -> Var
+  -> Either (Error Expr Type Pattern TypeCtx) (Binding Expr)
+lookupVarBinding ctx b =
+  let ix       = bindDepth b
+      bindings = _reductionExprBindings ctx
+   in case safeIndex (Proxy :: Proxy Var) bindings ix of
+        -- We've been asked to bind an expression further away than there are
+        -- lambda abstractions.
+        -- This indicates either a logic error in the reduction or a failure
+        -- to type-check/ validate the input AST for this case.
+        --
+        -- E.G. '\Foo 99'.
+        --
+        -- TODO:
+        -- - Are invalid bindings caught at the type-checking phase?
+        -- - Can we check in an earlier phase and avoid doing so here?
+        Nothing
+          -> Left . EBindExprLookupFailure ix $ bindings
+
+        Just binding
+          -> Right binding
+
+
 -- | Reducing an 'Expr'ession means to walk down the AST that is presumed to be:
 -- - Type checked
 -- - Stripped of unnecessary extensions such as comments
@@ -85,80 +185,51 @@ import PLPrinter
 --   - Case analysis reduces it's scrutinee fully before proceeding with
 --   matches.
 reduce
-  :: TypeCtx
+  :: ReductionCtx
   -> Expr
   -> Either (Error Expr Type Pattern TypeCtx) Expr
-reduce typeCtx expr = reduceWith emptyBindings emptyBindings typeCtx (Just 100) expr
-
--- | 'reduce' with a collection of initial bindings as if Expressions and Types
--- have already been applied to an outer lambda abstraction.
-reduceWith
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
-  -> Maybe Int
-  -> Expr
-  -> Either (Error Expr Type Pattern TypeCtx) Expr
-reduceWith bindings typeBindings typeCtx reductionLimit initialExpr
-  | reductionLimit == Just 0
+reduce ctx initialExpr
+  | hitReductionLimit ctx
    = Left . EMsg . mconcat $
        [ text "Reduction limit reached when reducing expression. Got: "
        , text . Text.pack . show $ initialExpr
        ]
-
   | otherwise
    = do -- Apply the reduce step until the expression no longer changes.
         -- This requires that reduction eventually converges - diverging will lead to
         -- non-termination.
-        -- TODO: We could add a reduction limit here to guard against accidental
-        -- diversion.
         -- TODO: reduceStep only reduces one level under expressions for each call. If
         -- we assume the expression reduces, we should reduce faster by recursing with
-        -- reduceWith instead.
-        reducedExpr <- reduceStep bindings typeBindings typeCtx initialExpr
+        -- reduce instead.
+        reducedExpr <- reduceStep ctx initialExpr
         if reducedExpr == initialExpr
           then pure initialExpr
-          else reduceWith bindings typeBindings typeCtx (fmap (subtract 1) reductionLimit) reducedExpr
+          else reduce (reduceReductionLimit ctx) reducedExpr
 
 -- | 'reduce' a single step with a collection of initial bindings as if Expressions and Types
 -- have already been applied to an outer lambda abstraction.
 reduceStep
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> Expr
   -> Either (Error Expr Type Pattern TypeCtx) Expr
-reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
+reduceStep ctx initialExpr = case initialExpr of
   -- TODO: Consider whether/ where we should reduce types.
 
   -- Bindings are substituted if they have been bound.
   Binding b
-    -> let ix = bindDepth b
-        in case safeIndex (Proxy :: Proxy Var) bindings ix of
-          -- If no expression has been bound there is no further reduction
-          -- possible.
-          -- E.G. We're looking at '0' in a lambda that has not been applied: '\Foo 0`
-          Just Unbound
-            -> pure $ Binding b
+    -> do binding <- lookupVarBinding ctx b
+          pure $ case binding of
+            -- If no expression has been bound there is no further reduction
+            -- possible.
+            -- E.G. We're looking at '0' in a lambda that has not been applied: '\Foo 0`
+            Unbound
+              -> Binding b
 
           -- If an expression has been bound, we substitute it for the binding.
           -- We assume strict evaluation of the expression and so don't reduce
           -- it again.
-          Just (Bound e')
-            -> pure e'
-
-          -- We've been asked to bind an expression further away than there are
-          -- lambda abstractions.
-          -- This indicates either a logic error in the reduction or a failure
-          -- to type-check/ validate the input AST for this case.
-          --
-          -- E.G. '\Foo 99'.
-          --
-          -- TODO:
-          -- - Are invalid bindings caught at the type-checking phase?
-          -- - Can we check in an earlier phase and avoid doing so here?
-          Nothing
-            -> Left . EContext (EMsg . text $ "Reducing expression") . EBindExprLookupFailure ix $ bindings
+            Bound boundExpr
+              -> boundExpr
 
   -- ContentBindings are not (currently) reduced - they're sticking points for
   -- evaluation.
@@ -182,24 +253,24 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
 
   -- Reduce a single step under the sum expression.
   Sum sumExpr sumIx sumTy
-    -> Sum <$> reduceStep bindings typeBindings typeCtx sumExpr
+    -> Sum <$> reduceStep ctx sumExpr
            <*> pure sumIx
-           <*> mapM (reduceTypeWith typeBindings typeCtx (Just 100)) sumTy
+           <*> mapM (reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100)) sumTy
 
   -- Reduce a single step under all product expressions.
   Product productExprs
-    -> Product <$> mapM (reduceStep bindings typeBindings typeCtx) productExprs
+    -> Product <$> mapM (reduceStep ctx) productExprs
 
   -- Reduce a single step under the union expression.
   Union unionExpr unionTyIx unionTys
-    -> Union <$> reduceStep bindings typeBindings typeCtx unionExpr
-             <*> reduceTypeWith typeBindings typeCtx (Just 100) unionTyIx
-             <*> ((fmap Set.fromList) <$> mapM (reduceTypeWith typeBindings typeCtx (Just 100)) . Set.toList $ unionTys)
+    -> Union <$> reduceStep ctx unionExpr
+             <*> reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100) unionTyIx
+             <*> ((fmap Set.fromList) <$> mapM (reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100)) . Set.toList $ unionTys)
 
   -- Reduce a single step under the lambda expression.
   Lam takeTy lamExpr
-    -> Lam <$> reduceTypeWith typeBindings typeCtx (Just 100) takeTy
-           <*> reduceStep (unbound $ bury bindings) typeBindings typeCtx lamExpr
+    -> Lam <$> reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100) takeTy
+           <*> reduceStep (underExpressionAbstraction ctx) lamExpr
 
   -- Reduce using strictish semantics:
   -- - First reduce a step under the applied expression
@@ -210,13 +281,13 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
   -- matches the expression. It should therefore only be a lambda or a binding
   -- to a (possibly unknown) function.
   App f x
-    -> do x' <- reduceStep bindings typeBindings typeCtx x
-          f' <- reduceStep bindings typeBindings typeCtx f
+    -> do x' <- reduceStep ctx x
+          f' <- reduceStep ctx f
           case f' of
             -- Lambdas are reduced by binding applied values into the body and
             -- reducing.
             Lam _abs fBodyExpr
-              -> reduceStep (bind x' bindings) typeBindings typeCtx fBodyExpr
+              -> reduceStep (underAppliedExpression x' ctx) fBodyExpr
 
             -- The function we're applying is 'higher order' - it is sourced
             -- from a function itself.
@@ -236,7 +307,8 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
 
   -- Reduce a single step under the big lambda expression.
   BigLam takeKind lamExpr
-    -> BigLam <$> pure takeKind <*> reduceStep bindings (unbound $ bury typeBindings) typeCtx lamExpr
+    -> BigLam <$> pure takeKind
+              <*> reduceStep (underTypeAbstraction ctx) lamExpr
 
   -- Reduce using strictish semantics:
   -- - First reduce a step under the applied type
@@ -251,13 +323,13 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
           -- - Should we reduce the type before applying it?
           -- - Should we be reducing types everywhere else inside expression
           --   reduction?
-          ty' <- reduceTypeWith typeBindings typeCtx (Just 100) ty
-          f'  <- reduceStep bindings typeBindings typeCtx f
+          ty' <- reduceTypeWith (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (Just 100) ty
+          f'  <- reduceStep ctx f
           case f' of
             -- Big Lambdas are reduced by binding applied types into the body
             -- and reducing.
             BigLam _absKind fBodyExpr
-              -> reduceStep bindings (bind ty' typeBindings) typeCtx fBodyExpr
+              -> reduceStep (underAppliedType ty' ctx) fBodyExpr
 
             -- The function we're applying is 'higher order' - it is sourced
             -- from a function itself.
@@ -284,16 +356,16 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
   -- - Fail to find a match.
   -- - Arbitrarily pick the first of an overlapping match.
   CaseAnalysis (Case caseScrutinee caseBranches)
-    -> do reducedCaseScrutinee <- reduceStep bindings typeBindings typeCtx caseScrutinee
+    -> do reducedCaseScrutinee <- reduceStep ctx caseScrutinee
           case reducedCaseScrutinee of
             -- If the scrutinee is a binding that is unbound, we can still
             -- reduce each of the possible branches a step.
             Binding _
-              -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSStep bindings typeBindings typeCtx caseBranches
+              -> (CaseAnalysis . Case reducedCaseScrutinee) <$> reducePossibleCaseRHSStep ctx caseBranches
 
             -- Otherwise we can proceed to identify a matching branch which we
             -- can substitute under like a lambda expression.
-            _ -> reducePossibleCaseBranchesStep bindings typeBindings typeCtx reducedCaseScrutinee caseBranches
+            _ -> reducePossibleCaseBranchesStep ctx reducedCaseScrutinee caseBranches
 
   _ -> error "Non-exhaustive pattern in reduction step"
 
@@ -304,12 +376,10 @@ reduceStep bindings typeBindings typeCtx initialExpr = case initialExpr of
 -- 'reducePossibleCaseBranchesStep' to identify and reduce only the matching
 -- branch.
 reducePossibleCaseRHSStep
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> CaseBranches Expr Pattern
   -> Either (Error Expr Type Pattern TypeCtx) (CaseBranches Expr Pattern)
-reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep bindings typeBindings typeCtx)
+reducePossibleCaseRHSStep ctx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep ctx)
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
 -- branch, substitute the expression and reduce a step.
@@ -317,22 +387,20 @@ reducePossibleCaseRHSStep bindings typeBindings typeCtx = sequenceCaseBranchesEx
 -- If the case scrutinee is unknown (an unbound binding) you may want to use
 -- 'reducePossibleCaseRHSStep' to reduce each possible branch.
 reducePossibleCaseBranchesStep
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> Expr
   -> CaseBranches Expr Pattern
   -> Either (Error Expr Type Pattern TypeCtx) Expr
-reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \case
+reducePossibleCaseBranchesStep ctx scrutineeExpr = \case
   -- With only a default branch there is no need to bind the matched value as it
   -- should be accessible in the outer scope.
   DefaultOnly defaultExpr
-    -> reduceStep bindings typeBindings typeCtx defaultExpr
+    -> reduceStep ctx defaultExpr
 
   -- With one-many branches and a possible default, we try each branch in order
   -- and fall back to the default if a match is not found.
   CaseBranches branches mDefaultExpr
-    -> case tryBranches bindings typeBindings typeCtx scrutineeExpr branches of
+    -> case tryBranches ctx scrutineeExpr branches of
 
          -- No branch matches. We therefore expect a default to exist.
          -- No branchs pattern matches with the expression. A default branch
@@ -347,12 +415,12 @@ reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \ca
                 -- As with a DefaultOnly we don't bind the scrutineeExpression
                 -- under the match body.
                 Just defaultExpr
-                  -> reduceStep bindings typeBindings typeCtx defaultExpr
+                  -> reduceStep ctx defaultExpr
 
          -- The branch matches, bind the scrutinee expression and reduce a step
          -- under the case body.
          Just (bindExprs,rhsExpr)
-           -> reduceStep (bindAll (reverse bindExprs) bindings) typeBindings typeCtx rhsExpr
+           -> reduceStep (underAppliedExpressions (reverse bindExprs) ctx) rhsExpr
 
 -- | Try to match a (non-binding) expression against a collection of case
 -- branches.
@@ -364,13 +432,11 @@ reducePossibleCaseBranchesStep bindings typeBindings typeCtx scrutineeExpr = \ca
 -- We assume the input is type-checked which ensures patterns have the same type as the casescrutinee matched
 -- upon, and that all patterns are completly valid.
 tryBranches
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> Expr
   -> NonEmpty (CaseBranch Expr Pattern)
   -> Maybe ([Expr],Expr)
-tryBranches bindings typeBindings typeCtx caseScrutinee branches = firstMatch $ tryBranch bindings typeBindings typeCtx caseScrutinee <$> branches
+tryBranches ctx caseScrutinee branches = firstMatch $ tryBranch ctx caseScrutinee <$> branches
   where
     -- The first 'Just'
     firstMatch :: NonEmpty (Maybe a) -> Maybe a
@@ -387,66 +453,65 @@ tryBranches bindings typeBindings typeCtx caseScrutinee branches = firstMatch $ 
 -- We assume the input is type-checked which ensures patterns have the same type as the casescrutinee matched
 -- upon, and that all patterns are completly valid.
 tryBranch
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> Expr
   -> CaseBranch Expr Pattern
   -> Maybe ([Expr],Expr)
-tryBranch bindings typeBindings typeCtx caseScrutinee (CaseBranch pattern rhsExpr) =
-  (,rhsExpr) <$> patternBinding bindings typeBindings typeCtx caseScrutinee pattern
+tryBranch ctx caseScrutinee (CaseBranch pattern rhsExpr) =
+  (,rhsExpr) <$> patternBinding ctx caseScrutinee pattern
 
 -- | Given a scrutinee expression and a pattern, if the pattern matches,
 -- return the list of expressions that should be bound under the RHS.
 patternBinding
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> Expr
   -> Pattern
   -> Maybe [Expr]
-patternBinding bindings typeBindings typeCtx caseScrutinee pattern = case (caseScrutinee,pattern) of
+patternBinding ctx caseScrutinee pattern = case (caseScrutinee,pattern) of
+  -- TODO: Switch to Either Error [Expr]
 
   -- This pattern matches when the scrutinee expression is equal to the
   -- expression referenced by a binding.
   (expr,BindingPattern b)
-    -> case index (Proxy :: Proxy Var) bindings (bindDepth b) of
-           -- There is a difference between unknown if matching and not matching
-           -- that is not being captured here
+    -> case lookupVarBinding ctx b of
+         Left err
+           -> error . show $ err
 
-           -- The binding is unbound and so we don't know whether we've matched
-           -- or not.
-           -- TODO: The result type of this function should be extended to
-           -- distinguish between match|no-match|unknown
-           Unbound
-             -> error "Checking matches with bindings that are unbound is not yet supported."
+         -- There is a difference between unknown if matching and not matching
+         -- that is not being captured here
 
-           -- If the expression is bound, there is a match if it reduces to
-           -- exactly the same value.
-           Bound bExpr
-             -> case exprEq bindings typeBindings typeCtx expr bExpr of
+         -- The binding is unbound and so we don't know whether we've matched
+         -- or not.
+         -- TODO: The result type of this function should be extended to
+         -- distinguish between match|no-match|unknown
+         Right Unbound
+           -> error "Checking matches with bindings that are unbound is not yet supported"
 
-                  -- One of the expressions is invalid.
-                  -- This shouldnt happen because:
-                  -- - The expression should have been typechecked
-                  -- - The bound expressions should be valid.
-                  Left e
-                    -> error $ show e
+         -- If the expression is bound, there is a match if it reduces to
+         -- exactly the same value.
+         Right (Bound bExpr)
+           -> case exprEq ctx expr bExpr of
+                -- One of the expressions is invalid.
+                -- This shouldnt happen because:
+                -- - The expression should have been typechecked
+                -- - The bound expressions should be valid.
+                Left e
+                  -> error $ show e
 
-                  -- Non match!
-                  Right False
-                    -> Nothing
+                -- Non match!
+                Right False
+                  -> Nothing
 
-                  -- Match! No patterns are allowed in regular expressions so there is nothing to bind.
-                  Right True
-                    -> Just []
+                -- Match! No patterns are allowed in regular expressions so there is nothing to bind.
+                Right True
+                  -> Just []
 
   -- Sum patterns begin matching when paired with a sum expression with the same
   -- index.
   (Sum sumExpr sumIx sumTys, SumPattern ix pattern)
     -- This index matches. Attempt to match further.
     | sumIx == ix
-     -> patternBinding bindings typeBindings typeCtx sumExpr pattern
+     -> patternBinding ctx sumExpr pattern
 
     -- Indexes are different.
     | otherwise
@@ -454,7 +519,7 @@ patternBinding bindings typeBindings typeCtx caseScrutinee pattern = case (caseS
 
   -- Product patterns match when each constituent expression matches.
   (Product productExprs, ProductPattern patterns)
-    -> patternBindings bindings typeBindings typeCtx productExprs patterns
+    -> patternBindings ctx productExprs patterns
 
   -- Union patterns begin matching when paired with a union expression with the
   -- same type index.
@@ -463,7 +528,7 @@ patternBinding bindings typeBindings typeCtx caseScrutinee pattern = case (caseS
     -- TODO: Consider using typeEq to determine matches. Currently types which
     -- would reduce to the same type do not match.
     | unionTyIx == ty
-      -> patternBinding bindings typeBindings typeCtx unionExpr pattern
+      -> patternBinding ctx unionExpr pattern
 
     -- Type indexes are different.
     | otherwise
@@ -494,32 +559,28 @@ patternBinding bindings typeBindings typeCtx caseScrutinee pattern = case (caseS
 -- Type/ validity checking should have ensured the input lists are the same
 -- length and contain valid patterns.
 patternBindings
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> [Expr]
   -> [Pattern]
   -> Maybe [Expr]
-patternBindings bindings typeBindings typeCtx exprs patterns
+patternBindings ctx exprs patterns
   -- Sanity check that we have the same number of expressions and patterns
   | length exprs /= length patterns
    = error "Cannot decide whether a list of expressions and patterns match as there are differing amounts. This indicates the input has not been correctly type-checked."
 
   | otherwise
-   = concat <$> zipWithM (patternBinding bindings typeBindings typeCtx) exprs patterns
+   = concat <$> zipWithM (patternBinding ctx) exprs patterns
 
 -- | Test whether two expressions are equal under the same bindings.
 -- Expressions are equal when they reduce to the same form as well as when they
 -- are syntactically equal.
 exprEq
-  :: Bindings Expr
-  -> Bindings Type
-  -> TypeCtx
+  :: ReductionCtx
   -> Expr
   -> Expr
   -> Either (Error Expr Type Pattern TypeCtx) Bool
-exprEq bindings typeBindings typeCtx e0 e1 = do
-  redE0 <- reduceWith bindings typeBindings typeCtx (Just 100) e0
-  redE1 <- reduceWith bindings typeBindings typeCtx (Just 100) e1
+exprEq ctx e0 e1 = do
+  redE0 <- reduce ctx e0
+  redE1 <- reduce ctx e1
   Right $ redE0 == redE1
 

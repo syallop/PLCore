@@ -61,6 +61,7 @@ idExprTestCase
 idExprTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -86,6 +87,7 @@ constExprTestCase
 constExprTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -120,6 +122,7 @@ applyExprTestCase
 applyExprTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src

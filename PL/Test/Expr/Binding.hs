@@ -63,6 +63,7 @@ bindingTestCase
 bindingTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -94,6 +95,7 @@ buriedBindingTestCase
 buriedBindingTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -138,6 +140,7 @@ doubleBuriedBindingTestCase
 doubleBuriedBindingTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src
@@ -184,6 +187,7 @@ buriedBindingsDontMoveTestCase
 buriedBindingsDontMoveTestCase src
   = ExprTestCase
       { _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _underReductionCtx = topReductionCtx ctx
       , _isExpr       = e
       , _typed        = ty
       , _parsesFrom   = src

@@ -60,6 +60,7 @@ import PL.Test.Util
 -- It's likely factored badly.
 data ExprTestCase = ExprTestCase
   {_underTypeCheckCtx    :: TypeCheckCtx           -- ^ Under this given typing context
+  ,_underReductionCtx    :: ReductionCtx
   ,_isExpr               :: ExprFor CommentedPhase -- ^ An Expr
   ,_typed                :: Type                   -- ^ Has this type
   ,_parsesFrom           :: Text                   -- ^ And also parses from this textual representation

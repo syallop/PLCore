@@ -441,7 +441,7 @@ instance
     BindingF ext b
       -> HashTag "Expr.Binding" [toHashToken ext,toHashToken b]
 
-    ContentBindingF ext c
+    ContentBindingF _ext c
       -> HashIs . contentName $ c
 
     CaseAnalysisF ext c

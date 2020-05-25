@@ -49,6 +49,8 @@ module PL.Type
   , pattern TypeAppExt
   , pattern TypeBinding
   , pattern TypeBindingExt
+  , pattern TypeContentBinding
+  , pattern TypeContentBindingExt
   , pattern TypeExtension
   , pattern TypeExtensionExt
 
@@ -64,6 +66,7 @@ module PL.Type
   , TypeLamExtension
   , TypeAppExtension
   , TypeBindingExtension
+  , TypeContentBindingExtension
 
   , TypeExtension
 
@@ -250,6 +253,17 @@ data TypeF phase typ
     , _binding          :: TypeBindingFor phase
     }
 
+  -- | Bind a type uniquely named by its content.
+  --
+  -- E.G. sha512/BGpbCZNFqE6aQE1
+  --
+  -- These hashes are currently non-cyclic and there is no way for a type to
+  -- refer to itself meaning this does not introduce recursion.
+  | TypeContentBindingF
+    { _nameBindingExtension :: TypeContentBindingExtension phase
+    , _name                 :: ContentName
+    }
+
   | TypeExtensionF
     { _typeExtension :: !(TypeExtension phase)
     }
@@ -264,6 +278,7 @@ deriving instance
   ,Eq (TypeLamExtension phase)
   ,Eq (TypeAppExtension phase)
   ,Eq (TypeBindingExtension phase)
+  ,Eq (TypeContentBindingExtension phase)
   ,Eq (TypeExtension phase)
   ,Eq (TypeBindingFor phase)
   ,Eq typ
@@ -280,6 +295,7 @@ deriving instance
   ,Ord (TypeLamExtension phase)
   ,Ord (TypeAppExtension phase)
   ,Ord (TypeBindingExtension phase)
+  ,Ord (TypeContentBindingExtension phase)
   ,Ord (TypeExtension phase)
   ,Ord (TypeBindingFor phase)
   ,Ord typ
@@ -296,6 +312,7 @@ instance
   ,Show (TypeLamExtension phase)
   ,Show (TypeAppExtension phase)
   ,Show (TypeBindingExtension phase)
+  ,Show (TypeContentBindingExtension phase)
   ,Show (TypeExtension phase)
   ,Show (TypeBindingFor phase)
   ,Show typ
@@ -329,6 +346,9 @@ instance
       TypeBindingF ext b
         -> ["{TypeBinding ", show ext, " ", show b, "}"]
 
+      TypeContentBindingF ext name
+        -> ["{TypeContentBinding ", show ext, " ", show name, "}"]
+
       TypeExtensionF ext
         -> ["{TypeExtension ", show ext, "}"]
 
@@ -342,6 +362,7 @@ instance
   ,Hashable (TypeLamExtension phase)
   ,Hashable (TypeAppExtension phase)
   ,Hashable (TypeBindingExtension phase)
+  ,Hashable (TypeContentBindingExtension phase)
   ,Hashable (TypeExtension phase)
   ,Hashable (TypeBindingFor phase)
   ,Hashable typ
@@ -378,6 +399,9 @@ instance
     TypeBindingF ext b
       -> HashTag "Type.Binding" [toHashToken ext, toHashToken b]
 
+    TypeContentBindingF _ext c
+      -> HashIs . contentName $ c
+
     TypeExtensionF ext
       -> HashTag "Type.TypeExtension" [toHashToken ext]
 
@@ -392,6 +416,7 @@ type family BigArrowExtension phase
 type family TypeLamExtension phase
 type family TypeAppExtension phase
 type family TypeBindingExtension phase
+type family TypeContentBindingExtension phase
 
 -- The TypeExtension type family allows adding new constructors to the base Type
 -- which depend upon the phase
@@ -489,6 +514,15 @@ pattern TypeBindingExt :: TypeBindingExtension phase -> TypeBindingFor phase -> 
 pattern TypeBindingExt ext tyVar <- FixPhase (TypeBindingF ext tyVar)
   where TypeBindingExt ext tyVar =  FixPhase (TypeBindingF ext tyVar)
 
+-- TypeContentBinding for phases where there is no extension to the constructor.
+pattern TypeContentBinding :: TypeContentBindingExtension phase ~ Void => ContentName -> TypeFor phase
+pattern TypeContentBinding c <- FixPhase (TypeContentBindingF _ c)
+  where TypeContentBinding c =  FixPhase (TypeContentBindingF void c)
+
+pattern TypeContentBindingExt :: TypeContentBindingExtension phase -> ContentName -> TypeFor phase
+pattern TypeContentBindingExt ext c <- FixPhase (TypeContentBindingF ext c)
+  where TypeContentBindingExt ext c =  FixPhase (TypeContentBindingF ext c)
+
 -- TypeExtensionF for phases where there is no extension to number of constructors.
 pattern TypeExtension :: TypeExtension phase ~ Void => TypeFor phase
 pattern TypeExtension <- FixPhase (TypeExtensionF _)
@@ -507,6 +541,7 @@ type instance BigArrowExtension DefaultPhase = Void
 type instance TypeLamExtension DefaultPhase = Void
 type instance TypeAppExtension DefaultPhase = Void
 type instance TypeBindingExtension DefaultPhase = Void
+type instance TypeContentBindingExtension DefaultPhase = Void
 
 -- TODO: Should _this_ be unit instead of void?
 type instance TypeExtension DefaultPhase = Void
@@ -558,6 +593,10 @@ instance HasBinding Type TyVar where
   applyToBinding f ty = case ty of
     TypeBinding tb -> TypeBinding (f tb)
     ty             -> ty
+
+instance HasBinding Type ContentName where
+  applyToBinding f (TypeContentBindingExt typ c) = TypeContentBindingExt typ (f c)
+  applyToBinding _ e           = e
 
 instance HasNonAbs Type where
   applyToNonAbs f ty = case ty of
@@ -615,6 +654,9 @@ instantiate = instantiate' 0
         | bindDepth tb == i -> buryBy (Proxy :: Proxy TyVar) instType (BuryDepth i)
         | otherwise         ->  TypeBinding tb
 
+      TypeContentBinding n
+        -> TypeContentBinding n
+
       Named n
         ->  Named n
 
@@ -653,6 +695,9 @@ forgetTypeExtensions = \case
 
   TypeBindingExt _ binding
     -> TypeBinding binding
+
+  TypeContentBindingExt _ n
+    -> TypeContentBinding n
 
   TypeExtensionExt _
     -> TypeExtension

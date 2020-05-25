@@ -135,6 +135,7 @@ type instance BigArrowExtension CommentedPhase = Void
 type instance TypeLamExtension CommentedPhase = Void
 type instance TypeAppExtension CommentedPhase = Void
 type instance TypeBindingExtension CommentedPhase = Void
+type instance TypeContentBindingExtension CommentedPhase = Void
 
 -- No extensions to Expr level constructors
 type instance LamExtension CommentedPhase = Void
@@ -378,6 +379,9 @@ addTypeComments = \case
 
   TypeBinding b
     -> TypeBinding b
+
+  TypeContentBinding name
+    -> TypeContentBinding name
 
   _ -> error "Non-exhaustive pattern in addTypeComments"
 

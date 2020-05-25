@@ -275,10 +275,11 @@ typeKind typeBindCtx typeCtx ty = case ty of
   --
   --
   BigArrow fromKy toTy
-    -> do _ <- typeKind typeBindCtx typeCtx toTy
-          Right Kind -- TODO: should this be KindArrow?? like TypeLam.
-                     -- Is that what makes them different or should they be the same thing???
-
+    -> do let newTypeBindCtx = addBinding fromKy typeBindCtx
+          -- TODO: should this be KindArrow?? like TypeLam.
+          -- Is that what makes them different or should they be the same thing???
+          _ <- typeKind newTypeBindCtx typeCtx toTy
+          Right Kind
   --
   --
   TypeBinding b

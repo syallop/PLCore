@@ -42,7 +42,8 @@ import PL.Test.Shared
 
 -- A record of the sources required to run all the TestBigArrowSources tests.
 data TestBigArrowSources = TestBigArrowSources
-  { _simpleBigArrowTestCase :: Source
+  { _simpleBigArrowTestCase  :: Source
+  , _complexBigArrowTestCase :: Source
   }
 
 bigArrowTestCases
@@ -50,6 +51,7 @@ bigArrowTestCases
   -> [(Text,TypeTestCase)]
 bigArrowTestCases t =
   [ ("Simple Big Arrow", simpleBigArrowTestCase . _simpleBigArrowTestCase $ t)
+  , ("Complex Big Arrow", complexBigArrowTestCase . _complexBigArrowTestCase $ t)
   ]
 
 simpleBigArrowTestCase
@@ -83,3 +85,51 @@ simpleBigArrowTestCase src
           }
       ]
 
+-- Testing that types that have entered the bindctx from the expression level
+-- are resolved.
+complexBigArrowTestCase
+  :: Source
+  -> TypeTestCase
+complexBigArrowTestCase src
+  = TypeTestCase
+  {_underTypeReductionCtx = typeReductionCtx
+  ,_underTypeBindCtx      = addBinding Kind $ emptyCtx
+  ,_isType               = ty
+  ,_parsesFrom           = src
+  ,_hasKind              = k
+  ,_reducesTo            = stripTypeComments ty
+  ,_reducesToWhenApplied = reduces
+  }
+  where
+    typeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = unbound emptyBindings}
+
+    ctx = sharedTypeCtx
+    ty  = BigArrow Kind (TypeBinding $ TyVar $ VZ)
+    k = Kind
+
+    reduces =
+      [ TypeReductionTestCase
+          { _typeReductionName = "Unbound types allowed"
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = unbound emptyBindings}
+          , _typeReductionUnderTypeBindCtx = addBinding Kind $ emptyCtx
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [ TypeEquals $ BigArrow Kind (TypeBinding $ TyVar $ VZ)
+              ]
+          }
+
+     , TypeReductionTestCase
+          { _typeReductionName = "Bound types allowed"
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = bind unitTypeName emptyBindings}
+          , _typeReductionUnderTypeBindCtx = addBinding Kind $ emptyCtx
+          , _typeReductionMutateType =
+              [
+              ]
+          , _typeReductionMatches =
+              [ TypeEquals $ BigArrow Kind unitTypeName
+              ]
+          }
+
+      ]

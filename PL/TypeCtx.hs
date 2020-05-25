@@ -63,7 +63,6 @@ module PL.TypeCtx
   , insertRecType
 
   , resolveTypeInfo
-  , resolveTypeInitialInfo
   , traceResolveTypeInitialInfo
   )
   where
@@ -150,7 +149,6 @@ ppTypeCtx ppTypeName ppTypeInfo (TypeCtx m) =
     emptyDoc
     m
 
-
 -- | Information associated with a type that can be used to provide hints to
 -- type-checking, reduction phases.
 --
@@ -199,27 +197,20 @@ ppTypeInfo ppDef (TypeInfo isRecursive kind def) = mconcat
   ]
 
 -- Create TypeInfo which MUST be non-recursive
--- TODO: Move 'typeKind' from Expr module, breaking the recursion between Type,Expr,TypeCtx,etc
---       Then actually perform a kind check here instead of cheating
 mkTypeInfo
   :: TypeFor phase
+  -> Kind
   -> TypeCtxFor phase
   -> TypeInfoFor phase
-mkTypeInfo ty ctx = TypeInfo NonRec kind ty
-  where
-    {-kind = error "kind unchecked"-}
-    kind = Kind
+mkTypeInfo ty kind ctx = TypeInfo NonRec kind ty
 
 -- Create TypeInfo which is recursive.
 mkRecTypeInfo
   :: TypeFor phase
+  -> Kind
   -> TypeCtxFor phase
   -> TypeInfoFor phase
-mkRecTypeInfo ty ctx = TypeInfo Rec kind ty
-  where
-    {-kind = error "kind unchecked"-}
-    kind = Kind
-
+mkRecTypeInfo ty kind ctx = TypeInfo Rec kind ty
 
 -- The empty TypeCtx with no mappings
 emptyTypeCtx
@@ -266,44 +257,27 @@ traceLookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
   Just ti
     -> Just (ti,[])
 
-
 -- If a Named type, then lookup associated TypeInfo.
--- otherwise generate it.
 resolveTypeInfo
   :: TypeFor phase
   -> TypeCtxFor phase
   -> Maybe (TypeInfoFor phase)
 resolveTypeInfo t ctx = case t of
   NamedExt _ n -> lookupTypeNameInfo n ctx
-  t       -> Just . mkTypeInfo t $ ctx
-
-
--- If a Named type, then recursively lookup the associated TypeInfo.
--- otherwise generate it.
-resolveTypeInitialInfo
-  :: TypeFor phase
-  -> TypeCtxFor phase
-  -> Either TypeName (TypeInfoFor phase)
-resolveTypeInitialInfo t ctx = case t of
-  NamedExt _ n
-    -> case lookupTypeNameInitialInfo n ctx of
-         Nothing
-           -> Left n
-         Just i
-           -> Right i
-
-  t -> Right . mkTypeInfo t $ ctx
+  _       -> Nothing
 
 -- If a Named type, then recursively lookup the associated TypeInfo, also returning a trace of each intermediate TypeInfo.
--- otherwise, generate it first.
 traceResolveTypeInitialInfo
   :: (NamedExtension phase ~ Void)
   => TypeFor phase
   -> TypeCtxFor phase
   -> Maybe (TypeInfoFor phase,[TypeInfoFor phase])
 traceResolveTypeInitialInfo t ctx = case t of
-  NamedExt _ n -> traceLookupTypeNameInitialInfo n ctx
-  t       -> Just (mkTypeInfo t ctx,[])
+  NamedExt _ n
+    -> traceLookupTypeNameInitialInfo n ctx
+
+  _
+    -> Nothing
 
 
 -- Insert a Non-recursive type into the context with a given name, only if
@@ -313,16 +287,17 @@ traceResolveTypeInitialInfo t ctx = case t of
 insertType
   :: TypeName
   -> TypeFor phase
+  -> Kind
   -> TypeCtxFor phase
   -> Maybe (TypeCtxFor phase)
-insertType n t ctx = case lookupTypeNameInfo n ctx of
+insertType n t k ctx = case lookupTypeNameInfo n ctx of
 
   -- Name is already associated with something
   Just _ -> Nothing
 
   -- Name is free to be associated with something if all names in the type are already defined
   Nothing
-    | validDefinition t ctx -> Just . TypeCtx . Map.insert n (mkTypeInfo t ctx) $ _unTypeCtx ctx
+    | validDefinition t ctx -> Just . TypeCtx . Map.insert n (mkTypeInfo t k ctx) $ _unTypeCtx ctx
     | otherwise             -> Nothing
 
 
@@ -334,9 +309,10 @@ insertType n t ctx = case lookupTypeNameInfo n ctx of
 insertRecType
   :: TypeName
   -> TypeFor phase
+  -> Kind
   -> TypeCtxFor phase
   -> Maybe (TypeCtxFor phase)
-insertRecType n t tCtx0 = case lookupTypeNameInfo n tCtx0 of
+insertRecType n t k tCtx0 = case lookupTypeNameInfo n tCtx0 of
 
   -- Name is already associated with something
   Just _ -> Nothing
@@ -347,7 +323,7 @@ insertRecType n t tCtx0 = case lookupTypeNameInfo n tCtx0 of
   Nothing
     | validDefinition t tCtx1 -> Just tCtx1
     | otherwise               -> Nothing
-    where tCtx1 = let TypeCtx ctx = tCtx0 in TypeCtx $ Map.insert n (mkRecTypeInfo t tCtx0) ctx
+    where tCtx1 = let TypeCtx ctx = tCtx0 in TypeCtx $ Map.insert n (mkRecTypeInfo t k tCtx0) ctx
 
 
 -- Validate that a type definition only refers to names that are in the TypeCtx

@@ -24,7 +24,6 @@ import PL.Name
 import PL.Bindings
 import PL.Binds
 import PL.Var
-import PL.TypeCtx
 import PL.TyVar
 import PL.FixPhase
 

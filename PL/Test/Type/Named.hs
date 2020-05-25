@@ -63,9 +63,9 @@ namedTypeCtx
   => TypeCtxFor phase
 namedTypeCtx
   = fromJust
-  . insertType "Preexisting" preExistingType
+  . insertType "Preexisting" preExistingType Kind
   . fromJust
-  . insertRecType "Recursive" recursiveType
+  . insertRecType "Recursive" recursiveType Kind
   $ emptyTypeCtx
 
 preExistingType

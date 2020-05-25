@@ -187,3 +187,4 @@ reduceTypeUnderCtx
   -> Either (Error expr Type patternFor TypeCtx) Type
 reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_typeCtx ctx) (Just 100)) ty
 
+

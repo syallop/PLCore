@@ -705,7 +705,16 @@ exprType ctx e = case e of
     -> do fTy <- exprType ctx f -- Both f and x must type check
           xTy <- exprType ctx x
 
-          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: function application") $ ETypeNotDefined name (_typeCtx ctx)) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy (_typeCtx ctx)
+          resFTy <- case fTy of
+            NamedExt _ n
+              -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+                   Nothing
+                     -> Left . EContext (EMsg $ text "Reduction: function application") . ETypeNotDefined n . _typeCtx $ ctx
+
+                   Just typeInfo
+                     -> Right . _typeInfoType $ typeInfo
+            _ -> Right fTy
+
 
           let errAppMismatch = Left $ EAppMismatch resFTy xTy
           case resFTy of
@@ -864,7 +873,15 @@ exprType ctx e = case e of
 
           -- TODO maybe verify the xTy we've been given to apply?
 
-          resFTy <- either (\name -> Left $ EContext (EMsg $ text "Reduction: Big application") $ ETypeNotDefined name (_typeCtx ctx)) Right $ _typeInfoType <$> resolveTypeInitialInfo fTy (_typeCtx ctx)
+          resFTy <- case fTy of
+            NamedExt _ n
+              -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+                   Nothing
+                     -> Left . EContext (EMsg $ text "Reduction: Big application") . ETypeNotDefined n . _typeCtx $ ctx
+
+                   Just typeInfo
+                     -> Right . _typeInfoType $ typeInfo
+            _ -> Right fTy
 
           case resFTy of
             -- Regular big application attempt

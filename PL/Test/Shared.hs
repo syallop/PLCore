@@ -118,7 +118,7 @@ boolTypeCtx
      ,ProductTExtension phase ~ Void
      )
   => TypeCtxFor phase
-boolTypeCtx = fromJust $ insertType "Bool" boolType emptyTypeCtx
+boolTypeCtx = fromJust $ insertType "Bool" boolType Kind emptyTypeCtx
 
 -- | Name of the Bool type.
 boolTypeName
@@ -185,7 +185,7 @@ natTypeCtx
      ,NamedExtension    phase ~ Void
      )
   => TypeCtxFor phase
-natTypeCtx = fromJust $ insertRecType "Nat" natType emptyTypeCtx
+natTypeCtx = fromJust $ insertRecType "Nat" natType Kind emptyTypeCtx
 
 natTypeName
   :: NamedExtension phase ~ Void
@@ -275,7 +275,7 @@ four  = suc three
 unitTypeCtx
   :: ProductTExtension phase ~ Void
   => TypeCtxFor phase
-unitTypeCtx = fromJust $ insertType "Unit" unitType emptyTypeCtx
+unitTypeCtx = fromJust $ insertType "Unit" unitType Kind emptyTypeCtx
 
 -- | Name of the Unit type.
 unitTypeName
@@ -316,7 +316,7 @@ maybeTypeCtx
      ,TypeBindingFor phase ~ TyVar
      )
   => TypeCtxFor phase
-maybeTypeCtx = fromJust $ insertType "Maybe" maybeType emptyTypeCtx
+maybeTypeCtx = fromJust $ insertType "Maybe" maybeType (KindArrow Kind Kind) emptyTypeCtx
 
 maybeTypeName
   :: NamedExtension phase ~ Void
@@ -397,7 +397,7 @@ listTypeCtx
      ,NamedExtension       phase ~ Void
      )
   => TypeCtxFor phase
-listTypeCtx = fromJust $ insertRecType "List" listType emptyTypeCtx
+listTypeCtx = fromJust $ insertRecType "List" listType (KindArrow Kind Kind) emptyTypeCtx
 
 listTypeName
   :: NamedExtension phase ~ Void

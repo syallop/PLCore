@@ -316,9 +316,18 @@ checkWithPattern
   -> TypeCheckCtx
   -> Either (Error expr Type Pattern TypeCtx) [Type]
 checkWithPattern pat expectTy ctx = do
-  -- If we've been given a named type, substitute it with its info, then ensure
-  -- the type is reduced.
-  rExpectTy <- either (\name -> Left $ EContext (EMsg $ text "Checking pattern") $ ETypeNotDefined name (_typeCtx ctx)) Right $ _typeInfoType <$> resolveTypeInitialInfo expectTy (_typeCtx ctx)
+  -- If we've been given a named type, substitute it with its initial
+  -- definition.
+  rExpectTy <- case expectTy of
+    NamedExt _ n
+      -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+           Nothing
+             -> Left . EContext (EMsg $ text "Checking pattern") . ETypeNotDefined n . _typeCtx $ ctx
+
+           Just typeInfo
+             -> Right . _typeInfoType $ typeInfo
+    _
+      -> Right expectTy
 
   case (pat,rExpectTy) of
 

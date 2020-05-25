@@ -219,8 +219,6 @@ typeEqsWith typeBindCtx typeBindings typeNameCtx reductionLimit ts0 ts1
                                        _          -> mEq
   | otherwise                = Right False
 
-
-
 -- | Under a given bindings context, kind-check a type.
 -- TODO: Break move to more appropriate location.
 typeKind

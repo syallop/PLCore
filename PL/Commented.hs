@@ -264,6 +264,9 @@ stripTypeComments = \case
   TypeBinding b
     -> TypeBinding b
 
+  TypeContentBinding c
+    -> TypeContentBinding c
+
   CommentedType _comment commentedType
     -> stripTypeComments commentedType
 

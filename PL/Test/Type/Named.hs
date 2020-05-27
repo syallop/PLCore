@@ -28,6 +28,7 @@ import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
+import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
 
@@ -88,23 +89,19 @@ simpleNameTestCase
   -> TypeTestCase
 simpleNameTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_underTypeBindCtx      = emptyCtx
-  ,_isType                = ty
-  ,_parsesFrom            = src
-  ,_hasKind               = k
-  ,_reducesTo             = stripTypeComments ty
-  ,_reducesToWhenApplied  = reduces
-  }
-  where
-    ctx = namedTypeCtx
-    ty  = Named "Preexisting"
-    k = Kind
+  { _isType = Named "Preexisting"
 
-    reduces =
+  , _parsesFrom = src
+
+  , _underTypeCheckCtx = topTypeCheckCtx namedTypeCtx
+  , _hasKind = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx namedTypeCtx
+  , _reducesTo = Named "Preexisting"
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Named types reduce to their definition"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx namedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -114,28 +111,26 @@ simpleNameTestCase src
               ]
           }
       ]
+  }
 
 recursiveNameTestCase
   :: Source
   -> TypeTestCase
 recursiveNameTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType                = ty
-  ,_parsesFrom            = src
-  ,_hasKind               = k
-  ,_reducesTo             = stripTypeComments ty
-  ,_reducesToWhenApplied  = reduces
-  }
-  where
-    ctx = namedTypeCtx
-    ty  = Named "Recursive"
-    k = Kind
+  { _isType = Named "Recursive"
 
-    reduces =
-      [ TypeReductionTestCase
+  , _parsesFrom = src
+
+  , _underTypeCheckCtx = topTypeCheckCtx namedTypeCtx
+  , _hasKind = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx namedTypeCtx
+  , _reducesTo = Named "Recursive"
+  , _reducesToWhenApplied =
+    [ TypeReductionTestCase
           { _typeReductionName = "Equal themselves"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx namedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -146,7 +141,7 @@ recursiveNameTestCase src
           }
       , TypeReductionTestCase
           { _typeReductionName = "Equal unwrappings of themselves"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx namedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -156,7 +151,7 @@ recursiveNameTestCase src
               ,TypeEquals $ SumT $ NE.fromList [EmptyProductT,SumT $ NE.fromList [EmptyProductT,Named "Recursive"]]
               ]
           }
-
       ]
+  }
 
 

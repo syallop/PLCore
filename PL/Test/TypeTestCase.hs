@@ -19,22 +19,22 @@ module PL.Test.TypeTestCase
   )
   where
 
+import PL.Bindings
 import PL.Binds
 import PL.Case
+import PL.Commented
 import PL.Error
 import PL.Expr
-import PL.Commented
 import PL.Kind
+import PL.Name
 import PL.Reduce
 import PL.ReduceType
 import PL.TyVar
 import PL.Type
-import PL.Name
 import PL.Type.Eq
+import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
-import PL.Bindings
-
 
 import PLGrammar
 import PLPrinter
@@ -56,14 +56,25 @@ import Test.Hspec
 import PL.Test.Source
 import PL.Test.Util
 
+-- TypeTestCase collects together common parameters for testcases on types
+--
+-- It's likely factored badly.
 data TypeTestCase = TypeTestCase
-  { _underTypeReductionCtx :: TypeReductionCtx
-  , _underTypeBindCtx      :: BindCtx TyVar Kind
-  , _isType                :: TypeFor CommentedPhase -- ^ An Expr
-  , _parsesFrom            :: Text                  -- ^ And also parses from this textual representation
-  , _hasKind               :: Kind
-  , _reducesTo             :: Type -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
+  { _isType :: TypeFor CommentedPhase -- ^ A Type
+
+   -- Parsing tests
+  , _parsesFrom            :: Text    -- ^ Parses from this textual representation
+
+  -- Type/ kind checking tests
+  , _underTypeCheckCtx     :: TypeCheckCtx -- ^ Under this given typing context
+  , _hasKind               :: Kind         -- ^ Has this kind
+
+  -- Reduction tests
+  , _underTypeReductionCtx :: TypeReductionCtx
+  , _reducesTo             :: Type                    -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
   , _reducesToWhenApplied  :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
+
+  -- TODO: Evaluation tests?
   }
 
 data TypeReductionTestCase = TypeReductionTestCase

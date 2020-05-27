@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -57,22 +58,16 @@ simpleArrowTestCase
   -> TypeTestCase
 simpleArrowTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = Arrow unitTypeName unitTypeName
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = Arrow unitTypeName unitTypeName
-    k = Kind
-
-    reduces =
+  ,_hasKind              = Kind
+  ,_reducesTo            = Arrow unitTypeName unitTypeName
+  ,_reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Can be nested in the first argument"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`Arrow` boolTypeName)
@@ -85,7 +80,7 @@ simpleArrowTestCase src
 
       , TypeReductionTestCase
           { _typeReductionName = "Can be nested in the second argument"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (boolTypeName `Arrow`)
@@ -96,4 +91,5 @@ simpleArrowTestCase src
               ]
           }
       ]
+  }
 

@@ -79,6 +79,7 @@ module PL.Type
   , unarrowise
   , instantiate
 
+  , gatherTypeContentNames
 
   , forgetTypeExtensions
   )
@@ -98,10 +99,12 @@ import PLPrinter hiding (parens,between)
 import PLPrinter.Doc
 
 import Data.List
-import qualified Data.Set as Set
-import Data.Proxy
-import Data.Monoid
 import Data.List.NonEmpty (NonEmpty)
+import Data.Monoid
+import Data.Proxy
+import Data.Set (Set)
+import qualified Data.Set as Set
+import qualified Data.Set as Set
 import qualified Data.Text as Text
 
 type Type = TypeFor DefaultPhase
@@ -704,3 +707,46 @@ forgetTypeExtensions = \case
 
   _ -> error "Non-exhaustive pattern forgetting type extensions"
 
+-- | Gather the Set of all TypeContentBinding names used within a Type
+-- _without_ looking under any of the returned names themselves.
+gatherTypeContentNames
+  :: TypeFor phase
+  -> Set ContentName
+gatherTypeContentNames = gatherTypeContentNames' Set.empty
+  where
+    gatherTypeContentNames' :: Set ContentName -> TypeFor phase -> Set ContentName
+    gatherTypeContentNames' accNames = \case
+      TypeContentBindingExt _ext c
+        -> Set.insert c accNames
+
+      NamedExt _ext n
+        -> accNames
+
+      ArrowExt _ext from to
+        -> gatherTypeContentNames' (gatherTypeContentNames' accNames from) to
+
+      SumTExt _ext types
+        -> foldr (flip gatherTypeContentNames') accNames types
+
+      ProductTExt _ext types
+        -> foldr (flip gatherTypeContentNames') accNames types
+
+      UnionTExt _ext types
+        -> foldr (flip gatherTypeContentNames') accNames types
+
+      BigArrowExt _ext _abs toType
+        -> gatherTypeContentNames' accNames toType
+
+      TypeLamExt _ext _abs toType
+        -> gatherTypeContentNames' accNames toType
+
+      TypeAppExt _ext fType xType
+        -> gatherTypeContentNames' (gatherTypeContentNames' accNames fType) xType
+
+      TypeBindingExt _ext binding
+        -> accNames
+
+      TypeExtensionExt _
+        -> accNames
+
+      _ -> error "Non-exhaustive pattern gathering type content names"

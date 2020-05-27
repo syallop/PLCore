@@ -49,7 +49,9 @@ module PL.TypeCheck
   , checkEqual
 
   , lookupVarType
-  , lookupContentType
+  , lookupExprContentType
+  , lookupTypeContentKind
+  , lookupTypeContentType
 
   , reduceTypeUnderCtx
   )
@@ -80,6 +82,8 @@ data TypeCheckCtx = TypeCheckCtx
   , _typeBindings   :: Bindings Type        -- ^ When type-checking under a binder, types are either bound with some known type or are unbound
   , _typeCtx        :: TypeCtx              -- ^ Associated named types to their TypeInfo definitions
   , _contentHasType :: Map ContentName Type -- ^ Cache a mapping of known expression content names to their checked Type. We have a cache here to avoid doing IO in type-checking which feels wrong. It implies we must resolve names in an earlier phase.
+  , _contentHasKind :: Map ContentName Kind -- ^ Cache a mapping of known type content names to their checked Kind. We have a cache here to avoid doing IO in type-checking which feels wrong. It implies we must resolve names in an earlier phase.
+  , _contentIsType  :: Map ContentName Type -- ^ Cache a mapping of known type content names to their type definition. We have a cache here to avoid doing IO in type-checking which feels wrong. It implies we must resolve names in an earlier phase.
   }
   deriving Show
 
@@ -93,6 +97,8 @@ topTypeCheckCtx typeCtx = TypeCheckCtx
   , _typeBindings   = emptyBindings
   , _typeCtx        = typeCtx
   , _contentHasType = mempty
+  , _contentHasKind = mempty
+  , _contentIsType  = mempty
   }
 
 -- | Context under an abstraction of expressions with a given type.
@@ -124,7 +130,7 @@ kindCheck
   :: Type
   -> TypeCheckCtx
   -> Either (Error expr Type p TypeCtx) Kind
-kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_typeCtx ctx) ty
+kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_contentHasKind ctx) (_typeCtx ctx) ty
 
 -- | Context after a Type with Kind is applied.
 --
@@ -145,7 +151,7 @@ checkEqual
   -> Type
   -> TypeCheckCtx
   -> Either (Error expr Type patternFor TypeCtx) Bool
-checkEqual aTy bTy ctx = typeEq (_typeBindCtx ctx) (_typeBindings ctx) (_typeCtx ctx) aTy bTy
+checkEqual aTy bTy ctx = typeEq (_typeBindCtx ctx) (_typeBindings ctx) (_typeCtx ctx) (_contentIsType ctx) aTy bTy
 
 -- | Lookup the Type associated with an expression variable.
 lookupVarType
@@ -159,14 +165,48 @@ lookupVarType v ctx = case lookupBindingTy v (_exprBindCtx ctx) of
     -> Right ty
 
 -- | Lookup the Type associated with a named expression.
-lookupContentType
+lookupExprContentType
   :: ContentName
   -> TypeCheckCtx
   -> Either (Error expr Type patternFor TypeCtx) Type
-lookupContentType contentName ctx = case Map.lookup contentName . _contentHasType $ ctx of
+lookupExprContentType contentName ctx = case Map.lookup contentName . _contentHasType $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
          [ text "Could not find a type association for content named: "
+         , lineBreak
+         , indent1 . string . show $ contentName
+         , lineBreak
+         ]
+
+  Just t
+    -> Right t
+
+-- | Lookup the Kind associated with a named type.
+lookupTypeContentKind
+  :: ContentName
+  -> TypeCheckCtx
+  -> Either (Error expr Type patternFor TypeCtx) Kind
+lookupTypeContentKind contentName ctx = case Map.lookup contentName . _contentHasKind $ ctx of
+  Nothing
+    -> Left . EMsg . mconcat $
+         [ text "Could not find a kind association for content named: "
+         , lineBreak
+         , indent1 . string . show $ contentName
+         , lineBreak
+         ]
+
+  Just k
+    -> Right k
+
+-- | Lookup the Type associated with a named type.
+lookupTypeContentType
+  :: ContentName
+  -> TypeCheckCtx
+  -> Either (Error err Type patternFor TypeCtx) Type
+lookupTypeContentType contentName ctx = case Map.lookup contentName . _contentIsType $ ctx of
+  Nothing
+    -> Left . EMsg . mconcat $
+         [ text "Could not find the type definition for content named:"
          , lineBreak
          , indent1 . string . show $ contentName
          , lineBreak

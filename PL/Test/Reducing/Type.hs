@@ -24,6 +24,7 @@ import PL.Type
 import PL.Pattern
 import PL.Name
 import PL.Type.Eq
+import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
@@ -45,6 +46,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.List as List
 import Data.List
+import Data.Map (Map)
 import Data.Text (Text)
 
 import Test.Hspec
@@ -69,10 +71,11 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
                                   ((TypeReductionTestCase
                                       { _typeReductionName = "Reduces"
                                       , _typeReductionUnderTypeReductionCtx = _underTypeReductionCtx testCase
-                                      , _typeReductionUnderTypeBindCtx = _underTypeBindCtx testCase
+                                      , _typeReductionUnderTypeBindCtx = _typeBindCtx . _underTypeCheckCtx $ testCase
                                       , _typeReductionMutateType = []
                                       , _typeReductionMatches = [TypeEquals $ _reducesTo testCase]
                                    }) : _reducesToWhenApplied testCase)
+                                  (_contentIsType . _underTypeCheckCtx $ testCase)
                                   ppExpr
                                   ppType
                                   ppPattern
@@ -90,13 +93,14 @@ reduceTypeToSpec
   :: Text.Text
   -> TypeFor CommentedPhase
   -> [TypeReductionTestCase]
+  -> Map ContentName Type
   -> (ExprFor DefaultPhase -> Doc)
   -> (TypeFor DefaultPhase -> Doc)
   -> (PatternFor DefaultPhase -> Doc)
   -> (Var -> Doc)
   -> (TyVar -> Doc)
   -> Spec
-reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
+reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
   mapM_ (\(TypeReductionTestCase name underCtx underTypeBindCtx mutations expectReduction)
           -> let mutatedType = apply (stripTypeComments inputType) mutations
               in reduceSpec name underCtx underTypeBindCtx (_typeReductionTypeBindings underCtx) mutatedType expectReduction) reductions
@@ -140,7 +144,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                  ]
 
           (Right redType, TypeEquals expectedType)
-            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) redType expectedType of
+            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) contentIsType redType expectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"
@@ -171,7 +175,7 @@ reduceTypeToSpec name inputType reductions ppExpr ppType ppPattern ppVar ppTyVar
                    -> pure ()
 
           (Right redType, TypeDoesNotEqual notExpectedType)
-            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) redType notExpectedType of
+            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) contentIsType redType notExpectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"

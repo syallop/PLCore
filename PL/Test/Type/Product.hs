@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -63,64 +64,44 @@ emptyProductTestCase
   -> TypeTestCase
 emptyProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = ProductT []
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
+  ,_hasKind              = Kind
+  ,_reducesTo            = ProductT []
+  ,_reducesToWhenApplied = []
   }
-  where
-    ctx = sharedTypeCtx
-    ty  = ProductT []
-    k = Kind
-
-    reduces =
-      [
-      ]
 
 singletonProductTestCase
   :: Source
   -> TypeTestCase
 singletonProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = ProductT [unitTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
+  ,_hasKind              = Kind
+  ,_reducesTo            = ProductT [unitTypeName]
+  ,_reducesToWhenApplied = []
   }
-  where
-    ctx = sharedTypeCtx
-    ty  = ProductT [unitTypeName]
-    k = Kind
-
-    reduces =
-      [
-      ]
 
 twoProductTestCase
   :: Source
   -> TypeTestCase
 twoProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = ProductT [unitTypeName,natTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = ProductT [unitTypeName,natTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind              = Kind
+  ,_reducesTo            = ProductT [unitTypeName,natTypeName]
+  ,_reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Is not the same as it's reverse"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -129,28 +110,23 @@ twoProductTestCase src
               [TypeDoesNotEqual $ ProductT [natTypeName, unitTypeName]]
           }
       ]
+  }
 
 duplicateProductTestCase
   :: Source
   -> TypeTestCase
 duplicateProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = ProductT [unitTypeName,unitTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = ProductT [unitTypeName,unitTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind              = Kind
+  ,_reducesTo            = ProductT [unitTypeName,unitTypeName]
+  ,_reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Does not lose duplicates"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -159,4 +135,5 @@ duplicateProductTestCase src
               [TypeDoesNotEqual $ ProductT [unitTypeName]]
           }
       ]
+  }
 

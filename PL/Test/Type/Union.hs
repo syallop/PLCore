@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -62,22 +63,16 @@ unionTwoTestCase
   -> TypeTestCase
 unionTwoTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType                = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType                = UnionT $ Set.fromList [unitTypeName,natTypeName]
   ,_parsesFrom            = src
-  ,_hasKind               = k
-  ,_reducesTo             = stripTypeComments ty
-  ,_reducesToWhenApplied  = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = UnionT $ Set.fromList [unitTypeName,natTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind               = Kind
+  ,_reducesTo             = UnionT $ Set.fromList [unitTypeName,natTypeName]
+  ,_reducesToWhenApplied  =
       [ TypeReductionTestCase
           { _typeReductionName = "Is the same as the reverse union"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -86,28 +81,23 @@ unionTwoTestCase src
               [TypeEquals $ UnionT $ Set.fromList [natTypeName,unitTypeName]]
           }
       ]
+  }
 
 singletonUnionTestCase
   :: Source
   -> TypeTestCase
 singletonUnionTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType                = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType                = UnionT $ Set.fromList [unitTypeName]
   ,_parsesFrom            = src
-  ,_hasKind               = k
-  ,_reducesTo             = stripTypeComments ty
-  ,_reducesToWhenApplied  = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = UnionT $ Set.fromList [unitTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind               = Kind
+  ,_reducesTo             = UnionT $ Set.fromList [unitTypeName]
+  ,_reducesToWhenApplied  =
       [ TypeReductionTestCase
           { _typeReductionName = "union(Unit) == union(Unit,Unit)"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -116,32 +106,27 @@ singletonUnionTestCase src
               [TypeEquals $ UnionT $ Set.fromList [unitTypeName,unitTypeName]]
           }
       ]
+  }
 
 duplicateUnionTestCase
   :: Source
   -> TypeTestCase
 duplicateUnionTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = UnionT $ Set.fromList [unitTypeName,unitTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = UnionT $ Set.fromList [unitTypeName,unitTypeName]
-    k = Kind
-
+  ,_hasKind              = Kind
+  ,_reducesTo            = UnionT $ Set.fromList [unitTypeName,unitTypeName]
+  ,_reducesToWhenApplied =
     -- TODO:
     -- - Should attempting this be an error?
     -- - Does using the Set type mean this test can't cover parsing and
     -- reduction?
-    reduces =
       [ TypeReductionTestCase
           { _typeReductionName = "Union cannot contain the same type multiple times"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -150,4 +135,5 @@ duplicateUnionTestCase src
               [TypeEquals $ UnionT $ Set.fromList [unitTypeName]]
           }
       ]
+  }
 

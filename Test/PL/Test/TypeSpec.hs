@@ -44,8 +44,23 @@ spec = do
     describe "Type (kind) check" $ typeChecksTypesSpec typeTestCases ppKind (ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar)
     describe "Reduce"            $ reducesTypesToSpec  typeTestCases ppExpr ppType ppPattern ppVar ppTyVar
   where
+    -- We only want to test type-checking and reduction as we don't define a
+    -- parsable syntax at this level. The test function demands source so..
     typeTestCases :: Map.Map Text TypeTestCase
-    typeTestCases = mkTypeTestCases $ TestTypeSources {}
+    typeTestCases = mkTypeTestCases $ TestTypeSources
+      { _namedTestCases       = errNoSource
+      , _arrowTestCases       = errNoSource
+      , _sumTestCases         = errNoSource
+      , _productTestCases     = errNoSource
+      , _unionTestCases       = errNoSource
+      , _bigArrowTestCases    = errNoSource
+      , _typeLamTestCases     = errNoSource
+      , _typeBindingTestCases = errNoSource
+      }
+
+    errNoSource = error "Core tests do not define syntax and so do not test parsing"
+
+
 
     ppExpr :: forall phase. Show (ExprFor phase) => ExprFor phase -> Doc
     ppExpr = text . Text.pack . show

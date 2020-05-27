@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -63,26 +64,19 @@ simpleTypeBindingTestCase
   -> TypeTestCase
 simpleTypeBindingTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = bindings}
-  ,_underTypeBindCtx      = bindCtx
-  ,_isType                = ty
-  ,_parsesFrom            = src
-  ,_hasKind               = k
-  ,_reducesTo             = stripTypeComments ty
-  ,_reducesToWhenApplied  = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    bindCtx = addBinding Kind $ emptyCtx
-    bindings = unbound $ emptyBindings
+  { _isType = TypeBinding $ TyVar $ VZ
 
-    ty  = TypeBinding $ TyVar $ VZ
-    k = Kind
+  , _parsesFrom = src
 
-    reduces =
-      [ TypeReductionTestCase
+  , _underTypeCheckCtx = (topTypeCheckCtx sharedTypeCtx){_typeBindings = unbound emptyBindings, _typeBindCtx = addBinding Kind emptyCtx}
+  , _hasKind = Kind
+
+  , _underTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = unbound emptyBindings}
+  , _reducesTo = TypeBinding $ TyVar $ VZ
+  , _reducesToWhenApplied =
+    [ TypeReductionTestCase
           { _typeReductionName = "Bindings don't reduce when unbound"
-          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = unbound $ emptyBindings}
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = unbound $ emptyBindings}
           , _typeReductionUnderTypeBindCtx = addBinding Kind $ emptyCtx
           , _typeReductionMutateType =
               [
@@ -93,7 +87,7 @@ simpleTypeBindingTestCase src
           }
       , TypeReductionTestCase
           {_typeReductionName = "Bindings reduce when bound"
-          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = bind EmptyProductT $ emptyBindings}
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = bind EmptyProductT $ emptyBindings}
           , _typeReductionUnderTypeBindCtx = addBinding Kind $ emptyCtx
           , _typeReductionMutateType =
               [
@@ -104,7 +98,7 @@ simpleTypeBindingTestCase src
           }
       , TypeReductionTestCase
           {_typeReductionName = "Bindings reduce recursively"
-          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = bind (TypeBinding $ TyVar $ VS VZ) $ bind (EmptyProductT) $ emptyBindings }
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = bind (TypeBinding $ TyVar $ VS VZ) $ bind (EmptyProductT) $ emptyBindings }
           , _typeReductionUnderTypeBindCtx = addBinding Kind $ addBinding Kind $ emptyCtx
           , _typeReductionMutateType =
               [
@@ -114,41 +108,36 @@ simpleTypeBindingTestCase src
               ]
           }
       ]
+  }
 
+-- \t. ( (\(t->t). (\t. 1)) (\t. 1)
+--  |      |____________|        |
+--  -----------------------------
+--
+-- Should reduce:
+--
+-- \t. \t. \t. 2
 buriedTypeBindingTestCase
   :: Source
   -> TypeTestCase
 buriedTypeBindingTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_underTypeBindCtx     = bindCtx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    bindCtx = emptyCtx
-    bindings = emptyBindings
-
-    -- \t. ( (\(t->t). (\t. 1)) (\t. 1)
-    --  |      |____________|        |
-    --  -----------------------------
-    --
-    -- Should reduce:
-    --
-    -- \t. \t. \t. 2
-    ty  = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
+  { _isType = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
                                  (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ)
 
-    k = KindArrow Kind $ KindArrow Kind $ KindArrow Kind Kind
+  , _parsesFrom = src
 
-    reduces =
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = KindArrow Kind $ KindArrow Kind $ KindArrow Kind Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
+                                 (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ)
+
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Type Bindings are adjusted correctly when buried under type lambdas"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -159,7 +148,7 @@ buriedTypeBindingTestCase src
           }
       , TypeReductionTestCase
           { _typeReductionName = "Type Bindings reduce to the correct value"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` boolTypeName)
@@ -170,42 +159,37 @@ buriedTypeBindingTestCase src
               ]
           }
       ]
+  }
 
 -- Test that burried bindings are incremented by more than 1 where necessary
+-- \t. ( (\(t->t). (\t. (\t. 2))) (\t. 1)
+-- |       |_________________|         |
+-- ------------------------------------
+--
+-- Should reduce
+--
+-- \t. \t. \t. t. 3
 doubleBuriedTypeBindingTestCase
   :: Source
   -> TypeTestCase
 doubleBuriedTypeBindingTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_underTypeBindCtx     = bindCtx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    bindCtx = emptyCtx
-    bindings = emptyBindings
-
-    -- \t. ( (\(t->t). (\t. (\t. 2))) (\t. 1)
-    -- |       |_________________|         |
-    -- ------------------------------------
-    --
-    -- Should reduce
-    --
-    -- \t. \t. \t. t. 3
-    ty = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
+  { _isType = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
                                  (TypeLam Kind (TypeBinding $ TyVar $ VS VZ))
 
-    k = KindArrow Kind (KindArrow Kind (KindArrow Kind (KindArrow Kind Kind)))
+  , _parsesFrom = src
 
-    reduces =
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = KindArrow Kind (KindArrow Kind (KindArrow Kind (KindArrow Kind Kind)))
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
+                                 (TypeLam Kind (TypeBinding $ TyVar $ VS VZ))
+
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Type bindings are adjusted correctly when buried under type lambdas"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -216,7 +200,7 @@ doubleBuriedTypeBindingTestCase src
           }
       ,  TypeReductionTestCase
           { _typeReductionName = "Buried type bindings reduce to the correct value"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [(`TypeApp` boolType)
@@ -228,6 +212,7 @@ doubleBuriedTypeBindingTestCase src
               ]
           }
       ]
+  }
 
 -- Test that burried bindings are incremented by more than 1 where necessary
 buriedTypeBindingsDontMoveTestCase
@@ -235,28 +220,22 @@ buriedTypeBindingsDontMoveTestCase
   -> TypeTestCase
 buriedTypeBindingsDontMoveTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_underTypeBindCtx     = bindCtx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    bindCtx = emptyCtx
-    bindings = emptyBindings
-
-    ty = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
+  { _isType = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
                                 (TypeBinding $ TyVar VZ)
 
-    k = KindArrow Kind Kind
+  , _parsesFrom = src
 
-    reduces =
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = KindArrow Kind Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
+                                (TypeBinding $ TyVar VZ)
+
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Type bindings are not adjusted when they don't move"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -266,4 +245,5 @@ buriedTypeBindingsDontMoveTestCase src
               ]
           }
       ]
+    }
 

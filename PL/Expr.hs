@@ -72,7 +72,8 @@ module PL.Expr
   , exprType
   , branchType
 
-  , gatherNames
+  , gatherContentNames
+  , gatherExprsTypeContentNames
 
   , appise
   , lamise
@@ -702,10 +703,16 @@ exprType ctx e = case e of
   -- -----------------------
   --       App f x : b
   App f x
-    -> do fTy <- exprType ctx f -- Both f and x must type check
+    -> do -- Both f and x must type-check individually
+          fTy <- exprType ctx f
           xTy <- exprType ctx x
 
-          resFTy <- case fTy of
+          -- f can be a named type or content-binding as long as we can
+          -- determine it's defined as an Arrow type.
+          resolvedFTy <- case fTy of
+            -- TODO: Looking up the initial type isnt necessarily necessary.
+            -- We only need to prove the first level of the definition is an
+            -- Arrow.
             NamedExt _ n
               -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
                    Nothing
@@ -713,18 +720,29 @@ exprType ctx e = case e of
 
                    Just typeInfo
                      -> Right . _typeInfoType $ typeInfo
-            _ -> Right fTy
 
+            TypeContentBindingExt _ c
+              -> lookupTypeContentType c ctx
 
-          let errAppMismatch = Left $ EAppMismatch resFTy xTy
-          case resFTy of
-            -- Regular function application attempt
-            Arrow aTy bTy -> case checkEqual aTy xTy ctx of
-                                 Left err -> Left err
-                                 Right isSameType
-                                   | isSameType -> Right bTy
-                                   | otherwise  -> Left $ EAppMismatch fTy xTy
-            _ -> Left $ EMsg $ text "The first argument to an application must be a lambda with an arrow type."
+            -- There is no need to check for bindings as they will have been
+            -- evaluated by exprType.
+            fTy -> Right fTy
+
+          case resolvedFTy of
+            Arrow fromTy toTy
+              -> case checkEqual fromTy xTy ctx of
+                   Left err
+                     -> Left err
+
+                   Right isSameType
+                     | isSameType
+                      -> Right toTy
+
+                     | otherwise
+                      -> Left $ EAppMismatch fTy xTy
+
+            _
+              -> Left . EMsg . text $ "The first argument to an application did not have an arrow type"
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
   -- has that sum type.
@@ -798,7 +816,7 @@ exprType ctx e = case e of
   -- -----
   -- c : t
   ContentBinding c
-    -> lookupContentType c ctx
+    -> lookupExprContentType c ctx
 
   --        scrutineeExpr : t0   defExpr : t1
   -- -----------------------------------------------
@@ -865,15 +883,18 @@ exprType ctx e = case e of
   -- ---------------------------------------------------
   --              BigApp f xTy : bTy
   BigApp f x
-    -> do xKy <- kindCheck x ctx
-          let newCtx' = underAppliedType (x,xKy) ctx
+    -> do -- The applied type must kind-check
+          xKy <- kindCheck x ctx
 
           -- Check f under x
-          fTy <- exprType newCtx' f
+          fTy <- exprType (underAppliedType (x,xKy) ctx) f
 
-          -- TODO maybe verify the xTy we've been given to apply?
-
-          resFTy <- case fTy of
+          -- f can be a named type or content-binding as long as we can
+          -- determine it's defined as a Big-Arrow type.
+          resolvedFTy <- case fTy of
+            -- TODO: Looking up the initial type isnt necessarily necessary.
+            -- We only need to prove the first level of the definition is a
+            -- Big-Arrow.
             NamedExt _ n
               -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
                    Nothing
@@ -881,74 +902,140 @@ exprType ctx e = case e of
 
                    Just typeInfo
                      -> Right . _typeInfoType $ typeInfo
-            _ -> Right fTy
 
-          case resFTy of
-            -- Regular big application attempt
-            BigArrow aKy bTy
-              | aKy == xKy -> Right $ instantiate x bTy -- TODO: all bindings need to be instantiated
-              | otherwise  -> Left $ EBigAppMismatch fTy xKy
+            TypeContentBindingExt _ c
+              -> lookupTypeContentType c ctx
 
-            _ -> Left $ EMsg $ text "In big application, function must have a big arrow type"
+            -- There is no need to check for bindings as they will have been
+            -- evaluated by exprType.
+            _
+              -> Right fTy
+
+          case resolvedFTy of
+            BigArrow fromKy toTy
+              | fromKy == xKy
+               -> Right $ instantiate x toTy -- TODO: all bindings need to be instantiated
+
+              | otherwise
+               -> Left $ EBigAppMismatch fTy xKy
+
+            _
+              -> Left $ EMsg $ text "The first argument to a big application did not have a big arrow type"
 
   e -> error "Non-exhaustive pattern in type check"
 
 -- | Gather the Set of all ContentBinding names used within an Expression
 -- _without_ looking under any of the returned names themselves.
-gatherNames
+gatherContentNames
   :: ExprFor phase
   -> Set ContentName
-gatherNames = gatherNames' Set.empty
+gatherContentNames = gatherContentNames' Set.empty
   where
-    gatherNames' :: Set ContentName -> ExprFor phase -> Set ContentName
-    gatherNames' accNames = \case
+    gatherContentNames' :: Set ContentName -> ExprFor phase -> Set ContentName
+    gatherContentNames' accNames = \case
       ContentBindingExt _ext c
         -> Set.insert c accNames
 
       LamExt _ext abs expr
-        -> gatherNames' accNames expr
+        -> gatherContentNames' accNames expr
 
       AppExt _ext f x
-        -> gatherNames' (gatherNames' accNames x) f
+        -> gatherContentNames' (gatherContentNames' accNames x) f
 
       BindingExt _ext b
         -> Set.empty
 
       CaseAnalysisExt _ext c
-        -> gatherCaseNames' accNames c
+        -> gatherCaseContentNames' accNames c
 
       SumExt _ext expr _ix _types
-        -> gatherNames' accNames expr
+        -> gatherContentNames' accNames expr
 
       ProductExt _ext exprs
-        -> foldr (flip gatherNames') accNames exprs
+        -> foldr (flip gatherContentNames') accNames exprs
 
       UnionExt _ext expr _typeIx _types
-        -> gatherNames' accNames expr
+        -> gatherContentNames' accNames expr
 
       BigLamExt _ext _kind expr
-        -> gatherNames' accNames expr
+        -> gatherContentNames' accNames expr
 
       BigAppExt _ext fExpr _xType
-        -> gatherNames' accNames fExpr
+        -> gatherContentNames' accNames fExpr
 
       _ -> error "Non-exhaustive pattern gathering names"
 
-    gatherCaseNames' :: Set ContentName -> Case (ExprFor phase) (PatternFor phase) -> Set ContentName
-    gatherCaseNames' accNames (Case expr branches) = gatherCaseBranchesNames' (gatherNames' accNames expr) branches
+    gatherCaseContentNames' :: Set ContentName -> Case (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseContentNames' accNames (Case expr branches) = gatherCaseBranchesContentNames' (gatherContentNames' accNames expr) branches
 
-    gatherCaseBranchesNames' :: Set ContentName -> CaseBranches (ExprFor phase) (PatternFor phase) -> Set ContentName
-    gatherCaseBranchesNames' accNames = \case
+    gatherCaseBranchesContentNames' :: Set ContentName -> CaseBranches (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseBranchesContentNames' accNames = \case
       DefaultOnly expr
-        -> gatherNames' accNames expr
+        -> gatherContentNames' accNames expr
 
       CaseBranches neBranches mDef
-        -> let accNames' = maybe accNames (gatherNames' accNames) mDef
-            in foldr (flip gatherCaseBranchNames') accNames' neBranches
+        -> let accNames' = maybe accNames (gatherContentNames' accNames) mDef
+            in foldr (flip gatherCaseBranchContentNames') accNames' neBranches
 
-    gatherCaseBranchNames' :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
-    gatherCaseBranchNames' accNames (CaseBranch _pattern exprResult) = gatherNames' accNames exprResult
+    gatherCaseBranchContentNames' :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseBranchContentNames' accNames (CaseBranch _pattern exprResult) = gatherContentNames' accNames exprResult
 
+-- | Gather the Set of all TypeContentBinding names used within an Expression
+-- _without_ looking under any of the returned names themselves.
+gatherExprsTypeContentNames
+  :: forall phase. (AbstractionFor phase ~ TypeFor phase)
+  => ExprFor phase
+  -> Set ContentName
+gatherExprsTypeContentNames = gather Set.empty
+  where
+    gather :: Set ContentName -> ExprFor phase -> Set ContentName
+    gather accNames = \case
+      ContentBindingExt _ext c
+        -> accNames
+
+      LamExt _ext abs _expr
+        -> Set.union accNames $ gatherTypeContentNames abs
+
+      AppExt _ext f x
+        -> gather (gather accNames x) f
+
+      BindingExt _ext _b
+        -> Set.empty
+
+      CaseAnalysisExt _ext c
+        -> gatherCase accNames c
+
+      SumExt _ext expr _ix types
+        -> gather (foldr Set.union accNames $ fmap gatherTypeContentNames types) expr
+
+      ProductExt _ext exprs
+        -> foldr (flip gather) accNames exprs
+
+      UnionExt _ext expr _typeIx types
+        -> gather (foldr Set.union accNames . fmap gatherTypeContentNames . Set.toList $ types) expr
+
+      BigLamExt _ext _kind expr
+        -> gather accNames expr
+
+      BigAppExt _ext fExpr xType
+        -> gather (accNames `Set.union` gatherTypeContentNames xType) fExpr
+
+      _ -> error "Non-exhaustive pattern gathering names"
+
+    gatherCase :: Set ContentName -> Case (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCase accNames (Case expr branches) = gatherCaseBranches (gather accNames expr) branches
+
+    gatherCaseBranches :: Set ContentName -> CaseBranches (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseBranches accNames = \case
+      DefaultOnly expr
+        -> gather accNames expr
+
+      CaseBranches neBranches mDef
+        -> let accNames' = maybe accNames (gather accNames) mDef
+            in foldr (flip gatherCaseBranch) accNames' neBranches
+
+    gatherCaseBranch :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
+    gatherCaseBranch accNames (CaseBranch _pattern exprResult) = gather accNames exprResult
 
 appise :: [Expr] -> Expr
 appise []        = error "Cant appise empty list of expressions"

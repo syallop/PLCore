@@ -26,6 +26,7 @@ import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
+import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
 
@@ -59,23 +60,19 @@ simpleTypeLamTestCase
   -> TypeTestCase
 simpleTypeLamTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_underTypeBindCtx     = emptyCtx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = TypeLam Kind $ TypeBinding $ TyVar VZ
-    k = KindArrow Kind Kind
+  { _isType = TypeLam Kind $ TypeBinding $ TyVar VZ
 
-    reduces =
+  , _parsesFrom = src
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = KindArrow Kind Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = TypeLam Kind $ TypeBinding $ TyVar VZ
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Bind types when applied"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` unitTypeName)
@@ -84,31 +81,27 @@ simpleTypeLamTestCase src
               [ TypeEquals $ unitTypeName
               ]
           }
-
       ]
+  }
 
 nestedTypeLamTestCase
   :: Source
   -> TypeTestCase
 nestedTypeLamTestCase src
-  = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_underTypeBindCtx     = emptyCtx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS VZ
-    k = KindArrow Kind $ KindArrow Kind Kind
+ = TypeTestCase
+  { _isType = TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS VZ
 
-    reduces =
+  , _parsesFrom = src
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = KindArrow Kind $ KindArrow Kind Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS VZ
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Reduces to outer type"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` boolTypeName)
@@ -121,7 +114,7 @@ nestedTypeLamTestCase src
 
       , TypeReductionTestCase
           { _typeReductionName = "Reduces under type lambda"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (`TypeApp` boolTypeName)
@@ -131,4 +124,6 @@ nestedTypeLamTestCase src
               ]
           }
       ]
+  }
+
 

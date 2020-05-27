@@ -26,6 +26,7 @@ import PL.ReduceType
 import PL.TyVar
 import PL.Type
 import PL.Type.Eq
+import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
 
@@ -59,22 +60,19 @@ simpleBigArrowTestCase
   -> TypeTestCase
 simpleBigArrowTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = BigArrow Kind unitTypeName
-    k = Kind
+  { _isType = BigArrow Kind unitTypeName
 
-    reduces =
+  , _parsesFrom = src
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = BigArrow Kind unitTypeName
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Can be nested in the second argument"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [ (Kind `BigArrow`)
@@ -84,6 +82,7 @@ simpleBigArrowTestCase src
               ]
           }
       ]
+  }
 
 -- Testing that types that have entered the bindctx from the expression level
 -- are resolved.
@@ -92,25 +91,19 @@ complexBigArrowTestCase
   -> TypeTestCase
 complexBigArrowTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = typeReductionCtx
-  ,_underTypeBindCtx      = addBinding Kind $ emptyCtx
-  ,_isType               = ty
-  ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    typeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = unbound emptyBindings}
+  { _isType = BigArrow Kind (TypeBinding $ TyVar $ VZ)
 
-    ctx = sharedTypeCtx
-    ty  = BigArrow Kind (TypeBinding $ TyVar $ VZ)
-    k = Kind
+  , _parsesFrom = src
 
-    reduces =
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind = Kind
+
+  , _underTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = unbound emptyBindings}
+  , _reducesTo = BigArrow Kind (TypeBinding $ TyVar $ VZ)
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Unbound types allowed"
-          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = unbound emptyBindings}
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = unbound emptyBindings}
           , _typeReductionUnderTypeBindCtx = addBinding Kind $ emptyCtx
           , _typeReductionMutateType =
               [
@@ -122,7 +115,7 @@ complexBigArrowTestCase src
 
      , TypeReductionTestCase
           { _typeReductionName = "Bound types allowed"
-          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx ctx){_typeReductionTypeBindings = bind unitTypeName emptyBindings}
+          , _typeReductionUnderTypeReductionCtx = (topTypeReductionCtx sharedTypeCtx){_typeReductionTypeBindings = bind unitTypeName emptyBindings}
           , _typeReductionUnderTypeBindCtx = addBinding Kind $ emptyCtx
           , _typeReductionMutateType =
               [
@@ -133,3 +126,4 @@ complexBigArrowTestCase src
           }
 
       ]
+  }

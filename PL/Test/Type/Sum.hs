@@ -27,6 +27,7 @@ import PL.TyVar
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.TypeCheck
 import PL.Var
 
 import Data.Maybe
@@ -61,22 +62,16 @@ sumTwoTestCase
   -> TypeTestCase
 sumTwoTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = SumT $ NE.fromList [unitTypeName,natTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = SumT $ NE.fromList [unitTypeName,natTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind              = Kind
+  ,_reducesTo            = SumT $ NE.fromList [unitTypeName,natTypeName]
+  ,_reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Is NOT the same as the reverse sum"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -85,30 +80,24 @@ sumTwoTestCase src
               [ TypeDoesNotEqual $ SumT $ NE.fromList [natTypeName,unitTypeName]
               ]
           }
-
       ]
+  }
 
 singletonSumTestCase
   :: Source
   -> TypeTestCase
 singletonSumTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = SumT $ NE.fromList [unitTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = SumT $ NE.fromList [unitTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind              = Kind
+  ,_reducesTo            = SumT $ NE.fromList [unitTypeName]
+  ,_reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Sum(Unit) != Sum(Unit,Unit)"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               []
@@ -116,28 +105,23 @@ singletonSumTestCase src
               [TypeDoesNotEqual $ SumT $ NE.fromList [unitTypeName,unitTypeName]]
           }
      ]
+  }
 
 duplicateSumTestCase
   :: Source
   -> TypeTestCase
 duplicateSumTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx ctx
-  ,_isType               = ty
+  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  ,_isType               = SumT $ NE.fromList [unitTypeName,unitTypeName]
   ,_parsesFrom           = src
-  ,_hasKind              = k
-  ,_reducesTo            = stripTypeComments ty
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = sharedTypeCtx
-    ty  = SumT $ NE.fromList [unitTypeName,unitTypeName]
-    k = Kind
-
-    reduces =
+  ,_hasKind              = Kind
+  ,_reducesTo            = SumT $ NE.fromList [unitTypeName,unitTypeName]
+  ,_reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Sum(Unit,Unit) != Sum(Unit)"
-          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx ctx
+          , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
           , _typeReductionUnderTypeBindCtx = emptyCtx
           , _typeReductionMutateType =
               [
@@ -146,4 +130,4 @@ duplicateSumTestCase src
               [TypeDoesNotEqual $ SumT $ NE.fromList [unitTypeName]]
           }
       ]
-
+  }

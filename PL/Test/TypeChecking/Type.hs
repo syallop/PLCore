@@ -22,6 +22,7 @@ import PL.Type
 import PL.Name
 import PL.Pattern
 import PL.Type.Eq
+import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
 import PL.Bindings
@@ -61,9 +62,10 @@ typeChecksTypesSpec testCases ppKind ppError =
   . mapM_ (\(name,testCase)
             -> typeCheckTypeSpec name
                                  (_isType testCase)
-                                 (_underTypeBindCtx testCase)
-                                 (_typeReductionTypeCtx . _underTypeReductionCtx $ testCase)
-                                 (_typeReductionTypeBindings . _underTypeReductionCtx $ testCase)
+                                 (_typeBindCtx    . _underTypeCheckCtx $ testCase)
+                                 (_contentHasKind . _underTypeCheckCtx $ testCase)
+                                 (_typeCtx        . _underTypeCheckCtx $ testCase)
+                                 (_typeBindings   . _underTypeCheckCtx $ testCase)
                                  (_hasKind testCase)
                                  ppKind
                                  ppError
@@ -76,13 +78,14 @@ typeCheckTypeSpec
   :: Text.Text
   -> TypeFor CommentedPhase
   -> BindCtx TyVar Kind
+  -> Map.Map ContentName Kind
   -> TypeCtx
   -> Bindings Type
   -> Kind
   -> (Kind -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
-typeCheckTypeSpec name inputType bindCtx underTypeCtx bindings expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx underTypeCtx $ stripTypeComments inputType of
+typeCheckTypeSpec name inputType bindCtx contentHasKind underTypeCtx bindings expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx contentHasKind underTypeCtx $ stripTypeComments inputType of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

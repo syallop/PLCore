@@ -179,6 +179,25 @@ reduceTypeStep ctx ty = case ty of
             Bound boundTy
               -> boundTy
 
+  -- ContentBindings are not (currently) reduced - they're sticking points for
+  -- evaluation.
+  --
+  -- They _could_ be as the lack of self-reference and mutual recursion means
+  -- reduction would terminate.
+  --
+  -- We choose not to as:
+  -- - We expect them to be substituted in the evaluation phase.
+  -- - Leaving un-reduced allows them to be made recursive/ self-referential in
+  --  the future without changing behaviour here.
+  -- - The final result of a reduction may be stored and currently serves the
+  --   purpose of both the 'compiled' and human(ish) readable form. Some
+  --   expressions would look unrecognisable after reducing under names making
+  --   modification hard. It is likely we'll end up storing multiple
+  --   representations of the 'same' code to deal with this. For now, we
+  --   prioritise readability over full reduction.
+  TypeContentBinding c
+    -> pure $ TypeContentBinding c
+
   -- Reduce using strictish semantics:
   -- - First reduce a step under the applied type
   -- - Then reduce a step under the type function
@@ -206,6 +225,10 @@ reduceTypeStep ctx ty = case ty of
             -- application should make progress.
             TypeBinding tyVar
               -> pure $ TypeApp (TypeBinding tyVar) x'
+
+            -- We don't reduce under content bindings.
+            TypeContentBinding c
+              -> pure $ TypeApp (TypeContentBinding c) x'
 
             -- We're applying a named type which should be looked up in the type
             -- context.

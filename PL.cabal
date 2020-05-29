@@ -26,9 +26,11 @@ library
                      , PL.CodeStore
                      , PL.HashStore
                      , PL.Store
+                     , PL.ShortStore
                      , PL.Store.Memory
                      , PL.Store.Nested
                      , PL.Store.File
+                     , PL.Store.File.Path
                      , PL.FixPhase
                      , PL.Evaluate
                      , PL.ExprLike
@@ -109,6 +111,8 @@ library
                      , memory
                      , hedgehog
                      , hashing
+                     , directory-tree
+                     , filepath
                      , filepath-bytestring
                      , bytestring
                      , utf8-string

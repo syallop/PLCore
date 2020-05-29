@@ -1,6 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses
            , FlexibleInstances
            , RankNTypes
+           , TypeFamilies
+           , StandaloneDeriving
+           , FunctionalDependencies
   #-}
 {-|
 Module      : PL.Store
@@ -16,6 +19,8 @@ Store is an interface to key-value storage and lookup where:
 module PL.Store
   ( Store ()
   , StoreResult (..)
+
+  -- Regular store/ lookup api
   , store
   , lookup
   )
@@ -23,13 +28,16 @@ module PL.Store
 
 import Prelude hiding (lookup)
 
-import Data.Text
+import Data.Text (Text)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Monoid
+
+import PL.Hash
+import qualified Data.ByteString as BS
 
 -- | The result of successfully storing something is a StoreResult.
 data StoreResult v
@@ -68,6 +76,8 @@ instance Ord v => Semigroup (StoreResult v) where
 -- - Lookup may mutate the container.
 -- - Storage may report that it has replaced values.
 class Store s k v where
+  -- TODO: Perhaps move IO, Maybe, under a 'm' type parameter.
+
   -- | In a storage container 's', associate a value 'v' with key 'k'.
   -- If successful, report a potentially updated container and they type of
   -- success (whether the value is fresh or replaced an old value, etc).
@@ -89,6 +99,4 @@ class Store s k v where
     :: s k v
     -> k
     -> IO (Maybe (s k v, v))
-
--- TODO: Perhaps move IO, Maybe, under a 'm' type parameter.
 

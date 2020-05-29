@@ -39,6 +39,7 @@ module PL.Hash
   , showBase58
   , readBase58
   , hashAlgorithm
+  , hashBytes
 
   -- In order to be hashed, a type must have a Hashable instance which declares
   -- how toHashToken transforms it into a HashToken.
@@ -120,6 +121,13 @@ hashAlgorithm
   :: Hash
   -> HashAlgorithm
 hashAlgorithm (Hash a _) = a
+
+-- | Extract the bytes component of the hash _without_ the algorithm and without
+-- encoding to any human readable form.
+hashBytes
+  :: Hash
+  -> BS.ByteString
+hashBytes (Hash _a bytes) = bytes
 
 -- | An algorithm capable of hashing HashTokens to a Hash.
 -- This enumeration may be extended with new known hashes but hashes identifiers

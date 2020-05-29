@@ -2,6 +2,7 @@
            , FlexibleInstances
            , RankNTypes
            , LambdaCase
+           , TupleSections
   #-}
 {-|
 Module      : PL.Store.Nested
@@ -18,6 +19,9 @@ module PL.Store.Nested
   , newNestedStore
   , lookupNested
   , storeNested
+
+  , largerNestedKeys
+  , shortenNestedKeys
   )
   where
 
@@ -29,8 +33,10 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.List as List
 
 import PL.Store
+import PL.ShortStore
 
 -- | A Nested store behaves as if the top level store is an inexpensive cache
 -- for some more expensive (but more reliable) lower level store.
@@ -60,6 +66,19 @@ instance
   => Store (NestedStore s s') k v where
   store  = storeNested
   lookup = lookupNested
+
+instance
+  (Store s  k v
+  ,Store s' k v
+  ,Ord v
+  ,Show k
+  ,Show v
+  ,Shortable k shortK
+  ,ShortStore s k shortK v
+  ,ShortStore s' k shortK v
+  ) => ShortStore (NestedStore s s') k shortK v where
+  largerKeys = largerNestedKeys
+  shortenKey = shortenNestedKeys
 
 -- | Create a new nested store from two stores.
 --
@@ -255,4 +274,58 @@ storeNestedThenTop top nested key value =
 
               Just (top', topResult)
                 -> pure $ Just (NestedStore top' nested', topResult <> nestedResult)
+
+-- | Lookup all known keys that are 'larger' than a short key.
+largerNestedKeys
+  :: NestedStore s s' k v
+  -> shortK
+  -> IO (Maybe (NestedStore s s' k v, [k]))
+largerNestedKeys (NestedStore top nested) shortKey = undefined
+
+-- | Shorten a key to the smallest possible unambiguous ShortKey.
+shortenNestedKeys
+  :: ( ShortStore s  k shortK v
+     , ShortStore s' k shortK v
+     )
+  => NestedStore s s' k v
+  -> k
+  -> IO (Maybe (NestedStore s s' k v, shortK))
+shortenNestedKeys (NestedStore top nested) key = do
+  -- Algorithm:
+  -- - Lookup shortest prefix in top
+  -- - Query that prefix in the nested store
+  --   - If one result: done
+  --   - If multiple results: Pick the shortest
+  mRes <- shortenKey top key
+  case mRes of
+    Nothing
+      -> pure Nothing
+
+    Just (top', candidateShortKey)
+     -> do mRes <- largerKeys nested candidateShortKey
+           case mRes of
+             Nothing
+               -> pure Nothing
+
+             Just (nestedStore', nestedCandidateKeys)
+               -> case nestedCandidateKeys of
+                    -- Nested store doesn't know of any larger keys.
+                    []
+                      -> error "In a nested Store the top-level shortened a key to a value which has no larger keys in the nested store. This implies bad data in the top store or that the nested store has suffered data loss."
+
+                    -- Nested store agrees this is the shortest key
+                    -- TODO: Could sanity check the returned key is actually a
+                    -- larger key.
+                    [_shortKey]
+                      -> pure . Just $ (NestedStore top' nestedStore', candidateShortKey)
+
+                    -- Nested store knows of more than one colliding key
+                    -- Compute against these.
+                    shortKeys
+                      -> case fmap (shortenAgainst key) nestedCandidateKeys of
+                           []
+                             -> pure Nothing
+
+                           xs
+                             -> pure . Just . (NestedStore top' nestedStore',) . Prelude.head . List.sortOn shortLength $ xs
 

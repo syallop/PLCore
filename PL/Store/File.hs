@@ -3,6 +3,7 @@
            , RankNTypes
            , OverloadedStrings
            , GADTs
+           , TupleSections
   #-}
 {-|
 Module      : PL.Store.File
@@ -21,7 +22,6 @@ module PL.Store.File
 
   -- Util
   , ensureInitialized
-  , keyFilePath
   )
   where
 
@@ -35,12 +35,25 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.ByteString
+import Data.ByteString (ByteString, readFile, writeFile)
+import qualified Data.List as List
 import System.FilePath.ByteString
 import System.Directory
+import Data.Traversable
+import System.Directory.Tree (
+    AnchoredDirTree(..), DirTree(..),
+    filterDir, readDirectoryWith
+    )
+import System.FilePath (takeExtension)
+import Data.Foldable
+import Control.Monad
 
 import PL.Store
+import PL.ShortStore
 import PL.Serialize
+import PL.Store.File.Path
+
+import Reversible.Iso
 
 -- | Store key-values under a particular location in the filesystem.
 --
@@ -48,7 +61,8 @@ import PL.Serialize
 -- effect (other than making previous files inaccessbile). There is currently no
 -- attempt to detect or mitigate this.
 data FileStore k v = Ord v => FileStore
-  { _filePath             :: k -> FilePath
+  { _subDirectories       :: [ByteString]
+  , _filePattern          :: PathPattern k
   , _serializeFileBytes   :: v -> ByteString
   , _deserializeFileBytes :: ByteString -> Maybe v
   , _valuesEqual          :: v -> v -> Bool
@@ -57,36 +71,75 @@ data FileStore k v = Ord v => FileStore
 instance Show (FileStore k v) where
   show _ = "FileStore"
 
--- | Create a filestore from a directory path
+-- | Create a FileStore where values are stored:
+-- - Under optional subdirectories
+-- - Under a fixed length key, broken with subdirectories if 'too long'
+-- - In a file with a constant name.
+--
+-- E.G.
+-- Prefix: some,prefix
+-- Key: KEYNAMEBROKEN
+-- KeyLength: 12
+-- Internal definition of 'too long': 3
+-- File: file
+--
+-- Result path: some/prefix/KEY/NAM/EBR/OKE/N/file
 newSimpleFileStore
-  :: (Serialize k, Serialize v, Eq v, Ord v)
-  => ByteString
-  -> Maybe Int
+  :: ( Serialize k
+     , Serialize v
+     , Show k
+     , Eq v
+     , Ord v
+     )
+  => [ByteString] -- ^ Optional subdirectory to store under
+  -> Int           -- ^ Fix key length
+  -> Text
   -> FileStore k v
-newSimpleFileStore dir truncate = FileStore
-  { _filePath             = keyFilePath dir truncate
-  , _serializeFileBytes   = serialize
-  , _deserializeFileBytes = deserialize
-  , _valuesEqual          = (==)
-  }
+newSimpleFileStore subDirs keyLength fileName = newFileStore subDirs (mkPathPattern iso keyLength fileName) serialize deserialize (==)
+  where
+    iso = Iso
+      {_forwards  = deserialize . encodeUtf8
+      ,_backwards = Just . decodeUtf8 . serialize
+      }
 
 newFileStore
   :: Ord v
-  => (k -> FilePath)
+  => [ByteString]
+  -> PathPattern k
   -> (v -> ByteString)
   -> (ByteString -> Maybe v)
   -> (v -> v -> Bool)
   -> FileStore k v
-newFileStore filePath serializeBytes deserializeBytes valuesEqual = FileStore
-  { _filePath             = filePath
+newFileStore subDirs filePattern serializeBytes deserializeBytes valuesEqual = FileStore
+  { _subDirectories       = subDirs
+  , _filePattern          = filePattern
   , _serializeFileBytes   = serializeBytes
   , _deserializeFileBytes = deserializeBytes
   , _valuesEqual          = valuesEqual
   }
 
-instance Ord v => Store FileStore k v where
+instance
+  Ord v
+   => Store FileStore k v where
   store  = storeAsFile
   lookup = lookupFromFile
+
+baseDirectory
+  :: FileStore k v
+  -> FilePath
+baseDirectory = decodeFilePath . (<> "/") . mconcat . List.intersperse "/" . _subDirectories
+
+-- | Generate the file path associated with a key
+generateFullPath
+  :: k
+  -> FileStore k v
+  -> Maybe FilePath
+generateFullPath key f = case generatePath key (_filePattern f) of
+  Nothing
+    -> Nothing
+
+  Just path
+    -> Just $ baseDirectory f <> path
 
 -- | Store a key-value association by serializing the value and writing it to a
 -- file in the filestore named by the key.
@@ -98,43 +151,46 @@ storeAsFile
   -> IO (Maybe (FileStore k v, StoreResult v))
 storeAsFile filestore key value = do
   -- TODO: Consider mapping relevant filesystem exceptions to Nothing.
-  let keyPath = (_filePath filestore) key
-      serializedValue = _serializeFileBytes filestore value
+  case generateFullPath key filestore of
+    Nothing
+      -> pure Nothing
 
-  alreadyExists <- doesPathExist keyPath
-  if alreadyExists
-    -- A value is already stored at this key.
-    -- If it contains the same content, we don't need to do anything.
-    -- If it differs we replace and return the old value.
-    then do existingBytes <- readFile keyPath
-            case _deserializeFileBytes filestore existingBytes of
-              -- Whatever is in the file does not deserialize.
-              -- Either:
-              -- - Serialization does not round trip correctly
-              -- - The file has been tampered with
-              -- - We have a hash collision
-              -- Fail loudly for now.
-              Nothing
-                -> error $ mconcat [ "When attempting to store a key-value in the filesystem store we encountered an existing file which did not deserialize as expected. This could indicate:\n"
-                                   , "- Serialization does not round trip correctly\n"
-                                   , "- The file has been tampered file\n"
-                                   , "- We have a hash collision\n"
-                                   , "\n"
-                                   , "The file in question is at path: "
-                                   , keyPath
-                                   ]
+    Just keyPath
+      -> do let serializedValue = _serializeFileBytes filestore value
+            alreadyExists <- doesPathExist keyPath
+            if alreadyExists
+              -- A value is already stored at this key.
+              -- If it contains the same content, we don't need to do anything.
+              -- If it differs we replace and return the old value.
+              then do existingBytes <- readFile keyPath
+                      case _deserializeFileBytes filestore existingBytes of
+                        -- Whatever is in the file does not deserialize.
+                        -- Either:
+                        -- - Serialization does not round trip correctly
+                        -- - The file has been tampered with
+                        -- - We have a hash collision
+                        -- Fail loudly for now.
+                        Nothing
+                          -> error $ mconcat [ "When attempting to store a key-value in the filesystem store we encountered an existing file which did not deserialize as expected. This could indicate:\n"
+                                             , "- Serialization does not round trip correctly\n"
+                                             , "- The file has been tampered file\n"
+                                             , "- We have a hash collision\n"
+                                             , "\n"
+                                             , "The file in question is at path: "
+                                             , keyPath
+                                             ]
 
-              Just existingValue
-                | _valuesEqual filestore existingValue value
-                 -> pure $ Just (filestore, AlreadyStored)
+                        Just existingValue
+                          | _valuesEqual filestore existingValue value
+                           -> pure $ Just (filestore, AlreadyStored)
 
-                | otherwise
-                 -> do writeFileAndAnyMissingDirs keyPath serializedValue
-                       pure $ Just (filestore, Overwritten $ Set.fromList [existingValue])
+                          | otherwise
+                           -> do writeFileAndAnyMissingDirs keyPath serializedValue
+                                 pure $ Just (filestore, Overwritten $ Set.fromList [existingValue])
 
-    -- Key is not stored already.
-    else do writeFileAndAnyMissingDirs keyPath serializedValue
-            pure $ Just (filestore, Successfully)
+              -- Key is not stored already.
+              else do writeFileAndAnyMissingDirs keyPath serializedValue
+                      pure $ Just (filestore, Successfully)
 
 -- | Read a value by consulting a file in the filestore named by the key.
 lookupFromFile
@@ -142,58 +198,20 @@ lookupFromFile
   -> k
   -> IO (Maybe (FileStore k v, v))
 lookupFromFile filestore key = do
-  let keyPath = (_filePath filestore) key
+  case generateFullPath key filestore of
+    Nothing
+      -> pure Nothing
 
-  exists <- doesFileExist keyPath
-  if not exists
-    then pure Nothing
-    else do fileBytes <- readFile keyPath
-            case _deserializeFileBytes filestore fileBytes of
-              Nothing
-                -> pure Nothing
-              Just value
-                -> pure $ Just $ (filestore, value)
-
--- Compute a keys file path in a file store
---
--- When truncate is set, up to n characters from a serialized files name will be
--- truncated and used as a leading subdirectory.
---
--- E.G. Set to 4, if a key serialized to `subdir/withlongname`, then the value
--- would instead be written to a file named `subdir/with/longname`.
---
--- If set to Nothing, the file name is not split.
---
--- This option is useful for:
--- - Making prefixes slightly more readable
--- - Adding a small amount of balance to the number of files at the top level
--- - Filenames that are between 1 and 2 times the file name limit.
-keyFilePath
-  :: Serialize k
-  => ByteString
-  -> Maybe Int
-  -> k
-  -> FilePath
-keyFilePath dir mTruncateTo key =
-  let -- SHA512/SHORTLONGNAME
-      fullNamePath = serialize key
-
-      -- SHA512
-      fullNameDirPrefix = takeDirectory fullNamePath
-
-      -- SHORTLONGNAME
-      fullNameFile = takeFileName fullNamePath
-
-      -- (SHORT,LONGNAME)
-      (shortNameSegment,longNameSegment) = splitMaybe mTruncateTo fullNameFile
-
-      -- SHA512/SHORT/LONGNAME
-      keyPath = fullNameDirPrefix <> "/" <> shortNameSegment <> "/" <> longNameSegment
-   in (decodeFilePath $ dir <> "/" <> keyPath)
-
-splitMaybe :: Maybe Int -> ByteString -> (ByteString, ByteString)
-splitMaybe Nothing  bs = (bs, "")
-splitMaybe (Just i) bs = (take i bs, drop i bs)
+    Just keyPath
+      -> do exists <- doesFileExist keyPath
+            if not exists
+              then pure Nothing
+              else do fileBytes <- readFile keyPath
+                      case _deserializeFileBytes filestore fileBytes of
+                        Nothing
+                          -> pure Nothing
+                        Just value
+                          -> pure $ Just $ (filestore, value)
 
 -- Ensure a FileStores directory exists - create it if it does not.
 ensureInitialized :: FilePath -> IO ()
@@ -205,4 +223,84 @@ writeFileAndAnyMissingDirs filepath value = do
   let dir = takeDirectory $ encodeFilePath filepath
   createDirectoryIfMissing True $ decodeFilePath dir
   writeFile filepath value
+
+instance
+  ( Ord v
+  , Ord shortK
+  , Shortable k shortK
+
+
+  , Show shortK
+  , Show k
+  ) => ShortStore FileStore k shortK v where
+  largerKeys s shortK = Just . (s,) <$> largerKeysFromFiles s shortK
+  shortenKey s k      = fmap (s,) <$> shortenKeyFromFiles s k
+
+
+-- | Lookup all known keys that are 'larger' than a short key.
+largerKeysFromFiles
+  :: ( Show k
+     , Ord shortK
+     , Shortable k shortK
+     )
+  => FileStore k v
+  -> shortK
+  -> IO [k]
+largerKeysFromFiles f shortKey = filter (\key -> shortKey <= toShort key) <$> getAllKeys f
+-- TODO: We should be able to search along promising paths rather than grabbing
+-- every path and checking it.
+
+-- | Shorten a key to the smallest possible unambiguous ShortKey.
+shortenKeyFromFiles
+  :: (Show shortK, Shortable k shortK)
+  => FileStore k v
+  -> k
+  -> IO (Maybe shortK)
+shortenKeyFromFiles f key = do
+  allKeys <- getAllKeys f
+  case fmap (shortenAgainst key) allKeys of
+    []
+      -> pure Nothing
+
+    xs
+      -> do let shortenings = List.sortOn shortLength $ xs
+            print shortenings
+            pure . Just . head $ shortenings
+-- TODO: We should be able to compare against less keys.
+
+-- Get all keys stored in the FileStore.
+getAllKeys
+  :: FileStore k v
+  -> IO [k]
+getAllKeys f = do
+  -- Compute the directory tree for the subdirectory, tagging each file with
+  -- it's path _excluding_ the subdirectory.
+  let base = baseDirectory f
+  _:/tree <- readDirectoryWith (\filePath -> pure . Text.pack . List.drop (Prelude.length base) $ filePath) base
+
+  -- Filter out invalid files and directories
+  let allFiles = filterDir isValidFile tree
+
+  -- Filter out files which don't match our filestores pattern.
+  allKeys <- traverse (\filePath -> pure . readPathKey filePath $ (_filePattern f)) $ allFiles
+  pure $ foldr (\(leftovers,mKey) acc
+                 -> if leftovers /= ""
+                      then acc
+                      else case mKey of
+                             Nothing
+                               -> acc
+
+                             Just key
+                               -> key : acc
+                )
+                [] allKeys
+  where
+    isValidFile :: DirTree a -> Bool
+    isValidFile t = case t of
+      Dir ('.':_) _
+        -> False
+
+      File n _
+        -> True
+      _ -> True
 

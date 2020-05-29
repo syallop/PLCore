@@ -57,6 +57,7 @@ module PL.CodeStore
 import Prelude hiding (lookup)
 
 import PL.Store
+import PL.ShortStore
 import PL.Hash
 import PL.HashStore
 import PL.Serialize
@@ -89,10 +90,10 @@ data CodeStore = forall s. (Store s Hash Hash, Show (s Hash Hash)) => CodeStore
 -- other, which could be possible E.G. if a FileStore is used for each and care
 -- is not taken when generating subdirectories/ file names.
 newCodeStore
-  :: ( Store s Hash Expr
-     , Store s Hash Type
-     , Store s Hash Kind
-     , Store s Hash Hash
+  :: ( HashBackingStorage s Expr
+     , HashBackingStorage s Type
+     , HashBackingStorage s Kind
+     , HashBackingStorage s Hash
      , Show (s Hash Expr)
      , Show (s Hash Type)
      , Show (s Hash Kind)

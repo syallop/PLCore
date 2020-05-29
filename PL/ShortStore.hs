@@ -12,8 +12,6 @@ module PL.ShortStore
   , ShortStore ()
   , largerKeys
   , shortenKey
-
-  , ShortHash (..)
   )
   where
 
@@ -59,29 +57,6 @@ class Shortable long short | long -> short, short -> long where
   -- Coerce a long thing into a short thing. Not guaranteed to actually make the
   -- thing shorter.
   toShort :: long -> short
-
--- A Hash that may have had it's bytes truncated an arbitrary amount.
-data ShortHash = ShortHash
-  { _shortHashAlgorithm :: HashAlgorithm
-  , _unShortHash        :: BS.ByteString
-  }
-
-instance Shortable Hash ShortHash where
-  shortLength = shortLength . _unShortHash
-
-  toShort h = ShortHash (hashAlgorithm h) (hashBytes h)
-
-  shortenAgainst sourceHash againstHash
-    -- If the hashes use a different algorithm the bytes arent needed to
-    -- identify them.
-    | hashAlgorithm sourceHash /= hashAlgorithm againstHash
-     = ShortHash (hashAlgorithm sourceHash) ""
-
-    -- If the hashes use the same algorithm, find the shortest sequence of
-    -- unique bytes.
-    | otherwise
-     = let bs = shortenAgainst (hashBytes sourceHash) (hashBytes againstHash)
-        in ShortHash (hashAlgorithm sourceHash) bs
 
 instance Shortable BS.ByteString BS.ByteString where
   shortLength = BS.length

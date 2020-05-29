@@ -4,6 +4,8 @@
            , RankNTypes
            , GADTs
            , LambdaCase
+           , ConstraintKinds
+           , OverloadedStrings
   #-}
 {-|
 Module      : PL.HashStore
@@ -19,9 +21,14 @@ It is constructed with the more general Store for backing storage and handles:
 -}
 module PL.HashStore
   ( HashStore ()
+  , HashBackingStorage
   , newHashStore
   , storeByHash
   , lookupByHash
+
+  , ShortHash ()
+  , largerHashes
+  , shortenHash
   )
   where
 
@@ -33,12 +40,14 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.ByteString as BS
 
 import PL.Store
+import PL.ShortStore
 import PL.Hash
 
 -- | Store values 'v' by their 'Hash' in some underlying 'Store'.
-data HashStore v = forall s. (Store s Hash v, Hashable v, Show (s Hash v)) => HashStore
+data HashStore v = forall s. (ShortStore s Hash ShortHash v, Hashable v, Show (s Hash v)) => HashStore
   { _store :: s Hash v
   }
 
@@ -47,9 +56,11 @@ instance Show (HashStore v) where
     HashStore s
       -> show s
 
+type HashBackingStorage s v = ShortStore s Hash ShortHash v
+
 -- | Create a HashStore from some underlying backing Storage which accepts
 -- 'Hash'es as keys.
-newHashStore :: (Hashable v, Store s Hash v, Show (s Hash v)) => s Hash v -> HashStore v
+newHashStore :: (Hashable v, HashBackingStorage s v, Show (s Hash v)) => s Hash v -> HashStore v
 newHashStore s = HashStore s
 
 -- | Store a value 'v' in the 'HashStore' using the provided algorithm to
@@ -101,4 +112,41 @@ lookupByHash h hashKey = case h of
                                          , show valueHash
                                          ]
                     else pure $ Just (HashStore s', value)
+
+-- A Hash that may have had it's bytes truncated an arbitrary amount.
+data ShortHash = ShortHash
+  { _shortHashAlgorithm :: HashAlgorithm
+  , _unShortHash        :: BS.ByteString
+  }
+
+instance Shortable Hash ShortHash where
+  shortLength = shortLength . _unShortHash
+
+  toShort h = ShortHash (hashAlgorithm h) (hashBytes h)
+
+  shortenAgainst sourceHash againstHash
+    -- If the hashes use a different algorithm the bytes arent needed to
+    -- identify them.
+    | hashAlgorithm sourceHash /= hashAlgorithm againstHash
+     = ShortHash (hashAlgorithm sourceHash) ""
+
+    -- If the hashes use the same algorithm, find the shortest sequence of
+    -- unique bytes.
+    | otherwise
+     = let bs = shortenAgainst (hashBytes sourceHash) (hashBytes againstHash)
+        in ShortHash (hashAlgorithm sourceHash) bs
+
+-- | Given a ShortHash, return all known larger Hashes
+largerHashes
+  :: HashStore v
+  -> ShortHash
+  -> IO (Maybe (HashStore v, [Hash]))
+largerHashes (HashStore s) shortHash = fmap (\(s',hashes) -> (HashStore s',hashes)) <$> largerKeys s shortHash
+
+-- | Given a regular Hash, return the shortest unambiguous Hash.
+shortenHash
+  :: HashStore v
+  -> Hash
+  -> IO (Maybe (HashStore v, ShortHash))
+shortenHash (HashStore s) hash = fmap (\(s',shortHash) -> (HashStore s',shortHash)) <$> shortenKey s hash
 

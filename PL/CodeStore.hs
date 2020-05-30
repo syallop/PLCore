@@ -51,6 +51,15 @@ module PL.CodeStore
   -- Lookup the type/ kind of an expr/ type.
   , lookupExprType
   , lookupTypeKind
+
+  -- Shorten and resolve hashes to make them easier for humans to work with
+  , shortenExprHash
+  , shortenTypeHash
+  , shortenKindHash
+
+  , largerExprHashes
+  , largerTypeHashes
+  , largerKindHashes
   )
   where
 
@@ -289,4 +298,97 @@ lookupTypeKind codeStore typeHash = case codeStore of
 
             Just (typeKindStore',typeKind)
               -> Just (CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore', typeKind)
+
+-- | Given an Expr Hash, shorten it to the shortest unambiguous ShortHash.
+shortenExprHash
+  :: CodeStore
+  -> Hash
+  -> IO (Maybe (CodeStore, ShortHash))
+shortenExprHash codeStore exprHash = case codeStore of
+  CodeStore exprStore _typeStore _kindStore _exprTypeStore _typeKindStore
+    -> do mRes <- shortenHash exprStore exprHash
+          pure $ case mRes of
+            Nothing
+              -> Nothing
+
+            Just (exprStore', shortHash)
+              -> Just (codeStore{_exprStore = exprStore'}, shortHash)
+
+-- | Given a Type Hash, shorten it to the shortest unambiguous ShortHash.
+shortenTypeHash
+  :: CodeStore
+  -> Hash
+  -> IO (Maybe (CodeStore, ShortHash))
+shortenTypeHash codeStore typeHash = case codeStore of
+  CodeStore _exprStore typeStore _kindStore _exprTypeStore _typeKindStore
+    -> do mRes <- shortenHash typeStore typeHash
+          pure $ case mRes of
+            Nothing
+              -> Nothing
+
+            Just (typeStore', shortHash)
+              -> Just (codeStore{_typeStore = typeStore'}, shortHash)
+
+-- | Given a Kind Hash, shorten it to the shortest unambiguous ShortHash.
+shortenKindHash
+  :: CodeStore
+  -> Hash
+  -> IO (Maybe (CodeStore, ShortHash))
+shortenKindHash codeStore kindHash = case codeStore of
+  CodeStore _exprStore _typeStore kindStore _exprTypeStore _typeKindStore
+    -> do mRes <- shortenHash kindStore kindHash
+          pure $ case mRes of
+            Nothing
+              -> Nothing
+
+            Just (kindStore', shortHash)
+              -> Just (codeStore{_kindStore = kindStore'}, shortHash)
+
+-- | Given a short, potentially ambiguous hash for an Expr, gather all larger
+-- Hashes.
+largerExprHashes
+  :: CodeStore
+  -> ShortHash
+  -> IO (Maybe (CodeStore, [Hash]))
+largerExprHashes codeStore shortExprHash = case codeStore of
+  CodeStore exprStore _typeStore _kindStore _exprTypeStore _typeKindStore
+    -> do mRes <- largerHashes exprStore shortExprHash
+          pure $ case mRes of
+            Nothing
+              -> Nothing
+
+            Just (exprStore', exprHashes)
+              -> Just (codeStore{_exprStore = exprStore'}, exprHashes)
+
+-- | Given a short, potentially ambiguous hash for a Type, gather all larger
+-- Hashes.
+largerTypeHashes
+  :: CodeStore
+  -> ShortHash
+  -> IO (Maybe (CodeStore, [Hash]))
+largerTypeHashes codeStore shortTypeHash = case codeStore of
+  CodeStore _exprStore typeStore _kindStore _exprTypeStore _typeKindStore
+    -> do mRes <- largerHashes typeStore shortTypeHash
+          pure $ case mRes of
+            Nothing
+              -> Nothing
+
+            Just (typeStore', typeHashes)
+              -> Just (codeStore{_typeStore = typeStore'}, typeHashes)
+
+-- | Given a short, potentially ambiguous hash for a Kind, gather all larger
+-- Hashes.
+largerKindHashes
+  :: CodeStore
+  -> ShortHash
+  -> IO (Maybe (CodeStore, [Hash]))
+largerKindHashes codeStore shortKindHash = case codeStore of
+  CodeStore _exprStore _typeStore kindStore _exprTypeStore _typeKindStore
+    -> do mRes <- largerHashes kindStore shortKindHash
+          pure $ case mRes of
+            Nothing
+              -> Nothing
+
+            Just (kindStore', kindHashes)
+              -> Just (codeStore{_kindStore = kindStore'}, kindHashes)
 

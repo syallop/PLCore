@@ -18,6 +18,7 @@
    , TypeFamilies
    , UndecidableInstances
    , TypeOperators
+   , PolyKinds
    #-}
 {-|
 Module      : PL.Commented
@@ -36,23 +37,37 @@ Patterns are provided for constructing and matching on commented things.
 
 module PL.Commented
   ( -- Core comment structure
-    CommentedPhase
-  , Comment (..)
+    Comment (..)
   , Commented (..)
 
-  -- Aliases in the CommentedPhase
-  , CommentedExpr
-  , CommentedType
-  , CommentedPattern
-
-  -- Expressions, types and matchargs are extended with the possibility for an
+  -- Expressions, types and patterns are extended with the possibility for an
   -- associated comment
   , pattern CommentedExpr
   , pattern CommentedType
   , pattern CommentedPattern
 
-  -- Convert a commented expression into an expression in the DefaultPhase
-  -- with comments removed.
+    -- A concrete phase where expr, types and patterns are commented but all
+    -- other extensions are Void.
+  , CommentedPhase
+
+  -- Aliases which extend phases with comments
+  , CommentedExprFor
+  , CommentedTypeFor
+  , CommentedPatternFor
+
+  -- Establish a has-comments and with-comments-removed relation between two
+  -- phases which are otherwise identical
+  , ExprWithoutComments
+  , TypeWithoutComments
+  , PatternWithoutComments
+
+  -- Reverse *WithoutComments
+  , ExprWithComments
+  , TypeWithComments
+  , PatternWithComments
+
+  -- Remove the comment extension from phases, otherwise keeping them
+  -- the same.
   , stripComments
   , stripTypeComments
   , stripCaseComments
@@ -60,8 +75,7 @@ module PL.Commented
   , stripCaseBranchComments
   , stripPatternComments
 
-  -- Convert a DefaultPhase expression into one that can be decorated with
-  -- comments
+  -- Add the comment extension to phases, otherwise keeping them the same.
   , addComments
   , addTypeComments
   , addCaseComments
@@ -165,121 +179,224 @@ type instance BindExtension CommentedPhase = Void
 type instance PatternExtension CommentedPhase = Commented (PatternFor CommentedPhase)
 
 -- The commented phase uses variables and types for bindings and abstractions
-type instance BindingFor     CommentedPhase = Var
-type instance TypeBindingFor CommentedPhase = TyVar
-type instance AbstractionFor CommentedPhase = TypeFor CommentedPhase
+type instance BindingFor        CommentedPhase = Var
+type instance ContentBindingFor CommentedPhase = ContentName
+type instance TypeBindingFor    CommentedPhase = TyVar
+type instance AbstractionFor    CommentedPhase = TypeFor CommentedPhase
 
-type CommentedExpr     = ExprFor     CommentedPhase
-type CommentedType     = TypeFor     CommentedPhase
-type CommentedPattern = PatternFor CommentedPhase
+-- | Expressions at some phase that have been extended with a commented
+-- expression constructor.
+type CommentedExprFor phase = ExprExtension phase ~ (Commented (ExprFor phase))
+
+-- | Types at some phase that have been extended with a commented type
+-- constructor.
+type CommentedTypeFor    phase = TypeExtension phase    ~ (Commented (TypeFor phase))
+
+-- | Patterns at some phase that have been extended with a commented pattern
+-- constructor.
+type CommentedPatternFor phase = PatternExtension phase ~ (Commented (PatternFor phase))
 
 -- Pattern synonyms
 
--- TODO: Should these be more general to allow commenting currently un-commented
--- things?
-
 -- New extension points wrap expressions, matchargs and types in comments.
-pattern CommentedExpr :: Comment -> CommentedExpr -> CommentedExpr
+pattern CommentedExpr :: CommentedExprFor phase => Comment -> ExprFor phase -> ExprFor phase
 pattern CommentedExpr comment expr <- FixPhase (ExprExtensionF (Commented comment expr))
   where CommentedExpr comment expr =  FixPhase (ExprExtensionF (Commented comment expr))
 
-pattern CommentedPattern :: Comment -> CommentedPattern -> CommentedPattern
+pattern CommentedPattern :: CommentedPatternFor phase => Comment -> PatternFor phase -> PatternFor phase
 pattern CommentedPattern comment commentedPattern <- FixPhase (PatternExtensionF (Commented comment commentedPattern))
   where CommentedPattern comment commentedPattern =  FixPhase (PatternExtensionF (Commented comment commentedPattern))
 
-pattern CommentedType :: Comment -> CommentedType -> CommentedType
+pattern CommentedType :: CommentedTypeFor phase => Comment -> TypeFor phase -> TypeFor phase
 pattern CommentedType comment commentedType <- FixPhase (TypeExtensionF (Commented comment commentedType))
   where CommentedType comment commentedType =  FixPhase (TypeExtensionF (Commented comment commentedType))
 
+-- | Two expression phases are identical but the first contains comments and the
+-- second is free to vary.
+type ExprWithoutComments phaseIn phaseOut =
+     ( -- The first expression is commented
+       CommentedExprFor phaseIn
+
+     , PatternWithoutComments phaseIn phaseOut
+     , TypeWithoutComments    phaseIn phaseOut
+
+       -- Both expressions use types for abstractions
+     , AbstractionFor phaseIn ~ TypeFor phaseIn
+     , AbstractionFor phaseOut ~ TypeFor phaseOut
+
+     , Eq (Commented (TypeFor phaseIn))
+     , Ord (NamedExtension phaseIn)
+
+       -- Otherwise, both expressions have the same extensions
+     , LamExtension            phaseIn ~ LamExtension            phaseOut
+     , AppExtension            phaseIn ~ AppExtension            phaseOut
+     , BindingExtension        phaseIn ~ BindingExtension        phaseOut
+     , ContentBindingExtension phaseIn ~ ContentBindingExtension phaseOut
+     , CaseAnalysisExtension   phaseIn ~ CaseAnalysisExtension   phaseOut
+     , SumExtension            phaseIn ~ SumExtension            phaseOut
+     , ProductExtension        phaseIn ~ ProductExtension        phaseOut
+     , UnionExtension          phaseIn ~ UnionExtension          phaseOut
+     , BigLamExtension         phaseIn ~ BigLamExtension         phaseOut
+     , BigAppExtension         phaseIn ~ BigAppExtension         phaseOut
+
+       -- Both expressions use the same binding and abstraction types.
+     , BindingFor        phaseIn ~ BindingFor        phaseOut
+     , ContentBindingFor phaseIn ~ ContentBindingFor phaseOut
+     , TypeBindingFor    phaseIn ~ TypeBindingFor    phaseOut
+     )
+
+-- | Two expression phases are identical except the second contains comments and
+-- the first is free to vary.
+type ExprWithComments phaseIn phaseOut = ExprWithoutComments phaseOut phaseIn
+
+-- | Two type phases are identical but the first contains comments and the
+-- second is free to vary.
+type TypeWithoutComments phaseIn phaseOut =
+     ( -- The first type is commented
+       CommentedTypeFor phaseIn
+
+     , Ord (TypeFor phaseIn)
+     , Ord (TypeFor phaseOut)
+     , Eq  (TypeFor phaseIn)
+     , Eq  (TypeFor phaseOut)
+
+       -- Otherwise, both types have the same extensions
+     , NamedExtension              phaseIn ~ NamedExtension              phaseOut
+     , ArrowExtension              phaseIn ~ ArrowExtension              phaseOut
+     , SumTExtension               phaseIn ~ SumTExtension               phaseOut
+     , ProductTExtension           phaseIn ~ ProductTExtension           phaseOut
+     , UnionTExtension             phaseIn ~ UnionTExtension             phaseOut
+     , BigArrowExtension           phaseIn ~ BigArrowExtension           phaseOut
+     , TypeLamExtension            phaseIn ~ TypeLamExtension            phaseOut
+     , TypeAppExtension            phaseIn ~ TypeAppExtension            phaseOut
+     , TypeBindingExtension        phaseIn ~ TypeBindingExtension        phaseOut
+     , TypeContentBindingExtension phaseIn ~ TypeContentBindingExtension phaseOut
+
+     , TypeBindingFor phaseIn ~ TypeBindingFor phaseOut
+     )
+
+-- | Two type phases are identical except the second contains comments and
+-- the first is free to vary.
+type TypeWithComments phaseIn phaseOut = TypeWithoutComments phaseOut phaseIn
+
+-- | Two pattern phases are identical but the first contains comments and the
+-- second is free to vary.
+type PatternWithoutComments phaseIn phaseOut =
+     ( -- The first pattern is commented
+       CommentedPatternFor phaseIn
+
+     , TypeWithoutComments phaseIn phaseOut
+
+      -- Otherwise, both patterns have the same extensions
+     , SumPatternExtension     phaseIn ~ SumPatternExtension     phaseOut
+     , ProductPatternExtension phaseIn ~ ProductPatternExtension phaseOut
+     , UnionPatternExtension   phaseIn ~ UnionPatternExtension   phaseOut
+     , BindingPatternExtension phaseIn ~ BindingPatternExtension phaseOut
+     , BindExtension           phaseIn ~ BindExtension           phaseOut
+
+     , BindingFor phaseIn ~ BindingFor phaseOut
+     )
+
+-- | Two pattern phases are identical except the second contains comments and
+-- the first is free to vary.
+type PatternWithComments phaseIn phaseOut = PatternWithoutComments phaseOut phaseIn
+
 -- TODO: These functions could be written in terms of recursion schemes.
 
--- Strip comments from an expression
+-- | Strip comments from an expression.
 stripComments
-  :: ExprFor CommentedPhase
-  -> ExprFor DefaultPhase
-stripComments = \case
-  Lam ty expr
-    -> Lam (stripTypeComments ty) (stripComments expr)
-
-  App fExpr xExpr
-    -> App (stripComments fExpr) (stripComments xExpr)
-
-  CaseAnalysis c
-     -> CaseAnalysis $ stripCaseComments c
-
-  Sum expr ix ty
-    -> Sum (stripComments expr) ix (fmap stripTypeComments ty)
-
-  Product prodExprs
-    -> Product (fmap stripComments prodExprs)
-
-  Union unionExpr tyIx ty
-    -> Union (stripComments unionExpr) (stripTypeComments tyIx) (Set.map stripTypeComments ty)
-
-  Binding b
-    -> Binding b
-
-  ContentBinding c
-    -> ContentBinding c
-
-  BigLam takeTy expr
-    -> BigLam takeTy (stripComments expr)
-
-  BigApp fExpr xTy
-    -> BigApp (stripComments fExpr) (stripTypeComments xTy)
-
-  CommentedExpr _comment commentedExpr
+  :: ExprWithoutComments phaseIn phaseOut
+  => ExprFor phaseIn
+  -> ExprFor phaseOut
+stripComments e = case e of
+  FixPhase (ExprExtensionF (Commented _comment commentedExpr))
     -> stripComments commentedExpr
+
+  LamExt ext ty expr
+    -> LamExt ext (stripTypeComments ty) (stripComments expr)
+
+  AppExt ext fExpr xExpr
+    -> AppExt ext (stripComments fExpr) (stripComments xExpr)
+
+  CaseAnalysisExt ext c
+     -> CaseAnalysisExt ext $ stripCaseComments c
+
+  SumExt ext expr ix ty
+    -> SumExt ext (stripComments expr) ix (fmap stripTypeComments ty)
+
+  ProductExt ext prodExprs
+    -> ProductExt ext (fmap stripComments prodExprs)
+
+  UnionExt ext unionExpr tyIx ty
+    -> UnionExt ext (stripComments unionExpr) (stripTypeComments tyIx) (Set.map stripTypeComments ty)
+
+  BindingExt ext b
+    -> BindingExt ext b
+
+  ContentBindingExt ext c
+    -> ContentBindingExt ext c
+
+  BigLamExt ext takeTy expr
+    -> BigLamExt ext takeTy (stripComments expr)
+
+  BigAppExt ext fExpr xTy
+    -> BigAppExt ext (stripComments fExpr) (stripTypeComments xTy)
 
   _ -> error "Non-exhaustive pattern in stripComments"
 
+-- | Strip comments from a type.
 stripTypeComments
-  :: TypeFor CommentedPhase
-  -> TypeFor DefaultPhase
+  :: TypeWithoutComments phaseIn phaseOut
+  => TypeFor phaseIn
+  -> TypeFor phaseOut
 stripTypeComments = \case
-  Named tyName
-    -> Named tyName
-
-  Arrow from to
-    -> Arrow (stripTypeComments from) (stripTypeComments to)
-
-  SumT types
-    -> SumT (fmap stripTypeComments types)
-
-  ProductT types
-    -> ProductT (fmap stripTypeComments types)
-
-  UnionT types
-    -> UnionT (Set.map stripTypeComments $ types)
-
-  BigArrow from to
-    -> BigArrow from (stripTypeComments to)
-
-  TypeLam kind typ
-    -> TypeLam kind (stripTypeComments typ)
-
-  TypeApp x y
-    -> TypeApp (stripTypeComments x) (stripTypeComments y)
-
-  TypeBinding b
-    -> TypeBinding b
-
-  TypeContentBinding c
-    -> TypeContentBinding c
-
-  CommentedType _comment commentedType
+  FixPhase (TypeExtensionF (Commented _comment commentedType))
     -> stripTypeComments commentedType
+
+  NamedExt ext tyName
+    -> NamedExt ext tyName
+
+  ArrowExt ext from to
+    -> ArrowExt ext (stripTypeComments from) (stripTypeComments to)
+
+  SumTExt ext types
+    -> SumTExt ext (fmap stripTypeComments types)
+
+  ProductTExt ext types
+    -> ProductTExt ext (fmap stripTypeComments types)
+
+  UnionTExt ext types
+    -> UnionTExt ext (Set.map stripTypeComments $ types)
+
+  BigArrowExt ext from to
+    -> BigArrowExt ext from (stripTypeComments to)
+
+  TypeLamExt ext kind typ
+    -> TypeLamExt ext kind (stripTypeComments typ)
+
+  TypeAppExt ext x y
+    -> TypeAppExt ext (stripTypeComments x) (stripTypeComments y)
+
+  TypeBindingExt ext b
+    -> TypeBindingExt ext b
+
+  TypeContentBindingExt ext c
+    -> TypeContentBindingExt ext c
 
   _ -> error "Non-exhaustive pattern in stripTypeComments"
 
+-- | Strip comments from a case statement.
 stripCaseComments
-  :: Case (ExprFor CommentedPhase) (PatternFor CommentedPhase)
-  -> Case (ExprFor DefaultPhase)   (PatternFor DefaultPhase)
+  :: ExprWithoutComments phaseIn phaseOut
+  => Case (ExprFor phaseIn) (PatternFor phaseIn)
+  -> Case (ExprFor phaseOut) (PatternFor phaseOut)
 stripCaseComments (Case expr branches) = Case (stripComments expr) (stripCaseBranchesComments branches)
 
+-- | Strip comments from case branches.
 stripCaseBranchesComments
-  :: CaseBranches (ExprFor CommentedPhase) (PatternFor CommentedPhase)
-  -> CaseBranches (ExprFor DefaultPhase)   (PatternFor DefaultPhase)
+  :: ExprWithoutComments phaseIn phaseOut
+  => CaseBranches (ExprFor phaseIn)  (PatternFor phaseIn)
+  -> CaseBranches (ExprFor phaseOut) (PatternFor phaseOut)
 stripCaseBranchesComments = \case
   DefaultOnly expr
     -> DefaultOnly (stripComments expr)
@@ -287,115 +404,127 @@ stripCaseBranchesComments = \case
   CaseBranches neBranches mDefault
     -> CaseBranches (fmap stripCaseBranchComments neBranches) (fmap stripComments mDefault)
 
+-- | Strip comments from a case branch.
 stripCaseBranchComments
-  :: CaseBranch (ExprFor CommentedPhase) (PatternFor CommentedPhase)
-  -> CaseBranch (ExprFor DefaultPhase)   (PatternFor DefaultPhase)
+  :: ExprWithoutComments phaseIn phaseOut
+  => CaseBranch (ExprFor phaseIn) (PatternFor phaseIn)
+  -> CaseBranch (ExprFor phaseOut) (PatternFor phaseOut)
 stripCaseBranchComments (CaseBranch match result) = CaseBranch (stripPatternComments match) (stripComments result)
 
+-- | Strip comments from a pattern.
 stripPatternComments
-  :: PatternFor CommentedPhase
-  -> PatternFor DefaultPhase
+  :: PatternWithoutComments phaseIn phaseOut
+  => PatternFor phaseIn
+  -> PatternFor phaseOut
 stripPatternComments = \case
-  Bind
-    -> Bind
-
-  BindingPattern b
-    -> BindingPattern b
-
-  SumPattern sumIndex nestedPattern
-    -> SumPattern sumIndex (stripPatternComments nestedPattern)
-
-  ProductPattern nestedPatterns
-    -> ProductPattern (fmap stripPatternComments nestedPatterns)
-
-  UnionPattern unionIndexTy nestedPattern
-    -> UnionPattern (stripTypeComments unionIndexTy) (stripPatternComments nestedPattern)
-
-  CommentedPattern _comment commentedPattern
+  FixPhase (PatternExtensionF (Commented _comment commentedPattern))
     -> stripPatternComments commentedPattern
+
+  BindExt ext
+    -> BindExt ext
+
+  BindingPatternExt ext b
+    -> BindingPatternExt ext b
+
+  SumPatternExt ext sumIndex nestedPattern
+    -> SumPatternExt ext sumIndex (stripPatternComments nestedPattern)
+
+  ProductPatternExt ext nestedPatterns
+    -> ProductPatternExt ext (fmap stripPatternComments nestedPatterns)
+
+  UnionPatternExt ext unionIndexTy nestedPattern
+    -> UnionPatternExt ext (stripTypeComments unionIndexTy) (stripPatternComments nestedPattern)
 
   _ -> error "Non-exhaustive pattern match when stripping comments from match statement"
 
+-- | Add the ability to comment an expression.
 addComments
-  :: ExprFor DefaultPhase
-  -> ExprFor CommentedPhase
+  :: ExprWithComments phaseIn phaseOut
+  => ExprFor phaseIn
+  -> ExprFor phaseOut
 addComments = \case
-  Lam ty expr
-    -> Lam (addTypeComments ty) (addComments expr)
+  LamExt ext ty expr
+    -> LamExt ext (addTypeComments ty) (addComments expr)
 
-  App fExpr xExpr
-    -> App (addComments fExpr) (addComments xExpr)
+  AppExt ext fExpr xExpr
+    -> AppExt ext (addComments fExpr) (addComments xExpr)
 
-  CaseAnalysis c
-     -> CaseAnalysis $ addCaseComments c
+  CaseAnalysisExt ext c
+     -> CaseAnalysisExt ext $ addCaseComments c
 
-  Sum expr ix ty
-    -> Sum (addComments expr) ix (fmap addTypeComments ty)
+  SumExt ext expr ix ty
+    -> SumExt ext (addComments expr) ix (fmap addTypeComments ty)
 
-  Product prodExprs
-    -> Product (fmap addComments prodExprs)
+  ProductExt ext prodExprs
+    -> ProductExt ext (fmap addComments prodExprs)
 
-  Union unionExpr tyIx ty
-    -> Union (addComments unionExpr) (addTypeComments tyIx) (Set.map addTypeComments ty)
+  UnionExt ext unionExpr tyIx ty
+    -> UnionExt ext (addComments unionExpr) (addTypeComments tyIx) (Set.map addTypeComments ty)
 
-  Binding b
-    -> Binding b
+  BindingExt ext b
+    -> BindingExt ext b
 
-  ContentBinding c
-    -> ContentBinding c
+  ContentBindingExt ext c
+    -> ContentBindingExt ext c
 
-  BigLam takeTy expr
-    -> BigLam takeTy (addComments expr)
+  BigLamExt ext takeTy expr
+    -> BigLamExt ext takeTy (addComments expr)
 
-  BigApp fExpr xTy
-    -> BigApp (addComments fExpr) (addTypeComments xTy)
+  BigAppExt ext fExpr xTy
+    -> BigAppExt ext (addComments fExpr) (addTypeComments xTy)
 
   _ -> error "Non-exhaustive pattern adding comments"
 
+-- | Add the ability to comment a type.
 addTypeComments
-  :: TypeFor DefaultPhase
-  -> TypeFor CommentedPhase
+  :: TypeWithComments phaseIn phaseOut
+  => TypeFor phaseIn
+  -> TypeFor phaseOut
 addTypeComments = \case
-  Named tyName
-    -> Named tyName
+  NamedExt ext tyName
+    -> NamedExt ext tyName
 
-  Arrow from to
-    -> Arrow (addTypeComments from) (addTypeComments to)
+  ArrowExt ext from to
+    -> ArrowExt ext (addTypeComments from) (addTypeComments to)
 
-  SumT types
-    -> SumT (fmap addTypeComments types)
+  SumTExt ext types
+    -> SumTExt ext (fmap addTypeComments types)
 
-  ProductT types
-    -> ProductT (fmap addTypeComments types)
+  ProductTExt ext types
+    -> ProductTExt ext (fmap addTypeComments types)
 
-  UnionT types
-    -> UnionT (Set.map addTypeComments $ types)
+  UnionTExt ext types
+    -> UnionTExt ext (Set.map addTypeComments $ types)
 
-  BigArrow from to
-    -> BigArrow from (addTypeComments to)
+  BigArrowExt ext from to
+    -> BigArrowExt ext from (addTypeComments to)
 
-  TypeLam kind typ
-    -> TypeLam kind (addTypeComments typ)
+  TypeLamExt ext kind typ
+    -> TypeLamExt ext kind (addTypeComments typ)
 
-  TypeApp x y
-    -> TypeApp (addTypeComments x) (addTypeComments y)
+  TypeAppExt ext x y
+    -> TypeAppExt ext (addTypeComments x) (addTypeComments y)
 
-  TypeBinding b
-    -> TypeBinding b
+  TypeBindingExt ext b
+    -> TypeBindingExt ext b
 
-  TypeContentBinding name
-    -> TypeContentBinding name
+  TypeContentBindingExt ext name
+    -> TypeContentBindingExt ext name
 
   _ -> error "Non-exhaustive pattern in addTypeComments"
 
+-- | Add the ability to comment a case statement.
 addCaseComments
-  :: Case (ExprFor DefaultPhase) (PatternFor DefaultPhase)
-  -> Case (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+  :: ExprWithComments phaseIn phaseOut
+  => Case (ExprFor phaseIn) (PatternFor phaseIn)
+  -> Case (ExprFor phaseOut) (PatternFor phaseOut)
 addCaseComments (Case expr branches) = Case (addComments expr) (addCaseBranchesComments branches)
 
+-- | Add the ability to comment case branches.
 addCaseBranchesComments
-  :: CaseBranches (ExprFor DefaultPhase) (PatternFor DefaultPhase)
-  -> CaseBranches (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+  :: ExprWithComments phaseIn phaseOut
+  => CaseBranches (ExprFor phaseIn) (PatternFor phaseIn)
+  -> CaseBranches (ExprFor phaseOut) (PatternFor phaseOut)
 addCaseBranchesComments = \case
   DefaultOnly expr
     -> DefaultOnly (addComments expr)
@@ -403,36 +532,33 @@ addCaseBranchesComments = \case
   CaseBranches neBranches mDefault
     -> CaseBranches (fmap addCaseBranchComments neBranches) (fmap addComments mDefault)
 
+-- | Add the ability to comment a case branch.
 addCaseBranchComments
-  :: CaseBranch (ExprFor DefaultPhase) (PatternFor DefaultPhase)
-  -> CaseBranch (ExprFor CommentedPhase) (PatternFor CommentedPhase)
+  :: ExprWithComments phaseIn phaseOut
+  => CaseBranch (ExprFor phaseIn) (PatternFor phaseIn)
+  -> CaseBranch (ExprFor phaseOut) (PatternFor phaseOut)
 addCaseBranchComments (CaseBranch match result) = CaseBranch (addPatternComments match) (addComments result)
 
+-- | Add the ability to comment a pattern.
 addPatternComments
-  :: PatternFor DefaultPhase
-  -> PatternFor CommentedPhase
+  :: PatternWithComments phaseIn phaseOut
+  => PatternFor phaseIn
+  -> PatternFor phaseOut
 addPatternComments = \case
-  Bind
-    -> Bind
+  BindExt ext
+    -> BindExt ext
 
-  BindingPattern b
-    -> BindingPattern b
+  BindingPatternExt ext b
+    -> BindingPatternExt ext b
 
-  SumPattern sumIndex nestedPattern
-    -> SumPattern sumIndex (addPatternComments nestedPattern)
+  SumPatternExt ext sumIndex nestedPattern
+    -> SumPatternExt ext  sumIndex (addPatternComments nestedPattern)
 
-  ProductPattern nestedPatterns
-    -> ProductPattern (fmap addPatternComments nestedPatterns)
+  ProductPatternExt ext  nestedPatterns
+    -> ProductPatternExt ext  (fmap addPatternComments nestedPatterns)
 
-  UnionPattern unionIndexTy nestedPattern
-    -> UnionPattern (addTypeComments unionIndexTy) (addPatternComments nestedPattern)
+  UnionPatternExt ext  unionIndexTy nestedPattern
+    -> UnionPatternExt ext  (addTypeComments unionIndexTy) (addPatternComments nestedPattern)
 
   _ -> error "Non-exhaustive pattern match when add comments from match statement"
-
--- stripComments commentedExpr == strippedExpr
-commentedExpr :: ExprFor CommentedPhase
-commentedExpr = CommentedExpr (Comment "Ignore value typed Foo and return value typed Bar") $ Lam (Named "Foo") $ Lam (Named "Bar") $ Binding VZ
-
-strippedExpr :: ExprFor DefaultPhase
-strippedExpr = Lam (Named "Foo") $ Lam (Named "Bar") $ Binding VZ
 

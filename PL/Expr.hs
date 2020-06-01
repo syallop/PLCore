@@ -90,6 +90,7 @@ module PL.Expr
   , BigAppExtension
   , ExprExtension
   , BindingFor
+  , ContentBindingFor
   , AbstractionFor
   , TypeBindingFor
   )
@@ -212,7 +213,7 @@ data ExprF phase expr
     -- recursion.
     | ContentBindingF
       { _nameBindingExtension :: ContentBindingExtension phase
-      , _name                 :: ContentName
+      , _name                 :: ContentBindingFor phase
       }
 
     -- | Case analysis of an expression.
@@ -329,6 +330,7 @@ deriving instance
   ,Eq (ExprExtension phase)
   ,Eq (AbstractionFor phase)
   ,Eq (BindingFor phase)
+  ,Eq (ContentBindingFor phase)
   ,Eq (TypeBindingFor phase)
   ,Eq (TypeFor phase)
   ,Eq (PatternFor phase)
@@ -350,6 +352,7 @@ deriving instance
   ,Ord (ExprExtension phase)
   ,Ord (AbstractionFor phase)
   ,Ord (BindingFor phase)
+  ,Ord (ContentBindingFor phase)
   ,Ord (TypeBindingFor phase)
   ,Ord (TypeFor phase)
   ,Ord (PatternFor phase)
@@ -372,6 +375,7 @@ instance
   ,Show (ExprExtension phase)
   ,Show (AbstractionFor phase)
   ,Show (BindingFor phase)
+  ,Show (ContentBindingFor phase)
   ,Show (TypeBindingFor phase)
   ,Show (TypeFor phase)
   ,Show (PatternFor phase)
@@ -426,6 +430,7 @@ instance
   ,Hashable (ExprExtension phase)
   ,Hashable (AbstractionFor phase)
   ,Hashable (BindingFor phase)
+  ,Hashable (ContentBindingFor phase)
   ,Hashable (TypeBindingFor phase)
   ,Hashable (TypeFor phase)
   ,Hashable (PatternFor phase)
@@ -443,7 +448,7 @@ instance
       -> HashTag "Expr.Binding" [toHashToken ext,toHashToken b]
 
     ContentBindingF _ext c
-      -> HashIs . contentName $ c
+      -> toHashToken c
 
     CaseAnalysisF ext c
       -> HashTag "Expr.Case" [toHashToken ext,toHashToken c]
@@ -484,6 +489,7 @@ type family BigAppExtension phase
 type family ExprExtension phase
 
 type family AbstractionFor phase
+type family ContentBindingFor phase
 
 -- LamF for phases where there is no extension to the constructor.
 pattern Lam :: LamExtension phase ~ Void => AbstractionFor phase -> ExprFor phase -> ExprFor phase
@@ -513,11 +519,11 @@ pattern BindingExt ext b <- FixPhase (BindingF ext b)
   where BindingExt ext b = FixPhase (BindingF ext b)
 
 -- ContentBindingF for phases where there is no extension to the constructor.
-pattern ContentBinding :: ContentBindingExtension phase ~ Void => ContentName -> ExprFor phase
+pattern ContentBinding :: ContentBindingExtension phase ~ Void => ContentBindingFor phase -> ExprFor phase
 pattern ContentBinding c <- FixPhase (ContentBindingF _ c)
   where ContentBinding c = FixPhase (ContentBindingF void c)
 
-pattern ContentBindingExt :: ContentBindingExtension phase -> ContentName -> ExprFor phase
+pattern ContentBindingExt :: ContentBindingExtension phase -> ContentBindingFor phase -> ExprFor phase
 pattern ContentBindingExt ext c <- FixPhase (ContentBindingF ext c)
   where ContentBindingExt ext c = FixPhase (ContentBindingF ext c)
 
@@ -615,8 +621,9 @@ type instance BigAppExtension DefaultPhase = Void
 -- TODO: Should _this_ be unit instead of void?
 type instance ExprExtension DefaultPhase = Void
 
-type instance BindingFor     DefaultPhase = Var
-type instance AbstractionFor DefaultPhase = Type
+type instance BindingFor        DefaultPhase = Var
+type instance ContentBindingFor DefaultPhase = ContentName
+type instance AbstractionFor    DefaultPhase = Type
 
 -- TODO: Recursion schemes can probably be used for these instances now.
 -- They're also not as generic as they could be.
@@ -694,7 +701,7 @@ exprType ctx e = case e of
   --      x : absTy     expr : exprTy
   -- ----------------------------------
   --   Lam absTy expr : absTy -> exprTy
-  Lam absTy bodyExpr
+  LamExt _ext absTy bodyExpr
     -> do exprTy <- exprType (underExpressionAbstraction absTy ctx) bodyExpr
           Right $ Arrow absTy exprTy
 
@@ -702,7 +709,7 @@ exprType ctx e = case e of
   --   f : a -> b    x : a
   -- -----------------------
   --       App f x : b
-  App f x
+  AppExt _ext f x
     -> do -- Both f and x must type-check individually
           fTy <- exprType ctx f
           xTy <- exprType ctx x
@@ -746,7 +753,7 @@ exprType ctx e = case e of
 
   -- Provided an expression type checks and its type is in the correct place within a sum,
   -- has that sum type.
-  Sum expr ix inTypr
+  SumExt _ext expr ix inTypr
     -> do -- Expression must type check
           exprTy <- exprType ctx expr
 
@@ -768,7 +775,7 @@ exprType ctx e = case e of
           Right $ SumT inTypr
 
   -- A product is typed by the order of each expression it contains
-  Product prodExprs
+  ProductExt _ext prodExprs
     -> do -- type check each successive expression
           prodExprTys <- mapM (exprType ctx) prodExprs
 
@@ -778,7 +785,7 @@ exprType ctx e = case e of
   -- Provided an expression typechecks and its type exists within the union, it has the claimed union type.
   -- TODO: Unused types in the union are not themselves checked for consistency
   -- TODO: The same type appearing more than once should be an error?
-  Union unionExpr unionTypeIndex unionTypes
+  UnionExt _ext unionExpr unionTypeIndex unionTypes
     -> do -- type check injected expression
           exprTy <- exprType ctx unionExpr
 
@@ -803,7 +810,7 @@ exprType ctx e = case e of
   -- b : t IN exprBindCtx
   -- -----------------
   --      b : t
-  Binding b
+  BindingExt _ext b
     -> lookupVarType b ctx
 
   -- At the type-checking phase we should have already resolved the name to
@@ -815,7 +822,7 @@ exprType ctx e = case e of
   -- c : t
   -- -----
   -- c : t
-  ContentBinding c
+  ContentBindingExt _ext c
     -> lookupExprContentType c ctx
 
   --        scrutineeExpr : t0   defExpr : t1
@@ -831,7 +838,7 @@ exprType ctx e = case e of
   --                        branches            : t
   --                        branches
   --                        ?defExpr
-  CaseAnalysis c
+  CaseAnalysisExt _ext c
     -> do -- scrutinee should be well typed and reduce
           scrutineeTy <- exprType ctx (_caseScrutinee c) >>= (`reduceTypeUnderCtx` ctx)
 
@@ -875,14 +882,14 @@ exprType ctx e = case e of
   --    absKind :: kind      expr : exprTy
   -- ---------------------------------------
   --   BigLam absKind expr : kind BigArrow exprTy
-  BigLam absKind bodyExpr
+  BigLamExt _ext absKind bodyExpr
     -> do exprTy <- exprType (underTypeAbstraction absKind ctx) bodyExpr
           Right $ BigArrow absKind exprTy
 
   --    f : aKind BigLamArrow bTy      xTy :: aKind
   -- ---------------------------------------------------
   --              BigApp f xTy : bTy
-  BigApp f x
+  BigAppExt _ext f x
     -> do -- The applied type must kind-check
           xKy <- kindCheck x ctx
 
@@ -927,7 +934,9 @@ exprType ctx e = case e of
 -- | Gather the Set of all ContentBinding names used within an Expression
 -- _without_ looking under any of the returned names themselves.
 gatherContentNames
-  :: ExprFor phase
+  :: forall phase
+   . ContentBindingFor phase ~ ContentName
+  => ExprFor phase
   -> Set ContentName
 gatherContentNames = gatherContentNames' Set.empty
   where
@@ -1037,12 +1046,12 @@ gatherExprsTypeContentNames = gather Set.empty
     gatherCaseBranch :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
     gatherCaseBranch accNames (CaseBranch _pattern exprResult) = gather accNames exprResult
 
-appise :: [Expr] -> Expr
+appise :: AppExtension phase ~ Void => [ExprFor phase] -> ExprFor phase
 appise []        = error "Cant appise empty list of expressions"
 appise [e]       = e
 appise (e:e':es) = appise (App e e' : es)
 
-lamise :: [Type] -> Expr -> Expr
+lamise :: (LamExtension phase ~ Void, AbstractionFor phase ~ TypeFor phase) => [TypeFor phase] -> ExprFor phase -> ExprFor phase
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise [t]       e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)

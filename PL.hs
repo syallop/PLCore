@@ -26,6 +26,12 @@ import PL.Commented          as X
 -- Errors that may be thrown in various compilation stages.
 import PL.Error              as X
 
+-- Evaluate expressions fully.
+import PL.Evaluate           as X
+
+-- Resolve ambiguous short-hashes to known, unambiguous hashes.
+import PL.Resolve            as X
+
 -- An AST containing anonymous functions, sums, products and union types.
 -- Indexed by de bruijn indexes and with some level of type functions.
 import PL.Expr               as X

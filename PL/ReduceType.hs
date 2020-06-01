@@ -44,17 +44,17 @@ import qualified Data.Text as Text
 
 -- | TypeReductionCtx contains information used/ generated when reducing an
 -- expression.
-data TypeReductionCtx = TypeReductionCtx
-  { _typeReductionTypeBindings :: Bindings Type -- ^ Types that are either Bound or Unbound by an outer type abstraction.
-  , _typeReductionTypeCtx      :: TypeCtx       -- ^ Associated named types to their TypeInfo definitions.
-  , _typeReductionGas          :: Maybe Int     -- ^ Proportional to the amount of reduction steps allowed before reduction is aborted. All reduction steps should terminate eventually however this parameter can be used to detect bugs, I.E. diverging reduction or inefficient reduction paths.
+data TypeReductionCtx phase = TypeReductionCtx
+  { _typeReductionTypeBindings :: Bindings (TypeFor phase) -- ^ Types that are either Bound or Unbound by an outer type abstraction.
+  , _typeReductionTypeCtx      :: TypeCtxFor phase         -- ^ Associated named types to their TypeInfo definitions.
+  , _typeReductionGas          :: Maybe Int                -- ^ Proportional to the amount of reduction steps allowed before reduction is aborted. All reduction steps should terminate eventually however this parameter can be used to detect bugs, I.E. diverging reduction or inefficient reduction paths.
   }
 
 -- | Reduce a top-level type with a TypeCtx mapping type-names to type
 -- definitions.
 topTypeReductionCtx
-  :: TypeCtx
-  -> TypeReductionCtx
+  :: TypeCtxFor phase
+  -> TypeReductionCtx phase
 topTypeReductionCtx typeCtx = TypeReductionCtx
   { _typeReductionTypeBindings = emptyBindings
   , _typeReductionTypeCtx      = typeCtx
@@ -64,7 +64,7 @@ topTypeReductionCtx typeCtx = TypeReductionCtx
 -- | True when the ReductionCtx has been provided limited gas which has been
 -- depleted.
 hitTypeReductionLimit
-  :: TypeReductionCtx
+  :: TypeReductionCtx phase
   -> Bool
 hitTypeReductionLimit ctx = case _typeReductionGas ctx of
   Nothing
@@ -74,17 +74,21 @@ hitTypeReductionLimit ctx = case _typeReductionGas ctx of
 
 -- | If the amount of reductions has a gas limit, reduce the amount available.
 reduceTypeReductionLimit
-  :: TypeReductionCtx
-  -> TypeReductionCtx
+  :: TypeReductionCtx phase
+  -> TypeReductionCtx phase
 reduceTypeReductionLimit ctx = ctx{_typeReductionGas = fmap (subtract 1) $ _typeReductionGas ctx}
 
 -- | Query for the Bound/Unbound Type associated with a type variable binding.
 --
 -- Fails when the variable supplied is too large.
 lookupTyVarBinding
-  :: TypeReductionCtx
+  :: ( HasAbs     (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs  (TypeFor phase)
+     )
+  => TypeReductionCtx phase
   -> TyVar
-  -> Either (Error expr Type pattern TypeCtx) (Binding Type)
+  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) (Binding (TypeFor phase))
 lookupTyVarBinding ctx b =
   let ix       = bindDepth b
       bindings = _typeReductionTypeBindings ctx
@@ -105,16 +109,16 @@ lookupTyVarBinding ctx b =
 
 -- | Context after a Type is applied.
 underTypeAppliedType
-  :: Type
-  -> TypeReductionCtx
-  -> TypeReductionCtx
+  :: TypeFor phase
+  -> TypeReductionCtx phase
+  -> TypeReductionCtx phase
 underTypeAppliedType appliedType ctx = ctx{_typeReductionTypeBindings = bind appliedType . _typeReductionTypeBindings $ ctx}
 
 -- | Context under some type abstraction where the type variable has _not_ been
 -- bound.
 underTypeTypeAbstraction
-  :: TypeReductionCtx
-  -> TypeReductionCtx
+  :: TypeReductionCtx phase
+  -> TypeReductionCtx phase
 underTypeTypeAbstraction ctx = ctx{_typeReductionTypeBindings = unbound . bury . _typeReductionTypeBindings $ ctx}
 
 
@@ -135,9 +139,18 @@ underTypeTypeAbstraction ctx = ctx{_typeReductionTypeBindings = unbound . bury .
 --   - Arguments to type application are reduced themselves before being
 --   substituted into the body of the type function.
 reduceType
-  :: TypeReductionCtx
-  -> Type
-  -> Either (Error expr Type pattern TypeCtx) Type
+  :: ( Eq (TypeFor phase)
+     , Void ~ TypeAppExtension phase
+     , TyVar ~ TypeBindingFor phase
+     , HasAbs (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs (TypeFor phase)
+
+     , Ord (TypeFor phase)
+     )
+  => TypeReductionCtx phase
+  -> TypeFor phase
+  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) (TypeFor phase)
 reduceType ctx ty
   | hitTypeReductionLimit ctx
    = Left . ETypeReductionLimitReached $ ty
@@ -157,13 +170,22 @@ reduceType ctx ty
 -- | 'reduceType' a single step with a collection of initial type bindings as if
 -- Types have already been applied to an outer type lambda abstraction.
 reduceTypeStep
-  :: TypeReductionCtx
-  -> Type
-  -> Either (Error expr Type pattern TypeCtx) Type
+  :: ( Void ~ TypeAppExtension phase
+     , TyVar ~ TypeBindingFor phase
+
+     , HasAbs (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs (TypeFor phase)
+
+     , Ord (TypeFor phase)
+     )
+  => TypeReductionCtx phase
+  -> TypeFor phase
+  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) (TypeFor phase)
 reduceTypeStep ctx ty = case ty of
 
   -- TypeBindings are substituted if they have been bound.
-  TypeBinding b
+  TypeBindingExt ext b
     -> do binding <- lookupTyVarBinding ctx b
           pure $ case binding of
             -- If no type has been bound there is no further reduction
@@ -171,7 +193,7 @@ reduceTypeStep ctx ty = case ty of
             -- E.G. We're looking at '?0' in a type lambda that has not been
             -- applied.
             Unbound
-              -> TypeBinding b
+              -> TypeBindingExt ext b
 
             -- If a type has been bound, we substitute it for the binding.
             -- We assume strict evaluation of the type and so don't reduce it
@@ -195,8 +217,8 @@ reduceTypeStep ctx ty = case ty of
   --   modification hard. It is likely we'll end up storing multiple
   --   representations of the 'same' code to deal with this. For now, we
   --   prioritise readability over full reduction.
-  TypeContentBinding c
-    -> pure $ TypeContentBinding c
+  TypeContentBindingExt ext c
+    -> pure $ TypeContentBindingExt ext c
 
   -- Reduce using strictish semantics:
   -- - First reduce a step under the applied type
@@ -206,13 +228,13 @@ reduceTypeStep ctx ty = case ty of
   -- Typechecking _should_ have ensured the type function is an arrow kind that
   -- matches the type. It should therefore only be a type lambda or a type binding
   -- to a (possibly unknown) function.
-  TypeApp f x
+  TypeAppExt ext f x
     -> do x' <- reduceTypeStep ctx x
           f' <- reduceTypeStep ctx f
           case f' of
             -- Type lambdas are reduced by binding applied values into the body
             -- and reducing.
-            TypeLam _absKind fBodyType
+            TypeLamExt _ext _absKind fBodyType
               -> reduceTypeStep (underTypeAppliedType x' ctx) fBodyType
 
             -- The function we're applying is 'higher order' - it is sourced
@@ -223,19 +245,19 @@ reduceTypeStep ctx ty = case ty of
             -- nothing except reduce the argument a step.
             -- If we're wrong an additional reduceStep on the
             -- application should make progress.
-            TypeBinding tyVar
-              -> pure $ TypeApp (TypeBinding tyVar) x'
+            TypeBindingExt ext tyVar
+              -> pure $ TypeApp (TypeBindingExt ext tyVar) x'
 
             -- We don't reduce under content bindings.
-            TypeContentBinding c
-              -> pure $ TypeApp (TypeContentBinding c) x'
+            TypeContentBindingExt ext c
+              -> pure $ TypeApp (TypeContentBindingExt ext c) x'
 
             -- We're applying a named type which should be looked up in the type
             -- context.
             --
             -- Similar to TypeBindings - this should have been reduced away
             -- already.
-            Named n
+            NamedExt _ext n
               -> case lookupTypeNameInfo n (_typeReductionTypeCtx ctx) of
                    Nothing
                      -> Left $ EMsg $ text "Cant reduce type application to a name which does not exist in the context"
@@ -249,20 +271,20 @@ reduceTypeStep ctx ty = case ty of
             _ -> Left $ ETypeAppLambda f
 
   -- Reduce a single step under the type lambda type.
-  TypeLam takeKind tyBody
-    -> (TypeLam takeKind) <$> reduceTypeStep (underTypeTypeAbstraction ctx) tyBody
+  TypeLamExt ext takeKind tyBody
+    -> (TypeLamExt ext takeKind) <$> reduceTypeStep (underTypeTypeAbstraction ctx) tyBody
 
   -- Reduce a single step under the big arrow types.
-  BigArrow fromKind toTy
+  BigArrowExt ext fromKind toTy
     -- TODO: Should bindings be wrapped with 'unbound'?
-    -> BigArrow fromKind <$> reduceTypeStep ctx toTy
+    -> BigArrowExt ext fromKind <$> reduceTypeStep ctx toTy
 
   -- Names are reduced by substituting their definition.
   -- TODO:
   -- - Should we reduce the definition of non-recursive types?
   -- - Should we reduce the definition of recursive types (being careful not to
   --   expand the recursion?)
-  Named n
+  NamedExt ext n
     -> case lookupTypeNameInitialInfo n (_typeReductionTypeCtx ctx) of
          Nothing
            -> Left $ ETypeNotDefined n (_typeReductionTypeCtx ctx)
@@ -273,24 +295,24 @@ reduceTypeStep ctx ty = case ty of
          -- Do not expose the definition of recursive types so that recursive
          -- reduction terminates!
          Just (TypeInfo Rec k ty)
-           -> pure $ Named n
+           -> pure $ NamedExt ext n
 
   -- Reduce a single step under the arrow type.
-  Arrow from to
-    -> Arrow <$> reduceTypeStep ctx from
-             <*> reduceTypeStep ctx to
+  ArrowExt ext from to
+    -> ArrowExt ext <$> reduceTypeStep ctx from
+                    <*> reduceTypeStep ctx to
 
   -- Reduce a single step under the sum types.
-  SumT types
-    -> SumT <$> mapM (reduceTypeStep ctx) types
+  SumTExt ext types
+    -> SumTExt ext <$> mapM (reduceTypeStep ctx) types
 
   -- Reduce a single step under the product types.
-  ProductT types
-    -> ProductT <$> mapM (reduceTypeStep ctx) types
+  ProductTExt ext types
+    -> ProductTExt ext <$> mapM (reduceTypeStep ctx) types
 
   -- Reduce a single step under the union types.
-  UnionT types
-    -> (UnionT . Set.fromList) <$> mapM (reduceTypeStep ctx) (Set.toList types)
+  UnionTExt ext types
+    -> (UnionTExt ext . Set.fromList) <$> mapM (reduceTypeStep ctx) (Set.toList types)
 
   _ -> error "Non-exhaustive pattern in type reduction"
 

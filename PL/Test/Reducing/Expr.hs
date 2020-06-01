@@ -91,7 +91,12 @@ reduceToSpec
   -> (TyVar -> Doc)
   -> Spec
 reduceToSpec name ctx inputExpr reductions ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
-  mapM_ (\(name,args,expectReduction) -> reduceSpec name (apply (stripComments inputExpr) args) expectReduction) reductions
+  mapM_ (\(name,args,expectReduction)
+          -> let expr :: ExprFor DefaultPhase
+                 expr = stripComments inputExpr
+              in reduceSpec name (apply expr args) expectReduction
+        )
+        reductions
   where
     reduceSpec
       :: Text.Text
@@ -157,6 +162,6 @@ reduceToSpec name ctx inputExpr reductions ppExpr ppType ppPattern ppVar ppTyVar
              Right True
                -> pure ()
 
-apply :: Expr -> [Expr -> Expr] -> Expr
+apply :: ExprFor phase -> [ExprFor phase -> ExprFor phase] -> ExprFor phase
 apply e fs = foldl (\e f -> f e) e fs
 

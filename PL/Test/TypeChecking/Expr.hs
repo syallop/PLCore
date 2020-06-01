@@ -70,7 +70,13 @@ typeCheckSpec
   -> (Type -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
-typeCheckSpec name inputExpr ctx expectedType ppType ppError = it (Text.unpack name) $ case exprType ctx (stripComments inputExpr) of
+typeCheckSpec name inputExpr ctx expectedType ppType ppError = it (Text.unpack name) $
+  let expr :: ExprFor DefaultPhase
+      expr = stripComments inputExpr
+
+      exprTy :: Either (Error Expr Type Pattern TypeCtx) (TypeFor DefaultPhase)
+      exprTy = exprType ctx expr
+   in case exprTy of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

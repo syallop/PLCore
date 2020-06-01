@@ -70,7 +70,7 @@ data TypeTestCase = TypeTestCase
   , _hasKind               :: Kind         -- ^ Has this kind
 
   -- Reduction tests
-  , _underTypeReductionCtx :: TypeReductionCtx
+  , _underTypeReductionCtx :: TypeReductionCtx DefaultPhase
   , _reducesTo             :: Type                    -- ^ Type reduces to this form. E.G. when it contains type lambdas applied to types.
   , _reducesToWhenApplied  :: [TypeReductionTestCase] -- ^ When type-applied to a list of arguments, reduces to some result
 
@@ -79,7 +79,7 @@ data TypeTestCase = TypeTestCase
 
 data TypeReductionTestCase = TypeReductionTestCase
   { _typeReductionName                  :: Text
-  , _typeReductionUnderTypeReductionCtx :: TypeReductionCtx
+  , _typeReductionUnderTypeReductionCtx :: TypeReductionCtx DefaultPhase
   , _typeReductionUnderTypeBindCtx      :: BindCtx TyVar Kind
   , _typeReductionMutateType            :: [Type -> Type]
   , _typeReductionMatches               :: [TypeMatch]

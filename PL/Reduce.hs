@@ -167,7 +167,7 @@ lookupVarBinding ctx b =
 -- This is what allows types at the expression level to be passed into types.
 toTypeReductionCtx
   :: ReductionCtx
-  -> TypeReductionCtx
+  -> TypeReductionCtx DefaultPhase
 toTypeReductionCtx ctx = TypeReductionCtx (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (_reductionGas ctx)
 
 -- | Reducing an 'Expr'ession means to walk down the AST that is presumed to be:

@@ -172,7 +172,7 @@ reduceEvaluationLimit = Evaluate $ \ctx -> pure $ Right (ctx{_evaluationGas = fm
 --
 -- This is what allows types at the expression level to be passed into types.
 toTypeReductionCtx
-  :: Evaluate TypeReductionCtx
+  :: Evaluate (TypeReductionCtx DefaultPhase)
 toTypeReductionCtx = Evaluate $ \ctx -> pure $ Right (ctx, TypeReductionCtx (_evaluationTypeBindings ctx) (_evaluationTypeCtx ctx) (_evaluationGas ctx))
 
 -- | Query for the Bound Expr associated with a variable binding.

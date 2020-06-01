@@ -107,7 +107,7 @@ reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern
   where
     reduceSpec
       :: Text.Text
-      -> TypeReductionCtx
+      -> TypeReductionCtx DefaultPhase
       -> BindCtx TyVar Kind
       -> Bindings Type
       -> Type

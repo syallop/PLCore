@@ -91,7 +91,7 @@ subTwoExprTestCase src
   where
     ctx = natTypeCtx
 
-    e :: CommentedExpr
+    e :: ExprFor CommentedPhase
     e =
       Lam natTypeName $                                       -- \n : Nat ->
         CaseAnalysis $ Case (Binding $ VZ)                    -- case n of

@@ -3,6 +3,7 @@
   , OverloadedStrings
   , ScopedTypeVariables
   , GADTs
+  , ConstraintKinds
   #-}
 module PL.Type.Eq
   ( typeEq
@@ -23,6 +24,7 @@ import PLPrinter
 import PL.ReduceType
 import PL.Type
 import PL.TypeCtx
+import PL.FixPhase
 
 import Control.Applicative
 import Control.Monad
@@ -43,24 +45,44 @@ import Debug.Trace
 -- of gas used to limit the amount of reduction steps. 'typeEqWith' accepts
 -- dn explicit quantity.
 typeEq
-  :: BindCtx TyVar Kind   -- ^ Associate type variables to their kinds
-  -> Bindings Type        -- ^ Type variables are either unbound or bound with some type
-  -> TypeCtx              -- ^ Associate named types to their TypeInfo definition
-  -> Map ContentName Type -- ^ Cache a mapping of known type content names to their type definitions
-  -> Type
-  -> Type
-  -> Either (Error expr Type patternFor TypeCtx) Bool
+  :: ( TyVar ~ TypeBindingFor phase
+     , Void  ~ TypeAppExtension phase
+
+     , Show (TypeFor phase)
+     , Ord (TypeFor phase)
+
+     , HasAbs (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs (TypeFor phase)
+     )
+  => BindCtx TyVar Kind   -- ^ Associate type variables to their kinds
+  -> Bindings (TypeFor phase) -- ^ Type variables are either unbound or bound with some type
+  -> TypeCtxFor phase              -- ^ Associate named types to their TypeInfo definition
+  -> Map ContentName (TypeFor phase) -- ^ Cache a mapping of known type content names to their type definitions
+  -> TypeFor phase
+  -> TypeFor phase
+  -> Either (Error expr (TypeFor phase) patternFor (TypeCtxFor phase)) Bool
 typeEq typeBindCtx typeBindings typeNameCtx contentIsType type0 type1 = typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (Just 128) type0 type1
 
 typeEqWith
-  :: BindCtx TyVar Kind
-  -> Bindings Type
-  -> TypeCtx
-  -> Map ContentName Type
+  :: ( TyVar ~ TypeBindingFor   phase
+     , Void  ~ TypeAppExtension phase
+
+     , Show (TypeFor phase)
+     , Ord (TypeFor phase)
+
+     , HasAbs (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs (TypeFor phase)
+     )
+  => BindCtx TyVar Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtxFor phase
+  -> Map ContentName (TypeFor phase)
   -> Maybe Int
-  -> Type
-  -> Type
-  -> Either (Error expr Type patternFor TypeCtx) Bool
+  -> TypeFor phase
+  -> TypeFor phase
+  -> Either (Error expr (TypeFor phase) patternFor (TypeCtxFor phase)) Bool
 typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type0 type1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -77,7 +99,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
    = case (type0, type1) of
        -- Named Types are ONLY equal if they have the same name.
        -- TODO: Should we require the name exists in the context as well?
-       (Named n0, Named n1)
+       (NamedExt _ n0, NamedExt _ n1)
          | n0 == n1  -> Right True
 
          -- TODO: We may want different names for the same definition to be
@@ -90,9 +112,9 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
        -- To compare a Named type to a non-named type, lookup the definition of the
        -- name and recurse.
-       (_, Named _)
+       (_, NamedExt _ _)
          -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 type0
-       (Named n0, _)
+       (NamedExt _ n0, _)
          -> let it0 = lookupTypeNameInitialInfo n0 typeNameCtx
              in case it0 of
                   Nothing
@@ -103,14 +125,14 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
        -- ContentBindings are equal if they have the same hash.
        -- TODO: Should we require the name exists in the context as well?
-       (TypeContentBinding c0, TypeContentBinding c1)
+       (TypeContentBindingExt _ c0, TypeContentBindingExt _ c1)
          | c0 == c1  -> Right True
          | otherwise -> Right False
 
        -- Compare a content-binding to a non-content binding.
-       (type0, TypeContentBinding _)
+       (type0, TypeContentBindingExt _ _)
          -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 type0
-       (TypeContentBinding c0, type1)
+       (TypeContentBindingExt _ c0, type1)
          -> case Map.lookup c0 contentIsType of
               Nothing
                 -> Left . EMsg . mconcat $
@@ -125,7 +147,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
        -- TODO: If we're unifying unbound types with types, should we be back
        -- propogating this unification? If so, the current data structures and
        -- algorithm is not appropriate.
-       (TypeBinding b0, TypeBinding b1)
+       (TypeBindingExt _ b0, TypeBindingExt _ b1)
          -> do binding0 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b0) typeBindings) Right $ safeIndex (Proxy :: Proxy TyVar) typeBindings (bindDepth b0)
                binding1 <- maybe (Left $ EBindTypeLookupFailure (bindDepth b1) typeBindings) Right $ safeIndex (Proxy :: Proxy TyVar) typeBindings (bindDepth b1)
                case (binding0,binding1) of
@@ -145,9 +167,9 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
                     -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
 
        -- To compare a binding to a non-binding
-       (type0, TypeBinding _)
+       (type0, TypeBindingExt _ _)
          -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 type0
-       (TypeBinding b0, type1)
+       (TypeBindingExt _ b0, type1)
          -> let binding0 = index (Proxy :: Proxy TyVar) typeBindings (bindDepth b0)
                in case binding0 of
                     Unbound
@@ -158,15 +180,15 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
        -- Two type applications are equal if both of their corresponding parts are
        -- equal
-       (TypeApp f0 x0, TypeApp f1 x1)
+       (TypeAppExt _ f0 x0, TypeAppExt _ f1 x1)
          -> (&&) <$> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) f0 f1
                  <*> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) x0 x1
 
        -- A TypeApp is equal to something else when, after reducing it, it is equal
        -- to that other thing.
-       (ty0, TypeApp _ _)
+       (ty0, TypeAppExt _ _ _)
          -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 ty0
-       (TypeApp f0 x0, ty1)
+       (TypeAppExt _ f0 x0, ty1)
          -> case reduceTypeStep (TypeReductionCtx typeBindings typeNameCtx (Just 100)) f0 of
               Left e
                 -> Left e
@@ -176,7 +198,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
                      -- TODO: we're assuming kindchecking has already been performed. Otherwise, aKy must equal xKy
                      -- The resulting type is then the rhs of the typelam under the
                      -- context of what it was applied to
-                     TypeLam aKy bTy
+                     TypeLamExt _ aKy bTy
                        -> typeEqWith (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) bTy ty1
 
                      _ -> Left $ EMsg $ text "In typeEq: Cant type apply a non-lambda type to a type"
@@ -184,20 +206,20 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
        -- Arrow types are equal when their corresponding to and from types are the
        -- same
-       (Arrow from0 to0, Arrow from1 to1)
+       (ArrowExt _ from0 to0, ArrowExt _ from1 to1)
          -> (&&) <$> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) from0 from1
                  <*> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) to0   to1
 
-       (SumT ts0, SumT ts1)
+       (SumTExt _ ts0, SumTExt _ ts1)
          -> typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (NE.toList ts0) (NE.toList ts1)
 
-       (ProductT ts0, ProductT ts1)
+       (ProductTExt _ ts0, ProductTExt _ ts1)
          -> typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) ts0 ts1
 
-       (UnionT ts0, UnionT ts1)
+       (UnionTExt _ ts0, UnionTExt _ ts1)
          -> typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (Set.toList ts0) (Set.toList ts1)
 
-       (BigArrow fromKy0 toTy0, BigArrow fromKy1 toTy1)
+       (BigArrowExt _ fromKy0 toTy0, BigArrowExt _ fromKy1 toTy1)
          -> let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
                 newTypeBindings = unbound $ typeBindings
                in if kindEq fromKy0 fromKy1
@@ -207,7 +229,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
        -- Two type lambda are equivalent if their corresponding from and to are the
        -- same
        -- TODO: Should probably UnBound the type vars when checking theyre equal
-       (TypeLam k0 ty0, TypeLam k1 ty1)
+       (TypeLamExt _ k0 ty0, TypeLamExt _ k1 ty1)
          -> let newTypeBindCtx  = addBinding k0 typeBindCtx
                 newTypeBindings = unbound $ typeBindings
                in (&&) <$> pure (k0 == k1)
@@ -218,25 +240,44 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs
-  :: BindCtx TyVar Kind
-  -> Bindings Type
-  -> TypeCtx
-  -> Map ContentName Type
-  -> [Type]
-  -> [Type]
-  -> Either (Error expr Type pattern TypeCtx) Bool
+  :: ( TyVar ~ TypeBindingFor phase
+     , Void ~ TypeAppExtension phase
+
+     , Show (TypeFor phase)
+     , Ord (TypeFor phase)
+
+     , HasAbs (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs (TypeFor phase)
+     )
+  => BindCtx TyVar Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtxFor phase
+  -> Map ContentName (TypeFor phase)
+  -> [TypeFor phase]
+  -> [TypeFor phase]
+  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) Bool
 typeEqs typeBindCtx typeBindings typeNameCtx contentIsType ts0 ts1 = typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (Just 128) ts0 ts1
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqsWith
-  :: BindCtx TyVar Kind
-  -> Bindings Type
-  -> TypeCtx
-  -> Map ContentName Type
+  :: ( TyVar ~ TypeBindingFor phase
+     , Void ~ TypeAppExtension phase
+     , Show (TypeFor phase)
+     , Ord (TypeFor phase)
+
+     , HasAbs (TypeFor phase)
+     , HasBinding (TypeFor phase) TyVar
+     , HasNonAbs (TypeFor phase)
+     )
+  => BindCtx TyVar Kind
+  -> Bindings (TypeFor phase)
+  -> TypeCtxFor phase
+  -> Map ContentName (TypeFor phase)
   -> Maybe Int
-  -> [Type]
-  -> [Type]
-  -> Either (Error expr Type pattern TypeCtx) Bool
+  -> [TypeFor phase]
+  -> [TypeFor phase]
+  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) Bool
 typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts0 ts1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -258,18 +299,20 @@ typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts
 -- | Under a given bindings context, kind-check a type.
 -- TODO: Break move to more appropriate location.
 typeKind
-  :: BindCtx TyVar Kind
+  :: ( TyVar ~ TypeBindingFor phase
+     )
+  => BindCtx TyVar Kind
   -> Map ContentName Kind
-  -> TypeCtx
-  -> Type
-  -> Either (Error expr Type pattern TypeCtx) Kind
+  -> TypeCtxFor phase
+  -> TypeFor phase
+  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) Kind
 typeKind typeBindCtx contentKinds typeCtx ty = case ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.
   -- Either:
   -- - Tag types with their kind when theyre added to the context, and trust that.
   -- - ???
-  Named n
+  NamedExt _ n
     -> case lookupTypeNameInitialInfo n typeCtx of
          Nothing
            -> Left $ EMsg $ text "No such type name in kind check"
@@ -281,7 +324,7 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
   --   from :: fromKy     to :: toKy
   -- ----------------------------------
   --       Arrow from to :: Kind
-  Arrow from to
+  ArrowExt _ from to
     -> do -- both from and to must kind-check
           _ <- typeKind typeBindCtx contentKinds typeCtx from
           _ <- typeKind typeBindCtx contentKinds typeCtx to
@@ -290,28 +333,28 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
 
   --
   --
-  SumT types
+  SumTExt _ types
     -> do -- every type must kind-check
           mapM_ (typeKind typeBindCtx contentKinds typeCtx) types
           Right Kind
 
   --
   --
-  ProductT types
+  ProductTExt _ types
     -> do -- every type must kind-check
           mapM_ (typeKind typeBindCtx contentKinds typeCtx) types
           Right Kind
 
   --
   --
-  UnionT types
+  UnionTExt _ types
     -> do -- every type must kind-check
           mapM_ (typeKind typeBindCtx contentKinds typeCtx) (Set.toList types)
           Right Kind
 
   --
   --
-  BigArrow fromKy toTy
+  BigArrowExt _ fromKy toTy
     -> do let newTypeBindCtx = addBinding fromKy typeBindCtx
           -- TODO: should this be KindArrow?? like TypeLam.
           -- Is that what makes them different or should they be the same thing???
@@ -319,7 +362,7 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
           Right Kind
   --
   --
-  TypeBinding b
+  TypeBindingExt _ b
     -> case lookupBindingTy b typeBindCtx of
          Nothing
            -> Left $ EContext (EMsg $ text "Kind-checking type") $ EBindCtxTypeLookupFailure (fromEnum b) typeBindCtx
@@ -328,7 +371,7 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
 
   --
   --
-  TypeContentBinding contentName
+  TypeContentBindingExt _ contentName
     -> case Map.lookup contentName contentKinds of
          Nothing
            -> Left . EMsg . mconcat $
@@ -343,7 +386,7 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
 
   --
   --
-  TypeLam absKy ty
+  TypeLamExt _ absKy ty
     -> do -- type must kind-check under the introduction of a new abstraction to the typeBindCtx
           let newTypeBindCtx = addBinding absKy typeBindCtx
           tyKy <- typeKind newTypeBindCtx contentKinds typeCtx ty
@@ -351,7 +394,7 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
 
   --
   --
-  TypeApp fTy xTy
+  TypeAppExt _ fTy xTy
     -> do -- both f and x must kind-check
           fKy <- typeKind typeBindCtx contentKinds typeCtx fTy
           xKy <- typeKind typeBindCtx contentKinds typeCtx xTy

@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , RankNTypes
+  , GADTs
   #-}
 module PL.Test.Parsing.Expr
   ( parsesToSpec
@@ -94,7 +95,7 @@ parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (T
          , indent1 . ppExpr . stripComments $ expectedExpr
          ]
 
-    | on (/=) stripComments parsedExpr expectedExpr
+    | parsedExpr /= expectedExpr
     -> expectationFailure . Text.unpack . render . document . mconcat $
          [ text "Successfully parsed without leftovers an unexpected expression. Got:"
          , lineBreak

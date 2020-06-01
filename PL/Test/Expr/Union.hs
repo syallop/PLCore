@@ -74,7 +74,7 @@ unionTwoExprTestCase src =
   where
     ctx = boolTypeCtx <> natTypeCtx
 
-    e :: CommentedExpr
+    e :: ExprFor CommentedPhase
     e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
             CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --

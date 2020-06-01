@@ -41,6 +41,9 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base58 as B58
+import Data.Text.Encoding
+import qualified Data.Text as Text
 
 import PL.Store
 import PL.ShortStore
@@ -118,6 +121,13 @@ data ShortHash = ShortHash
   { _shortHashAlgorithm :: HashAlgorithm
   , _unShortHash        :: BS.ByteString
   }
+
+instance Show ShortHash where
+  show (ShortHash alg h) = Text.unpack . mconcat $
+    [ hashIdentifier alg
+    , "/"
+    , decodeUtf8 . B58.encodeBase58 B58.bitcoinAlphabet $ h
+    ]
 
 instance Shortable Hash ShortHash where
   shortLength = shortLength . _unShortHash

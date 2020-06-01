@@ -179,10 +179,11 @@ type instance BindExtension CommentedPhase = Void
 type instance PatternExtension CommentedPhase = Commented (PatternFor CommentedPhase)
 
 -- The commented phase uses variables and types for bindings and abstractions
-type instance BindingFor        CommentedPhase = Var
-type instance ContentBindingFor CommentedPhase = ContentName
-type instance TypeBindingFor    CommentedPhase = TyVar
-type instance AbstractionFor    CommentedPhase = TypeFor CommentedPhase
+type instance BindingFor            CommentedPhase = Var
+type instance ContentBindingFor     CommentedPhase = ContentName
+type instance TypeBindingFor        CommentedPhase = TyVar
+type instance TypeContentBindingFor CommentedPhase = ContentName
+type instance AbstractionFor        CommentedPhase = TypeFor CommentedPhase
 
 -- | Expressions at some phase that have been extended with a commented
 -- expression constructor.
@@ -273,6 +274,7 @@ type TypeWithoutComments phaseIn phaseOut =
      , TypeContentBindingExtension phaseIn ~ TypeContentBindingExtension phaseOut
 
      , TypeBindingFor phaseIn ~ TypeBindingFor phaseOut
+     , TypeContentBindingFor phaseIn ~ TypeContentBindingFor phaseOut
      )
 
 -- | Two type phases are identical except the second contains comments and

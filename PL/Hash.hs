@@ -38,6 +38,7 @@ module PL.Hash
   , hashWith
   , showBase58
   , readBase58
+  , hashIdentifier
   , hashAlgorithm
   , hashBytes
 

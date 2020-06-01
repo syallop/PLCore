@@ -71,6 +71,7 @@ module PL.Type
   , TypeExtension
 
   , TypeBindingFor
+  , TypeContentBindingFor
 
   , isType
   , (-->)
@@ -264,7 +265,7 @@ data TypeF phase typ
   -- refer to itself meaning this does not introduce recursion.
   | TypeContentBindingF
     { _nameBindingExtension :: TypeContentBindingExtension phase
-    , _name                 :: ContentName
+    , _name                 :: TypeContentBindingFor phase
     }
 
   | TypeExtensionF
@@ -284,6 +285,7 @@ deriving instance
   ,Eq (TypeContentBindingExtension phase)
   ,Eq (TypeExtension phase)
   ,Eq (TypeBindingFor phase)
+  ,Eq (TypeContentBindingFor phase)
   ,Eq typ
   )
   => Eq (TypeF phase typ)
@@ -301,6 +303,7 @@ deriving instance
   ,Ord (TypeContentBindingExtension phase)
   ,Ord (TypeExtension phase)
   ,Ord (TypeBindingFor phase)
+  ,Ord (TypeContentBindingFor phase)
   ,Ord typ
   )
   => Ord (TypeF phase typ)
@@ -318,6 +321,7 @@ instance
   ,Show (TypeContentBindingExtension phase)
   ,Show (TypeExtension phase)
   ,Show (TypeBindingFor phase)
+  ,Show (TypeContentBindingFor phase)
   ,Show typ
   )
   => Show (TypeF phase typ) where
@@ -368,6 +372,7 @@ instance
   ,Hashable (TypeContentBindingExtension phase)
   ,Hashable (TypeExtension phase)
   ,Hashable (TypeBindingFor phase)
+  ,Hashable (TypeContentBindingFor phase)
   ,Hashable typ
   )
   => Hashable (TypeF phase typ) where
@@ -403,7 +408,7 @@ instance
       -> HashTag "Type.Binding" [toHashToken ext, toHashToken b]
 
     TypeContentBindingF _ext c
-      -> HashIs . contentName $ c
+      -> toHashToken c
 
     TypeExtensionF ext
       -> HashTag "Type.TypeExtension" [toHashToken ext]
@@ -426,6 +431,7 @@ type family TypeContentBindingExtension phase
 type family TypeExtension phase
 
 type family TypeBindingFor phase
+type family TypeContentBindingFor phase
 
 -- NamedF for phases where there is no extension to the constructor.
 pattern Named :: NamedExtension phase ~ Void => TypeName -> TypeFor phase
@@ -518,11 +524,11 @@ pattern TypeBindingExt ext tyVar <- FixPhase (TypeBindingF ext tyVar)
   where TypeBindingExt ext tyVar =  FixPhase (TypeBindingF ext tyVar)
 
 -- TypeContentBinding for phases where there is no extension to the constructor.
-pattern TypeContentBinding :: TypeContentBindingExtension phase ~ Void => ContentName -> TypeFor phase
+pattern TypeContentBinding :: TypeContentBindingExtension phase ~ Void => TypeContentBindingFor phase -> TypeFor phase
 pattern TypeContentBinding c <- FixPhase (TypeContentBindingF _ c)
   where TypeContentBinding c =  FixPhase (TypeContentBindingF void c)
 
-pattern TypeContentBindingExt :: TypeContentBindingExtension phase -> ContentName -> TypeFor phase
+pattern TypeContentBindingExt :: TypeContentBindingExtension phase -> TypeContentBindingFor phase -> TypeFor phase
 pattern TypeContentBindingExt ext c <- FixPhase (TypeContentBindingF ext c)
   where TypeContentBindingExt ext c =  FixPhase (TypeContentBindingF ext c)
 
@@ -550,6 +556,7 @@ type instance TypeContentBindingExtension DefaultPhase = Void
 type instance TypeExtension DefaultPhase = Void
 
 type instance TypeBindingFor DefaultPhase = TyVar
+type instance TypeContentBindingFor DefaultPhase = ContentName
 
 -- | Is a Type a simple named type
 isType :: Type -> Bool
@@ -668,7 +675,9 @@ instantiate = instantiate' 0
 -- Forget all constructor extensions on a Type that uses TyVars for bindings in
 -- order to produce a type in the default phase.
 forgetTypeExtensions
-  :: (TypeBindingFor phase ~ TyVar)
+  :: ( TypeBindingFor phase ~ TyVar
+     , TypeContentBindingFor phase ~ ContentName
+     )
   => TypeFor phase
   -> TypeFor DefaultPhase
 forgetTypeExtensions = \case
@@ -710,7 +719,9 @@ forgetTypeExtensions = \case
 -- | Gather the Set of all TypeContentBinding names used within a Type
 -- _without_ looking under any of the returned names themselves.
 gatherTypeContentNames
-  :: TypeFor phase
+  :: forall phase
+   . TypeContentBindingFor phase ~ ContentName
+  => TypeFor phase
   -> Set ContentName
 gatherTypeContentNames = gatherTypeContentNames' Set.empty
   where

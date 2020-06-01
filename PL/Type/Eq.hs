@@ -46,6 +46,7 @@ import Debug.Trace
 -- dn explicit quantity.
 typeEq
   :: ( TyVar ~ TypeBindingFor phase
+     , ContentName ~ TypeContentBindingFor phase
      , Void  ~ TypeAppExtension phase
 
      , Show (TypeFor phase)
@@ -66,6 +67,7 @@ typeEq typeBindCtx typeBindings typeNameCtx contentIsType type0 type1 = typeEqWi
 
 typeEqWith
   :: ( TyVar ~ TypeBindingFor   phase
+     , ContentName ~ TypeContentBindingFor phase
      , Void  ~ TypeAppExtension phase
 
      , Show (TypeFor phase)
@@ -241,6 +243,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqs
   :: ( TyVar ~ TypeBindingFor phase
+     , ContentName ~ TypeContentBindingFor phase
      , Void ~ TypeAppExtension phase
 
      , Show (TypeFor phase)
@@ -262,6 +265,7 @@ typeEqs typeBindCtx typeBindings typeNameCtx contentIsType ts0 ts1 = typeEqsWith
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqsWith
   :: ( TyVar ~ TypeBindingFor phase
+     , ContentName ~ TypeContentBindingFor phase
      , Void ~ TypeAppExtension phase
      , Show (TypeFor phase)
      , Ord (TypeFor phase)
@@ -300,6 +304,7 @@ typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts
 -- TODO: Break move to more appropriate location.
 typeKind
   :: ( TyVar ~ TypeBindingFor phase
+     , ContentName ~ TypeContentBindingFor phase
      )
   => BindCtx TyVar Kind
   -> Map ContentName Kind

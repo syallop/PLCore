@@ -992,7 +992,10 @@ gatherContentNames = gatherContentNames' Set.empty
 -- | Gather the Set of all TypeContentBinding names used within an Expression
 -- _without_ looking under any of the returned names themselves.
 gatherExprsTypeContentNames
-  :: forall phase. (AbstractionFor phase ~ TypeFor phase)
+  :: forall phase
+   . ( AbstractionFor phase ~ TypeFor phase
+     , ContentName ~ TypeContentBindingFor phase
+     )
   => ExprFor phase
   -> Set ContentName
 gatherExprsTypeContentNames = gather Set.empty

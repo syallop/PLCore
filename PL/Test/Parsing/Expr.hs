@@ -95,16 +95,27 @@ parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (T
          , indent1 . ppExpr . stripComments $ expectedExpr
          ]
 
-    | parsedExpr /= expectedExpr
-    -> expectationFailure . Text.unpack . render . document . mconcat $
-         [ text "Successfully parsed without leftovers an unexpected expression. Got:"
-         , lineBreak
-         , indent1 . ppExpr . stripComments $ parsedExpr
-         , lineBreak
-         , text "But we expected:"
-         , lineBreak
-         , indent1 . ppExpr . stripComments $ expectedExpr
-         ]
+    -- | TODO:
+    -- Several hacks are colliding here. Unpick them:
+    -- - Stored exprs are used as examples.
+    -- - This means they're commented.
+    -- - Comments are not currently transfered to the test-cases.
+    -- This means we're comparing with the comments stripped. The tradeoff is we
+    -- cant test comment parsing.
+    | otherwise
+     -> let parsedWithoutComments   = stripComments parsedExpr
+            expectedWithoutComments = stripComments expectedExpr
+         in if parsedWithoutComments == expectedWithoutComments
+              then pure ()
+              else expectationFailure . Text.unpack . render . document . mconcat $
+                     [ text "Successfully parsed without leftovers an unexpected expression. Got:"
+                     , lineBreak
+                     , indent1 . ppExpr $ parsedWithoutComments
+                     , lineBreak
+                     , text "But we expected:"
+                     , lineBreak
+                     , indent1 . ppExpr $ expectedWithoutComments
+                     ]
 
     | otherwise
      -> pure ()

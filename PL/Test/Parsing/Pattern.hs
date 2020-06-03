@@ -94,16 +94,27 @@ parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppErr
          , indent1 . ppPattern . stripPatternComments $ expectedPattern
          ]
 
-    | parsedPattern /= expectedPattern
-    -> expectationFailure . Text.unpack . render . document . mconcat $
-         [ text "Successfully parsed without leftovers an unexpected pattern. Got:"
-         , lineBreak
-         , indent1 . ppPattern . stripPatternComments $ parsedPattern
-         , lineBreak
-         , text "But we expected:"
-         , lineBreak
-         , indent1 . ppPattern .stripPatternComments $ expectedPattern
-         ]
+    -- | TODO:
+    -- Several hacks are colliding here. Unpick them:
+    -- - Stored patterns are used as examples.
+    -- - This means they're commented.
+    -- - Comments are not currently transfered to the test-cases.
+    -- This means we're comparing with the comments stripped. The tradeoff is we
+    -- cant test comment parsing.
+    | otherwise
+     -> let parsedWithoutComments   = stripPatternComments parsedPattern
+            expectedWithoutComments = stripPatternComments expectedPattern
+         in if parsedWithoutComments == expectedWithoutComments
+              then pure ()
+              else expectationFailure . Text.unpack . render . document . mconcat $
+                     [ text "Successfully parsed without leftovers an unexpected pattern. Got:"
+                     , lineBreak
+                     , indent1 . ppPattern $ parsedWithoutComments
+                     , lineBreak
+                     , text "But we expected:"
+                     , lineBreak
+                     , indent1 . ppPattern $ expectedWithoutComments
+                     ]
 
     | otherwise
      -> pure ()

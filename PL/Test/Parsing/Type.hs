@@ -93,16 +93,27 @@ parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Tex
          , indent1 . ppType . stripTypeComments $ expectedType
          ]
 
-    | parsedType /= expectedType
-    -> expectationFailure . Text.unpack . render . document . mconcat $
-         [ text "Successfully parsed without leftovers an unexpected type. Got:"
-         , lineBreak
-         , indent1 . ppType . stripTypeComments $ parsedType
-         , lineBreak
-         , text "But we expected:"
-         , lineBreak
-         , indent1 . ppType . stripTypeComments $ expectedType
-         ]
+    -- | TODO:
+    -- Several hacks are colliding here. Unpick them:
+    -- - Stored types are used as examples.
+    -- - This means they're commented.
+    -- - Comments are not currently transfered to the test-cases.
+    -- This means we're comparing with the comments stripped. The tradeoff is we
+    -- cant test comment parsing.
+    | otherwise
+     -> let parsedWithoutComments   = stripTypeComments parsedType
+            expectedWithoutComments = stripTypeComments expectedType
+         in if parsedWithoutComments == expectedWithoutComments
+              then pure ()
+              else expectationFailure . Text.unpack . render . document . mconcat $
+                     [ text "Successfully parsed without leftovers an unexpected type. Got:"
+                     , lineBreak
+                     , indent1 . ppType $ parsedWithoutComments
+                     , lineBreak
+                     , text "But we expected:"
+                     , lineBreak
+                     , indent1 . ppType $ expectedWithoutComments
+                     ]
 
     | otherwise
      -> pure ()

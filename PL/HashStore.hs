@@ -121,6 +121,7 @@ data ShortHash = ShortHash
   { _shortHashAlgorithm :: HashAlgorithm
   , _unShortHash        :: BS.ByteString
   }
+  deriving (Eq, Ord)
 
 instance Show ShortHash where
   show (ShortHash alg h) = Text.unpack . mconcat $

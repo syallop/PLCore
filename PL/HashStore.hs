@@ -135,7 +135,20 @@ instance Shortable Hash ShortHash where
 
   toShort h = ShortHash (hashAlgorithm h) (hashBytes h)
 
-  shortenAgainst sourceHash againstHash
+  -- The smallest hash is an empty string if there are no bytes and a single
+  -- word otherwise.
+  -- TODO: A larger minimum length would make printed output change less
+  -- frequently which may be desirable.
+  -- TODO: Should empty bytes be allowed?
+  shortenAgainst sourceHash Nothing = ShortHash (hashAlgorithm sourceHash)
+                                                (case BS.uncons $ hashBytes sourceHash of
+                                                   Nothing
+                                                     -> ""
+                                                   Just (w,_)
+                                                     -> BS.singleton w
+                                                )
+
+  shortenAgainst sourceHash (Just againstHash)
     -- If the hashes use a different algorithm the bytes arent needed to
     -- identify them.
     | hashAlgorithm sourceHash /= hashAlgorithm againstHash
@@ -144,7 +157,7 @@ instance Shortable Hash ShortHash where
     -- If the hashes use the same algorithm, find the shortest sequence of
     -- unique bytes.
     | otherwise
-     = let bs = shortenAgainst (hashBytes sourceHash) (hashBytes againstHash)
+     = let bs = shortenAgainst (hashBytes sourceHash) (Just $ hashBytes againstHash)
         in ShortHash (hashAlgorithm sourceHash) bs
 
 -- | Given a ShortHash, return all known larger Hashes

@@ -322,7 +322,7 @@ shortenNestedKeys (NestedStore top nested) key = do
                     -- Nested store knows of more than one colliding key
                     -- Compute against these.
                     shortKeys
-                      -> case fmap (shortenAgainst key) nestedCandidateKeys of
+                      -> case fmap (shortenAgainst key . Just) nestedCandidateKeys of
                            []
                              -> pure Nothing
 

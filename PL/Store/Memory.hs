@@ -127,9 +127,10 @@ shortenKeyInMemory
   => MemoryStore k v
   -> k
   -> Maybe shortK
-shortenKeyInMemory (MemoryStore s) key = case fmap (shortenAgainst key) . Map.keys $ s of
+shortenKeyInMemory (MemoryStore s) key = case fmap (shortenAgainst key . Just) . Map.keys $ s of
+  -- No keys, shorten as much as possible
   []
-    -> Nothing
+    -> Just . shortenAgainst key $ Nothing
 
   xs
     -> Just . head . List.sortOn shortLength $ xs

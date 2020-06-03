@@ -258,9 +258,9 @@ shortenKeyFromFiles
   -> IO (Maybe shortK)
 shortenKeyFromFiles f key = do
   allKeys <- getAllKeys f
-  case fmap (shortenAgainst key) allKeys of
+  case fmap (shortenAgainst key . Just) allKeys of
     []
-      -> pure Nothing
+      -> pure . Just . shortenAgainst key $ Nothing
 
     xs
       -> do let shortenings = List.sortOn shortLength $ xs

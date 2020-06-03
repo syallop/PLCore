@@ -49,7 +49,7 @@ class Shortable long short | long -> short, short -> long where
   -- abXYX
   -- =
   -- abc
-  shortenAgainst :: long -> long -> short
+  shortenAgainst :: long -> Maybe long -> short
 
   -- For comparing the length of shorts to each other
   shortLength :: short -> Int
@@ -63,7 +63,14 @@ instance Shortable BS.ByteString BS.ByteString where
 
   toShort bs = bs
 
-  shortenAgainst sourceBs againstBs =
+  shortenAgainst sourceBs Nothing = case BS.uncons sourceBs of
+    Nothing
+      -> ""
+
+    Just (w,_)
+      -> BS.singleton w
+
+  shortenAgainst sourceBs (Just againstBs) =
     let (common, uncommon) = span (\(a,b) -> a == b) $ BS.zip sourceBs againstBs
      in BS.pack . fmap fst $ case uncommon of
           -- Two bytestrings are the same.
@@ -78,5 +85,5 @@ instance Shortable Text Text where
 
   toShort = decodeUtf8 . toShort . encodeUtf8
 
-  shortenAgainst sourceBs againstBs = decodeUtf8 $ shortenAgainst (encodeUtf8 sourceBs) (encodeUtf8 againstBs)
+  shortenAgainst sourceBs againstBs = decodeUtf8 $ shortenAgainst (encodeUtf8 sourceBs) (fmap encodeUtf8 againstBs)
 

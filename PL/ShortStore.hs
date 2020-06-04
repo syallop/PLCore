@@ -17,6 +17,7 @@ module PL.ShortStore
 
 import PL.Store
 import PL.Hash
+import PL.Error
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8,decodeUtf8)
 import qualified Data.ByteString as BS
@@ -27,13 +28,13 @@ class (Store s k v, Shortable k shortK) => ShortStore s k shortK v where
   largerKeys
     :: s k v
     -> shortK
-    -> IO (Maybe (s k v, [k]))
+    -> IO (Either (Error expr typ pattern typectx) (s k v, [k]))
 
   -- | Given a regualar key, return the shortest unambiguous key.
   shortenKey
     :: s k v
     -> k
-    -> IO (Maybe (s k v, shortK))
+    -> IO (Either (Error expr typ pattern typectx) (s k v, shortK))
 
 -- Shortable maps a long type to a shorter version.
 class Shortable long short | long -> short, short -> long where

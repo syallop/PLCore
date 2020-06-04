@@ -170,13 +170,13 @@ instance Shortable Hash ShortHash where
 largerHashes
   :: HashStore v
   -> ShortHash
-  -> IO (Maybe (HashStore v, [Hash]))
+  -> IO (Either (Error expr typ pattern typectx) (HashStore v, [Hash]))
 largerHashes (HashStore s) shortHash = fmap (\(s',hashes) -> (HashStore s',hashes)) <$> largerKeys s shortHash
 
 -- | Given a regular Hash, return the shortest unambiguous Hash.
 shortenHash
   :: HashStore v
   -> Hash
-  -> IO (Maybe (HashStore v, ShortHash))
+  -> IO (Either (Error expr typ pattern typectx) (HashStore v, ShortHash))
 shortenHash (HashStore s) hash = fmap (\(s',shortHash) -> (HashStore s',shortHash)) <$> shortenKey s hash
 

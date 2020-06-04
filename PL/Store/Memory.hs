@@ -68,8 +68,8 @@ instance
   , Ord shortK
   , Shortable k shortK
   ) => ShortStore MemoryStore k shortK v where
-  largerKeys s shortK = pure . Just $ (s, largerKeysInMemory s shortK)
-  shortenKey s k      = pure . fmap (s,) . shortenKeyInMemory s $ k
+  largerKeys s shortK = pure . Right $ (s, largerKeysInMemory s shortK)
+  shortenKey s k      = pure . Right $ (s, shortenKeyInMemory s $ k)
 
 -- | Store a key-value association in memory.
 storeInMemory
@@ -127,14 +127,14 @@ shortenKeyInMemory
   :: Shortable k shortK
   => MemoryStore k v
   -> k
-  -> Maybe shortK
+  -> shortK
 shortenKeyInMemory (MemoryStore s) key = case fmap (shortenAgainst key . Just) . Map.keys $ s of
   -- No keys, shorten as much as possible
   []
-    -> Just . shortenAgainst key $ Nothing
+    -> shortenAgainst key $ Nothing
 
   xs
-    -> Just . head . List.sortOn shortLength $ xs
+    -> head . List.sortOn shortLength $ xs
 -- TODO: We could perform this operation much more efficiently with a better
 -- datastructure.
 

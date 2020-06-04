@@ -262,8 +262,8 @@ instance
   , Show shortK
   , Show k
   ) => ShortStore FileStore k shortK v where
-  largerKeys s shortK = Just . (s,) <$> largerKeysFromFiles s shortK
-  shortenKey s k      = fmap (s,) <$> shortenKeyFromFiles s k
+  largerKeys s shortK = Right . (s,) <$> largerKeysFromFiles s shortK
+  shortenKey s k      = Right . (s,) <$> shortenKeyFromFiles s k
 
 
 -- | Lookup all known keys that are 'larger' than a short key.
@@ -284,17 +284,16 @@ shortenKeyFromFiles
   :: (Show shortK, Shortable k shortK)
   => FileStore k v
   -> k
-  -> IO (Maybe shortK)
+  -> IO shortK
 shortenKeyFromFiles f key = do
   allKeys <- getAllKeys f
   case fmap (shortenAgainst key . Just) allKeys of
     []
-      -> pure . Just . shortenAgainst key $ Nothing
+      -> pure . shortenAgainst key $ Nothing
 
     xs
       -> do let shortenings = List.sortOn shortLength $ xs
-            print shortenings
-            pure . Just . head $ shortenings
+            pure . head $ shortenings
 -- TODO: We should be able to compare against less keys.
 
 -- Get all keys stored in the FileStore.

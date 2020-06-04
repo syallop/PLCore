@@ -39,6 +39,8 @@ import PL.Error
 import PL.Store
 import PL.ShortStore
 
+import PLPrinter.Doc
+
 -- | A Nested store behaves as if the top level store is an inexpensive cache
 -- for some more expensive (but more reliable) lower level store.
 --
@@ -305,8 +307,8 @@ storeNestedThenTop top nested key value =
 largerNestedKeys
   :: NestedStore s s' k v
   -> shortK
-  -> IO (Maybe (NestedStore s s' k v, [k]))
-largerNestedKeys (NestedStore top nested) shortKey = undefined
+  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, [k]))
+largerNestedKeys (NestedStore top nested) shortKey = undefined -- TODO
 
 -- | Shorten a key to the smallest possible unambiguous ShortKey.
 shortenNestedKeys
@@ -315,43 +317,42 @@ shortenNestedKeys
      )
   => NestedStore s s' k v
   -> k
-  -> IO (Maybe (NestedStore s s' k v, shortK))
+  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, shortK))
 shortenNestedKeys (NestedStore top nested) key = do
   -- Algorithm:
   -- - Lookup shortest prefix in top
   -- - Query that prefix in the nested store
   --   - If one result: done
   --   - If multiple results: Pick the shortest
-  mRes <- shortenKey top key
-  case mRes of
-    Nothing
-      -> pure Nothing
+  eRes <- shortenKey top key
+  case eRes of
+    Left err
+      -> pure . Left $ err
 
-    Just (top', candidateShortKey)
-     -> do mRes <- largerKeys nested candidateShortKey
-           case mRes of
-             Nothing
-               -> pure Nothing
+    Right (top', candidateShortKey)
+     -> do eRes <- largerKeys nested candidateShortKey
+           case eRes of
+             Left err
+               -> pure . Left $ err
 
-             Just (nestedStore', nestedCandidateKeys)
+             Right (nestedStore', nestedCandidateKeys)
                -> case nestedCandidateKeys of
                     -- Nested store doesn't know of any larger keys.
                     []
-                      -> error "In a nested Store the top-level shortened a key to a value which has no larger keys in the nested store. This implies bad data in the top store or that the nested store has suffered data loss."
+                      -> pure . Left . EMsg . mconcat $
+                           [ text "In a nested Store the top-level shortened a key to a value which has no larger keys in the nested store."
+                           , lineBreak
+                           , text "This implies bad data in the top store or that the nested store has suffered data loss."
+                           ]
 
                     -- Nested store agrees this is the shortest key
                     -- TODO: Could sanity check the returned key is actually a
                     -- larger key.
                     [_shortKey]
-                      -> pure . Just $ (NestedStore top' nestedStore', candidateShortKey)
+                      -> pure . Right $ (NestedStore top' nestedStore', candidateShortKey)
 
                     -- Nested store knows of more than one colliding key
                     -- Compute against these.
                     shortKeys
-                      -> case fmap (shortenAgainst key . Just) nestedCandidateKeys of
-                           []
-                             -> pure Nothing
-
-                           xs
-                             -> pure . Just . (NestedStore top' nestedStore',) . Prelude.head . List.sortOn shortLength $ xs
+                      -> pure . Right . (NestedStore top' nestedStore',) . Prelude.head . List.sortOn shortLength . fmap (shortenAgainst key . Just) $ shortKeys
 

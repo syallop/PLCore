@@ -165,16 +165,16 @@ resolveExprHash
   :: ShortHash
   -> Resolve Hash
 resolveExprHash shortHash = Resolve $ \ctx -> do
-  mRes <- C.largerExprHashes (_resolveCodeStore ctx) shortHash
+  eRes <- C.largerExprHashes (_resolveCodeStore ctx) shortHash
   let errCtx = EContext (EMsg . mconcat $ [text "Resolving expression short-hash:"
                                           ,lineBreak
                                           ,indent1 . string . show $ shortHash
                                           ])
-  case mRes of
-    Nothing
-      -> pure . Left . errCtx . EMsg . text $ "Unknown error in underlying code store"
+  case eRes of
+    Left err
+      -> pure . Left . errCtx $ err
 
-    Just (codeStore', hashes)
+    Right (codeStore', hashes)
       -> case hashes of
            []
              -> pure . Left . errCtx . EMsg . text $ "No known matching hashes"
@@ -197,16 +197,16 @@ resolveTypeHash
   :: ShortHash
   -> Resolve Hash
 resolveTypeHash shortHash = Resolve $ \ctx -> do
-  mRes <- C.largerTypeHashes (_resolveCodeStore ctx) shortHash
+  eRes <- C.largerTypeHashes (_resolveCodeStore ctx) shortHash
   let errCtx = EContext (EMsg . mconcat $ [text "Resolving type short-hash:"
                                           ,lineBreak
                                           ,indent1 . string . show $ shortHash
                                           ])
-  case mRes of
-    Nothing
-      -> pure . Left . errCtx . EMsg . text $ "Unknown error in underlying code store"
+  case eRes of
+    Left err
+      -> pure . Left . errCtx $ err
 
-    Just (codeStore', hashes)
+    Right (codeStore', hashes)
       -> case hashes of
            []
              -> pure . Left . errCtx . EMsg . text $ "No known matching hashes"
@@ -229,16 +229,16 @@ resolveKindHash
   :: ShortHash
   -> Resolve Hash
 resolveKindHash shortHash = Resolve $ \ctx -> do
-  mRes <- C.largerKindHashes (_resolveCodeStore ctx) shortHash
+  eRes <- C.largerKindHashes (_resolveCodeStore ctx) shortHash
   let errCtx = EContext (EMsg . mconcat $ [text "Resolving kind short-hash:"
                                           ,lineBreak
                                           ,indent1 . string . show $ shortHash
                                           ])
-  case mRes of
-    Nothing
-      -> pure . Left . errCtx . EMsg . text $ "Unknown error in underlying code store"
+  case eRes of
+    Left err
+      -> pure . Left . errCtx $ err
 
-    Just (codeStore', hashes)
+    Right (codeStore', hashes)
       -> case hashes of
            []
              -> pure . Left . errCtx . EMsg . text $ "No known matching hashes"
@@ -257,16 +257,16 @@ shortenExprHash
   :: Hash
   -> Resolve ShortHash
 shortenExprHash exprHash = Resolve $ \ctx -> do
-  mRes <- C.shortenExprHash (_resolveCodeStore ctx) exprHash
-  case mRes of
-    Nothing
+  eRes <- C.shortenExprHash (_resolveCodeStore ctx) exprHash
+  case eRes of
+    Left err
       -> pure . Left . EContext (EMsg . mconcat $ [ text "Shortening expr hash:"
                                                   , lineBreak
                                                   , indent1 . string . show $ exprHash
                                                   ]
-                                ) $ EMsg $ text "Unknown error in underlying code store"
+                                ) $ err
 
-    Just (codeStore', shortHash)
+    Right (codeStore', shortHash)
       -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, shortHash)
 
 -- | Given a Type Hash, shorten it to the shortest unambiguous ShortHash.
@@ -274,16 +274,16 @@ shortenTypeHash
   :: Hash
   -> Resolve ShortHash
 shortenTypeHash typeHash = Resolve $ \ctx -> do
-  mRes <- C.shortenTypeHash (_resolveCodeStore ctx) typeHash
-  case mRes of
-    Nothing
+  eRes <- C.shortenTypeHash (_resolveCodeStore ctx) typeHash
+  case eRes of
+    Left err
       -> pure . Left . EContext (EMsg . mconcat $ [ text "Shortening type hash:"
                                                   , lineBreak
                                                   , indent1 . string . show $ typeHash
                                                   ]
-                                ) $ EMsg $ text "Unknown error in underlying code store"
+                                ) $ err
 
-    Just (codeStore', shortHash)
+    Right (codeStore', shortHash)
       -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, shortHash)
 
 -- | Given a Kind Hash, shorten it to the shortest unambiguous ShortHash.
@@ -291,16 +291,16 @@ shortenKindHash
   :: Hash
   -> Resolve ShortHash
 shortenKindHash kindHash = Resolve $ \ctx -> do
-  mRes <- C.shortenKindHash (_resolveCodeStore ctx) kindHash
-  case mRes of
-    Nothing
+  eRes <- C.shortenKindHash (_resolveCodeStore ctx) kindHash
+  case eRes of
+    Left err
       -> pure . Left . EContext (EMsg . mconcat $ [ text "Shortening kind hash:"
                                                   , lineBreak
                                                   , indent1 . string . show $ kindHash
                                                   ]
-                                ) $ EMsg $ text "Unknown error in underlying code store"
+                                ) $ err
 
-    Just (codeStore', shortHash)
+    Right (codeStore', shortHash)
       -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, shortHash)
 
 

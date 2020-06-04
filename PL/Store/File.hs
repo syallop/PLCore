@@ -4,6 +4,7 @@
            , OverloadedStrings
            , GADTs
            , TupleSections
+           , ScopedTypeVariables
   #-}
 {-|
 Module      : PL.Store.File
@@ -14,9 +15,11 @@ Stability   : experimental
 Implementation of PL.Store backed by a file system.
 -}
 module PL.Store.File
-  ( FileStore ()
+  ( FileStore (..)
   , newFileStore
   , newSimpleFileStore
+  , mkPathPattern
+
   , storeAsFile
   , lookupFromFile
 
@@ -88,7 +91,8 @@ instance Show (FileStore k v) where
 --
 -- Result path: some/prefix/KEY/NAM/EBR/OKE/N/file
 newSimpleFileStore
-  :: ( Serialize k
+  :: forall k v
+   . ( Serialize k
      , Serialize v
      , Show k
      , Eq v
@@ -100,6 +104,7 @@ newSimpleFileStore
   -> FileStore k v
 newSimpleFileStore subDirs keyLength fileName = newFileStore subDirs (mkPathPattern iso keyLength fileName) serialize deserialize (==)
   where
+    iso :: Iso Text k
     iso = Iso
       {_forwards  = deserialize . encodeUtf8
       ,_backwards = Just . decodeUtf8 . serialize

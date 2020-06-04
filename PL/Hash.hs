@@ -36,8 +36,13 @@ module PL.Hash
   , HashAlgorithm (..)
   , hash
   , hashWith
+
   , showBase58
   , readBase58
+
+  , mkBase58
+  , unBase58
+
   , hashIdentifier
   , hashAlgorithm
   , hashBytes
@@ -94,11 +99,13 @@ hashWith alg = hashToken alg . toHashToken
 -- separated by a '/' and followed by a base58 interpretation of the hash
 -- itself.
 showBase58 :: Hash -> Text
-showBase58 (Hash alg h) = mconcat
-  [ hashIdentifier alg
-  , "/"
-  , decodeUtf8 . B58.encodeBase58 B58.bitcoinAlphabet $ h
-  ]
+showBase58 hash =
+  let (alg,txt) = unBase58 hash
+   in mconcat
+        [ hashIdentifier alg
+        , "/"
+        , txt
+        ]
 
 -- | Attempt to read a Base58 textual representation of a Hash with a preceeding
 -- algorithm identifier, separated by a '/'.
@@ -107,15 +114,27 @@ readBase58 txt = do
   case Text.split (== '/') txt of
     (algText:hashText:[])
       -> case readHashAlgorithm algText of
-           Just SHA512
-             -> do bytes <- B58.decodeBase58 B58.bitcoinAlphabet . encodeUtf8 $ hashText
-                   if BS.length bytes /= 128
-                     then Nothing
-                     else Just $ Hash SHA512 bytes
+           Just alg
+             -> mkBase58 alg hashText
            _
-             -> error "Unrecognised hashing algorithm"
+             -> error "Failed to read hashing algorithm"
     _
       -> Nothing
+
+-- | Attempt to construct a Hash from an algorithm and Base58 encoded Bytes.
+mkBase58 :: HashAlgorithm -> Text -> Maybe Hash
+mkBase58 alg txt = case alg of
+  SHA512
+    -> do bytes <- B58.decodeBase58 B58.bitcoinAlphabet . encodeUtf8 $ txt
+          if BS.length bytes /= 128
+            then Nothing
+            else Just $ Hash SHA512 bytes
+  _
+    -> error "Unrecognised hashing algorithm"
+
+-- | Extract a Hashes algorithm and base58 interpretation of the hash itself.
+unBase58 :: Hash -> (HashAlgorithm, Text)
+unBase58 (Hash alg bytes) = (alg, decodeUtf8 . B58.encodeBase58 B58.bitcoinAlphabet $ bytes)
 
 -- | Retrieve the algorithm used to generate a Hash.
 hashAlgorithm
@@ -136,6 +155,9 @@ hashBytes (Hash _a bytes) = bytes
 data HashAlgorithm
   = SHA512
   deriving (Eq,Ord)
+
+instance Show HashAlgorithm where
+  show = Text.unpack . hashIdentifier
 
 -- | Uniquely identify a hash algorithm with human readable text.
 hashIdentifier :: HashAlgorithm -> Text

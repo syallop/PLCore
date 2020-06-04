@@ -3,6 +3,7 @@
            , RankNTypes
            , LambdaCase
            , TupleSections
+           , OverloadedStrings
   #-}
 {-|
 Module      : PL.Store.Nested

@@ -134,15 +134,16 @@ baseDirectory = decodeFilePath . (<> "/") . mconcat . List.intersperse "/" . _su
 
 -- | Generate the file path associated with a key
 generateFullPath
-  :: k
+  :: Show k
+  => k
   -> FileStore k v
-  -> Maybe FilePath
+  -> Either (Error expr typ pattern typectx) FilePath
 generateFullPath key f = case generatePath key (_filePattern f) of
-  Nothing
-    -> Nothing
+  Left err
+    -> Left err
 
-  Just path
-    -> Just $ baseDirectory f <> path
+  Right path
+    -> Right $ baseDirectory f <> path
 
 -- | Store a key-value association by serializing the value and writing it to a
 -- file in the filestore named by the key.
@@ -157,13 +158,13 @@ storeAsFile
 storeAsFile filestore key value = do
   -- TODO: Consider mapping relevant filesystem exceptions to Nothing.
   case generateFullPath key filestore of
-    Nothing
-      -> pure . Left . EMsg . mconcat $ [ text "File store cannot generate path for key:"
-                                        , lineBreak
-                                        , indent1 . string . show $ key
-                                        ]
+    Left err
+      -> pure . Left . EContext (EMsg . mconcat $ [ text "File store cannot generate path for key:"
+                                                  , lineBreak
+                                                  , indent1 . string . show $ key
+                                                  ]) $ err
 
-    Just keyPath
+    Right keyPath
       -> do let serializedValue = _serializeFileBytes filestore value
             alreadyExists <- doesPathExist keyPath
             if alreadyExists
@@ -212,13 +213,13 @@ lookupFromFile
   -> IO (Either (Error expr typ pattern typectx) (FileStore k v, Maybe v))
 lookupFromFile filestore key = do
   case generateFullPath key filestore of
-    Nothing
-      -> pure . Left . EMsg . mconcat $ [ text "File store cannot generate path for key:"
-                                        , lineBreak
-                                        , indent1 . string . show $ key
-                                        ]
+    Left err
+      -> pure . Left . EContext (EMsg . mconcat $ [ text "File store cannot generate path for key:"
+                                                  , lineBreak
+                                                  ,  indent1 . string . show $ key
+                                                  ]) $ err
 
-    Just keyPath
+    Right keyPath
       -> do exists <- doesFileExist keyPath
             if not exists
               then pure . Right $ (filestore, Nothing)

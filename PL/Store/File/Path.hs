@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-|
 Module      : PL.Store.File.Path
 Copyright   : (c) Samuel A. Yallop, 2020
@@ -39,6 +40,9 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.List as List
 
+import PL.Error
+
+import PLPrinter.Doc
 import PLGrammar
 import Reversible
 import Reversible.Iso
@@ -100,47 +104,74 @@ segmented total break = segmented' total break
 
 -- | Given a key and a pathpattern, generate the corresponding path.
 generatePath
-  :: k
+  :: Show k
+  => k
   -> PathPattern k
-  -> Maybe FilePath
+  -> Either (Error expr typ pattern typectx) FilePath
 generatePath k pattern =
   let PathGenerator f = toPathGenerator pattern
    in Text.unpack <$> f k
 
 -- A PathGenerator transforms some key into a possible path where it can be
 -- stored.
-newtype PathGenerator k = PathGenerator (k -> Maybe Text)
+newtype PathGenerator k = PathGenerator (forall expr typ pattern typectx. k -> Either (Error expr typ pattern typectx) Text)
 
 -- Convert a PathPattern into a Generator by interpreting it 'backwards'.
 toPathGenerator
-  :: PathPattern k
+  :: Show k
+  => PathPattern k
   -> PathGenerator k
 toPathGenerator (Reversible g) = case g of
   ReversibleInstr i
     -> case i of
          GAnyChar
-           -> PathGenerator $ \k -> Just $ Text.singleton k
+           -> PathGenerator $ \k -> Right $ Text.singleton k
 
+         -- TODO:
          GLabel _ g
            -> toPathGenerator g
-
          GTry g
            -> toPathGenerator g
 
   RPure a
-    -> PathGenerator $ \a' -> if a == a' then Just mempty else Nothing
+    -> PathGenerator $ \a' -> if a == a'
+                                then Right mempty
+                                else Left . EMsg . mconcat $
+                                       [ text "When generating path we expected to see:"
+                                       , lineBreak
+                                       , indent1 . string . show $ a
+                                       , lineBreak
+                                       , text "But we saw:"
+                                       , lineBreak
+                                       , indent1 . string . show $ a'
+                                       ]
 
   REmpty
-    -> PathGenerator . const $ Nothing
+    -> PathGenerator $ \a -> Left . EMsg . mconcat $
+                               [ text "Aborted generating path. Next input:"
+                               , lineBreak
+                               , indent1 . string . show $ a
+                               ]
 
   RAlt g0 g1
     -> PathGenerator $ \a -> let PathGenerator p = toPathGenerator g0
                                  PathGenerator q = toPathGenerator g1
-                              in mplus (p a) (q a)
+                              in case p a of
+                                   Left err
+                                     -> q a
+                                   Right x
+                                     -> Right x
 
   RMap iso ga
     -> PathGenerator $ let PathGenerator p = toPathGenerator ga
-                        in backwards iso >=> p
+                        in \a -> case backwards iso a of
+                                   Nothing
+                                     -> Left . EMsg . mconcat $
+                                          [ text $ "Failed to apply function in reverse to:"
+                                          , indent1 . string . show $ a
+                                          ]
+                                   Just x
+                                     -> p x
 
   RAp ga gb
     -> PathGenerator $ let PathGenerator p = toPathGenerator ga

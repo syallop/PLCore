@@ -58,8 +58,9 @@ instance
   ( Ord k
   , Ord v
   ) => Store MemoryStore k v where
-  store s k v = pure $ storeInMemory s k v
-  lookup s k  = pure $ lookupFromMemory s k
+  store s k v = pure . Right . storeInMemory s k $ v
+
+  lookup s k  = pure . Right . (s,) . lookupFromMemory s $ k
 
 instance
   ( Ord k
@@ -79,10 +80,10 @@ storeInMemory
   => MemoryStore k v
   -> k
   -> v
-  -> Maybe (MemoryStore k v, StoreResult v)
+  -> (MemoryStore k v, StoreResult v)
 storeInMemory (MemoryStore s) key value =
     let (mOld, s') = Map.insertLookupWithKey (\_key _old new -> new) key value s
-     in Just $ case mOld of
+     in case mOld of
           Nothing
             -> (MemoryStore s', Successfully)
 
@@ -98,13 +99,13 @@ lookupFromMemory
   :: Ord k
   => MemoryStore k v
   -> k
-  -> Maybe (MemoryStore k v, v)
+  -> Maybe v
 lookupFromMemory (MemoryStore s) key = case Map.lookup key s of
     Nothing
       -> Nothing
 
     Just value
-      -> Just (MemoryStore s, value)
+      -> Just value
 
 -- | Lookup all known keys that are 'larger' than a short key.
 largerKeysInMemory

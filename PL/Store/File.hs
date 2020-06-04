@@ -51,7 +51,10 @@ import Control.Monad
 import PL.Store
 import PL.ShortStore
 import PL.Serialize
+import PL.Error
 import PL.Store.File.Path
+
+import PLPrinter.Doc
 
 import Reversible.Iso
 
@@ -119,7 +122,7 @@ newFileStore subDirs filePattern serializeBytes deserializeBytes valuesEqual = F
   }
 
 instance
-  Ord v
+  (Ord v, Show k)
    => Store FileStore k v where
   store  = storeAsFile
   lookup = lookupFromFile
@@ -144,16 +147,21 @@ generateFullPath key f = case generatePath key (_filePattern f) of
 -- | Store a key-value association by serializing the value and writing it to a
 -- file in the filestore named by the key.
 storeAsFile
-  :: (Ord v)
+  :: (Ord v
+     ,Show k
+     )
   => FileStore k v
   -> k
   -> v
-  -> IO (Maybe (FileStore k v, StoreResult v))
+  -> IO (Either (Error expr typ pattern typectx) (FileStore k v, StoreResult v))
 storeAsFile filestore key value = do
   -- TODO: Consider mapping relevant filesystem exceptions to Nothing.
   case generateFullPath key filestore of
     Nothing
-      -> pure Nothing
+      -> pure . Left . EMsg . mconcat $ [ text "File store cannot generate path for key:"
+                                        , lineBreak
+                                        , indent1 . string . show $ key
+                                        ]
 
     Just keyPath
       -> do let serializedValue = _serializeFileBytes filestore value
@@ -169,49 +177,70 @@ storeAsFile filestore key value = do
                         -- - Serialization does not round trip correctly
                         -- - The file has been tampered with
                         -- - We have a hash collision
-                        -- Fail loudly for now.
                         Nothing
-                          -> error $ mconcat [ "When attempting to store a key-value in the filesystem store we encountered an existing file which did not deserialize as expected. This could indicate:\n"
-                                             , "- Serialization does not round trip correctly\n"
-                                             , "- The file has been tampered file\n"
-                                             , "- We have a hash collision\n"
-                                             , "\n"
-                                             , "The file in question is at path: "
-                                             , keyPath
-                                             ]
+                          -> pure . Left . EMsg . mconcat $
+                               [ text "When attempting to store a key-value in the filesystem store we encountered an existing file which did not deserialize as expected. This could indicate:"
+                               , lineBreak
+                               , text "- Serialization does not round trip correctly"
+                               , lineBreak
+                               , text "- The file has been tampered file"
+                               , lineBreak
+                               , text "- We have a hash collision"
+                               , lineBreak,lineBreak
+                               , text "The file in question is at path: "
+                               , lineBreak
+                               , string . show $ keyPath
+                               ]
 
                         Just existingValue
                           | _valuesEqual filestore existingValue value
-                           -> pure $ Just (filestore, AlreadyStored)
+                           -> pure . Right $ (filestore, AlreadyStored)
 
                           | otherwise
                            -> do writeFileAndAnyMissingDirs keyPath serializedValue
-                                 pure $ Just (filestore, Overwritten $ Set.fromList [existingValue])
+                                 pure . Right $ (filestore, Overwritten $ Set.fromList [existingValue])
 
               -- Key is not stored already.
               else do writeFileAndAnyMissingDirs keyPath serializedValue
-                      pure $ Just (filestore, Successfully)
+                      pure . Right $ (filestore, Successfully)
 
 -- | Read a value by consulting a file in the filestore named by the key.
 lookupFromFile
-  :: FileStore k v
+  :: Show k
+  => FileStore k v
   -> k
-  -> IO (Maybe (FileStore k v, v))
+  -> IO (Either (Error expr typ pattern typectx) (FileStore k v, Maybe v))
 lookupFromFile filestore key = do
   case generateFullPath key filestore of
     Nothing
-      -> pure Nothing
+      -> pure . Left . EMsg . mconcat $ [ text "File store cannot generate path for key:"
+                                        , lineBreak
+                                        , indent1 . string . show $ key
+                                        ]
 
     Just keyPath
       -> do exists <- doesFileExist keyPath
             if not exists
-              then pure Nothing
+              then pure . Right $ (filestore, Nothing)
               else do fileBytes <- readFile keyPath
                       case _deserializeFileBytes filestore fileBytes of
                         Nothing
-                          -> pure Nothing
+                          -> pure . Left . EMsg . mconcat $
+                               [ text "File store cannot deserialize the file associated with a path to the expected value type:"
+                               , lineBreak
+                               , indent1 . mconcat $
+                                   [ text "Key:"
+                                   , lineBreak
+                                   , indent1 . string . show $ key
+                                   , lineBreak
+                                   , text "Path:"
+                                   , lineBreak
+                                   , indent1 . string . show $ keyPath
+                                   ]
+                               ]
+
                         Just value
-                          -> pure $ Just $ (filestore, value)
+                          -> pure .  Right $ (filestore, Just value)
 
 -- Ensure a FileStores directory exists - create it if it does not.
 ensureInitialized :: FilePath -> IO ()

@@ -37,6 +37,7 @@ import qualified Data.Set as Set
 import Data.Monoid
 
 import PL.Hash
+import PL.Error
 import qualified Data.ByteString as BS
 
 -- | The result of successfully storing something is a StoreResult.
@@ -89,7 +90,7 @@ class Store s k v where
     :: s k v
     -> k
     -> v
-    -> IO (Maybe (s k v, StoreResult v))
+    -> IO (Either (Error expr typ pattern typectx) (s k v, StoreResult v))
 
   -- | Lookup a value 'v' by it's key 'k' in the storage container 's'.
   -- An updated container is returned in the success case to allow the contain
@@ -98,5 +99,5 @@ class Store s k v where
   lookup
     :: s k v
     -> k
-    -> IO (Maybe (s k v, v))
+    -> IO (Either (Error expr typ pattern typectx) (s k v, Maybe v))
 

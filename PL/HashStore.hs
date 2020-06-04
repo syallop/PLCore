@@ -48,6 +48,7 @@ import qualified Data.Text as Text
 import PL.Store
 import PL.ShortStore
 import PL.Hash
+import PL.Error
 
 -- | Store values 'v' by their 'Hash' in some underlying 'Store'.
 data HashStore v = forall s. (ShortStore s Hash ShortHash v, Hashable v, Show (s Hash v)) => HashStore
@@ -83,38 +84,43 @@ storeByHash
   :: HashStore v
   -> HashAlgorithm
   -> v
-  -> IO (Maybe (HashStore v, StoreResult v, Hash))
+  -> IO (Either (Error expr typ pattern typectx) (HashStore v, StoreResult v, Hash))
 storeByHash h alg v = case h of
   HashStore s
     -> do let hashKey = hashWith alg v
           mResult <- store s hashKey v
           case mResult of
-            Nothing
-              -> pure Nothing
+            Left err
+              -> pure . Left $ err
 
-            Just (s', res)
-              -> pure $ Just $ (HashStore s', res, hashKey)
+            Right (s', res)
+              -> pure . Right $ (HashStore s', res, hashKey)
 
 -- | Retrieve a store value from a HashStore using it's Hash as a key.
 lookupByHash
   :: HashStore v
   -> Hash
-  -> IO (Maybe (HashStore v, v))
+  -> IO (Either (Error expr typ pattern typectx) (HashStore v, Maybe v))
 lookupByHash h hashKey = case h of
   HashStore s
     -> lookup s hashKey >>= \case
-         Nothing
-           -> pure Nothing
+         Left err
+           -> pure . Left $ err
 
-         Just (s', value)
-           -> let valueHash = hashWith (hashAlgorithm hashKey) value
-               in if valueHash /= hashKey
-                    then error $ mconcat [ "HashStore returned an incorrect value for a hash. Asked for hash \n"
-                                         , show hashKey
-                                         , "\n but returned value hashed to \n"
-                                         , show valueHash
-                                         ]
-                    else pure $ Just (HashStore s', value)
+         Right (s', mValue)
+           -> case mValue of
+                Nothing
+                  -> pure . Right $ (HashStore s', Nothing)
+
+                Just value
+                  -> let valueHash = hashWith (hashAlgorithm hashKey) value
+                      in if valueHash /= hashKey
+                           then error $ mconcat [ "HashStore returned an incorrect value for a hash. Asked for hash \n"
+                                                , show hashKey
+                                                , "\n but returned value hashed to \n"
+                                                , show valueHash
+                                                ]
+                           else pure . Right $ (HashStore s', Just value)
 
 -- A Hash that may have had it's bytes truncated an arbitrary amount.
 data ShortHash = ShortHash

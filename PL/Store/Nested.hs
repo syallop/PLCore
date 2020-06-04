@@ -35,6 +35,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.List as List
 
+import PL.Error
 import PL.Store
 import PL.ShortStore
 
@@ -107,31 +108,40 @@ lookupNested
      )
   => NestedStore s s' k v
   -> k
-  -> IO (Maybe (NestedStore s s' k v, v))
+  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, Maybe v))
 lookupNested (NestedStore topStore nestedStore) key =
   lookup topStore key >>= \case
-    -- Not in top store, check nested store.
-    Nothing
-      -> lookup nestedStore key >>= \case
-           -- Not in either store.
+    Left err
+      -> pure . Left $ err
+
+    Right (topStore',res)
+      -> case res of
+           -- Not in top store, check nested store.
            Nothing
-             -> pure Nothing
+             -> lookup nestedStore key >>= \case
+                  Left err
+                    -> pure . Left $ err
 
-           -- In the nested store. Cache in the top store and return.
-           Just (nestedStore', value)
-             -> store topStore key value >>= \case
-                  -- Failed to cache in the top store.
-                  -- TODO: Should we still return the value?
-                  Nothing
-                    -> pure Nothing
+                  Right (nestedStore', res)
+                    -> case res of
+                         -- Not in either store.
+                         Nothing
+                           -> pure . Right $ (NestedStore topStore' nestedStore', Nothing)
 
-                  Just (topStore', topStoreResult)
-                    -> pure $ Just (NestedStore topStore' nestedStore', value)
+                         -- In the nested store. Cache in the top store and return.
+                         Just value
+                           -> store topStore key value >>= \case
+                                Left err
+                                  -> pure . Left $ err
 
-    -- In the top store. We can assume the value is also contained in the nested
-    -- store.
-    Just (topStore', value)
-      -> pure $ Just (NestedStore topStore' nestedStore, value)
+                                -- TODO: Can we not ignore the result?
+                                Right (topStore'', _res)
+                                  -> pure . Right $ (NestedStore topStore'' nestedStore', Just value)
+
+           -- In the top store. We can assume the value is also contained in the nested
+           -- store.
+           Just value
+             -> pure . Right $ (NestedStore topStore' nestedStore, Just value)
 
 -- | Store a key-value in the nested store by ensuring:
 -- - It is first stored in the nested store.
@@ -159,95 +169,111 @@ storeNested
   => NestedStore s s' k v
   -> k
   -> v
-  -> IO (Maybe (NestedStore s s' k v, StoreResult v))
+  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, StoreResult v))
 storeNested (NestedStore topStore nestedStore) key value = lookup topStore key >>= \case
-   -- TODO: Merge the many similar branches.
-   -- TODO: Consider reporting partial success when we store in nested stores
-   -- but encounter failures caching at the top.
-   -- TODO: Consider being more permissive about data-loss/ errors in nested
-   -- stores when they are unaware of values we know of at the top level.
-   -- Currently this is an exception but it could be recovered/ reported more
-   -- nicely.
+  Left err
+    -> pure . Left $ err
 
-   -- Not in the top store, proceed to check the nested store.
-   Nothing
-     -> lookup nestedStore key >>= \case
-          -- Value isn't in the nested store, proceed to store and cache.
-          Nothing
-            -> storeNestedThenTop topStore nestedStore key value
+  Right (topStore', mRes)
+    -> case mRes of
+         -- TODO: Merge the many similar branches.
+         -- TODO: Consider reporting partial success when we store in nested stores
+         -- but encounter failures caching at the top.
+         -- TODO: Consider being more permissive about data-loss/ errors in nested
+         -- stores when they are unaware of values we know of at the top level.
+         -- Currently this is an exception but it could be recovered/ reported more
+         -- nicely.
 
-          -- Not in the top store but is in the nested store.
-          Just (nestedStore', nestedValue)
+         -- Not in the top store, proceed to check the nested store.
+         Nothing
+           -> lookup nestedStore key >>= \case
+                Left err
+                  -> pure . Left $ err
 
-            -- The value in the nested store is what we're trying to store.
-            -- Cache in the top store and we're done.
-            | nestedValue == value
-             -> fmap (fmap (\(topStore',topStoreResult)
-                             -> (NestedStore topStore' nestedStore', topStoreResult <> AlreadyStored)
-                           )
-                     )
-                     $ store topStore key value
+                Right (nestedStore', mRes)
+                  -> case mRes of
 
-            -- Nested store has a different value, replace it, cache the
-            -- replacement in the higher store and return the old values
-            | otherwise
-             -> storeNestedThenTop topStore nestedStore' key value
+                       -- Value isn't in the nested store, proceed to store and cache.
+                       Nothing
+                         -> storeNestedThenTop topStore nestedStore key value
 
-   -- In the top store. If identical, we're done. Otherwise, recurse.
-   Just (topStore', topValue)
-     | topValue == value
-      -> pure $ Just (NestedStore topStore' nestedStore, AlreadyStored)
+                       -- Not in the top store but is in the nested store.
+                       Just nestedValue
 
-     -- Different value in the top store, recurse and replace on the way back
-     -- up returning the old value
-     | otherwise
-      -> lookup nestedStore key >>= \case
-           -- Value isn't stored in nested and is different in the top.
-           -- If everything is behaving correctly this shouldnt happen. It
-           -- implies either:
-           --
-           -- - A store algorithm (incorrectly) added something to a higher
-           --  store before storing in the nested store and we're witnessing a
-           --  race condition.
-           --
-           -- - A value has been evicted from the nested store but not the
-           --   top cache. Stores should be layered such that nested store
-           --   does not evict data.
-           --
-           -- While developing, we're going to fail loudly here.
-           --
-           -- TODO: Consider tolerating this invarient being broken and
-           -- attempting to store in the nested stores anyway.
-           Nothing
-             -> error $ mconcat
-                  [ "When storing a key-value in a nested store we:\n"
-                  , "- Found a different value at the top store (which we assume to be outdated)\n"
-                  , "- Found no value at the nested store\n"
-                  , "This could imply data-loss at the nested store which _should_ not evict values.\n"
-                  , "Since we're in development mode we're failing loudly here, instead of attempting to clean up. Sorry!\n"
-                  , "Context:\n"
-                  , "Key:", show key, "\n"
-                  , "New value:", show value, "\n"
-                  , "Top value:", show topValue, "\n"
-                  ]
+                         -- The value in the nested store is what we're trying to store.
+                         -- Cache in the top store and we're done.
+                         | nestedValue == value
+                          -> fmap (fmap (\(topStore',topStoreResult)
+                                          -> (NestedStore topStore' nestedStore', topStoreResult <> AlreadyStored)
+                                        )
+                                  )
+                                  $ store topStore key value
+
+                         -- Nested store has a different value, replace it, cache the
+                         -- replacement in the higher store and return the old values
+                         | otherwise
+                          -> storeNestedThenTop topStore nestedStore' key value
+
+         -- In the top store. If identical, we're done. Otherwise, recurse.
+         Just topValue
+           | topValue == value
+            -> pure . Right $ (NestedStore topStore' nestedStore, AlreadyStored)
+
+           -- Different value in the top store, recurse and replace on the way back
+           -- up returning the old value
+           | otherwise
+            -> lookup nestedStore key >>= \case
+                 Left err
+                   -> pure . Left $ err
+
+                 Right (nestedStore',mRes)
+                   -> case mRes of
+                        -- Value isn't stored in nested and is different in the top.
+                        -- If everything is behaving correctly this shouldnt happen. It
+                        -- implies either:
+                        --
+                        -- - A store algorithm (incorrectly) added something to a higher
+                        --  store before storing in the nested store and we're witnessing a
+                        --  race condition.
+                        --
+                        -- - A value has been evicted from the nested store but not the
+                        --   top cache. Stores should be layered such that nested store
+                        --   does not evict data.
+                        --
+                        -- While developing, we're going to fail loudly here.
+                        --
+                        -- TODO: Consider tolerating this invarient being broken and
+                        -- attempting to store in the nested stores anyway.
+                        Nothing
+                          -> error $ mconcat
+                               [ "When storing a key-value in a nested store we:\n"
+                               , "- Found a different value at the top store (which we assume to be outdated)\n"
+                               , "- Found no value at the nested store\n"
+                               , "This could imply data-loss at the nested store which _should_ not evict values.\n"
+                               , "Since we're in development mode we're failing loudly here, instead of attempting to clean up. Sorry!\n"
+                               , "Context:\n"
+                               , "Key:", show key, "\n"
+                               , "New value:", show value, "\n"
+                               , "Top value:", show topValue, "\n"
+                               ]
 
 
-           -- Value is in the nested store. If identical we only need to cache
-           -- in the top store. If different, both need to be replaced.
-           Just (nestedStore', nestedValue)
+                        -- Value is in the nested store. If identical we only need to cache
+                        -- in the top store. If different, both need to be replaced.
+                        Just nestedValue
 
-             -- Value is already stored here. Cache in the top store.
-             | nestedValue == value
-              -> fmap (fmap (\(topStore'', topStoreResult)
-                              -> (NestedStore topStore'' nestedStore', topStoreResult <> AlreadyStored)
-                            )
-                      )
-                      $ store topStore' key value
+                          -- Value is already stored here. Cache in the top store.
+                          | nestedValue == value
+                           -> fmap (fmap (\(topStore'', topStoreResult)
+                                           -> (NestedStore topStore'' nestedStore', topStoreResult <> AlreadyStored)
+                                         )
+                                   )
+                                   $ store topStore' key value
 
-             -- Value is different in both the cache and the nested store.
-             -- Update it.
-             | otherwise
-              -> storeNestedThenTop topStore' nestedStore key value
+                          -- Value is different in both the cache and the nested store.
+                          -- Update it.
+                          | otherwise
+                           -> storeNestedThenTop topStore' nestedStore key value
 
 
 -- Attempt to store in the second nested store. Then only if successful the
@@ -261,19 +287,19 @@ storeNestedThenTop
   -> s' k v
   -> k
   -> v
-  -> IO (Maybe (NestedStore s s' k v, StoreResult v))
+  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, StoreResult v))
 storeNestedThenTop top nested key value =
   store nested key value >>= \case
-    Nothing
-      -> pure Nothing
+    Left err
+      -> pure . Left $ err
 
-    Just (nested', nestedResult)
-      -> do store top key value >>= \case
-              Nothing
-                -> pure Nothing
+    Right (nested', nestedResult)
+     -> do store top key value >>= \case
+             Left err
+               -> pure . Left $ err
 
-              Just (top', topResult)
-                -> pure $ Just (NestedStore top' nested', topResult <> nestedResult)
+             Right (top', topResult)
+               -> pure . Right $ (NestedStore top' nested', topResult <> nestedResult)
 
 -- | Lookup all known keys that are 'larger' than a short key.
 largerNestedKeys

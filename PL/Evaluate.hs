@@ -215,23 +215,30 @@ lookupContentBinding
   :: ContentName
   -> Evaluate Expr
 lookupContentBinding c = Evaluate $ \ctx -> do
-  mRes <- lookupExpr (_evaluationCodeStore ctx) (contentName c)
-  case mRes of
-    Nothing
-      -> pure . Left . EMsg . mconcat $
-           [ text "Failed to locate expression named:"
-           , lineBreak
-           , indent1 . string . show . contentName $ c
-           , lineBreak
-           , text "This implies either:"
-           , lineBreak
-           , indent1 . mconcat $ [ text "- The code store has lost data. The final backing storage should be reliable."
-                                 , text "- An expression was entered into the store before checking whether the things it referenced existed."
-                                 ]
-           ]
+  let errCtx = EMsg . mconcat $
+       [ text "Failed to locate expression named:"
+       , lineBreak
+       , indent1 . string . show . contentName $ c
+       , lineBreak
+       , text "This implies either:"
+       , lineBreak
+       , indent1 . mconcat $ [ text "- The code store has lost data. The final backing storage should be reliable."
+                             , text "- An expression was entered into the store before checking whether the things it referenced existed."
+                             ]
+       ]
 
-    Just (codeStore', expr)
-      -> pure . Right $ (ctx{_evaluationCodeStore = codeStore'}, expr)
+  eRes <- lookupExpr (_evaluationCodeStore ctx) (contentName c)
+  case eRes of
+    Left err
+      -> pure . Left . EContext errCtx $ err
+
+    Right (codeStore', mExpr)
+      -> case mExpr of
+           Nothing
+             -> pure . Left . EContext errCtx . EMsg . text $ "Unknown expression. All expressions must be known before the evaluation phase."
+
+           Just expr
+             -> pure . Right $ (ctx{_evaluationCodeStore = codeStore'}, expr)
 
 -- | Context after an Expr is applied.
 underAppliedExpression

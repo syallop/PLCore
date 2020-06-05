@@ -89,9 +89,11 @@ simpleNameTestCase
   -> TypeTestCase
 simpleNameTestCase src
   = TypeTestCase
-  { _isType = Named "Preexisting"
+  { _parsesFrom = src
+  , _parsesTo = Named "Preexisting"
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo = Named "Preexisting"
 
   , _underTypeCheckCtx = topTypeCheckCtx namedTypeCtx
   , _hasKind = Kind
@@ -118,9 +120,11 @@ recursiveNameTestCase
   -> TypeTestCase
 recursiveNameTestCase src
   = TypeTestCase
-  { _isType = Named "Recursive"
+  { _parsesFrom = src
+  , _parsesTo = Named "Recursive"
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo = Named "Recursive"
 
   , _underTypeCheckCtx = topTypeCheckCtx namedTypeCtx
   , _hasKind = Kind

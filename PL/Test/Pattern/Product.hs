@@ -56,18 +56,19 @@ defaultProductPatternTestCase
   -> PatternTestCase
 defaultProductPatternTestCase src
   = PatternTestCase
-      {_underTypeCheckCtx    = topTypeCheckCtx typeCtx
-      ,_isPattern           = isPattern
-      ,_typed                = typed
-      ,_checkMatchWithResult = checkMatchWithResult
-      ,_parsesFrom           = parsesFrom
+      { _parsesFrom = src
+      , _parsesTo   = EmptyProductPattern
+
+      , _underResolveCtx = undefined
+      , _resolvesTo      = EmptyProductPattern
+
+      , _underTypeCheckCtx = topTypeCheckCtx typeCtx
+      , _typed             = EmptyProductT
+
+      ,_checkMatchWithResult = Right []
       }
   where
-    typeCtx              = emptyTypeCtx
-    isPattern            = EmptyProductPattern
-    typed                = EmptyProductT
-    checkMatchWithResult = Right []
-    parsesFrom           = src
+    typeCtx = emptyTypeCtx
 
 productPatternTestCase
   :: Source

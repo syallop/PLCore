@@ -64,7 +64,7 @@ reducesPatternsToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
     . mapM_ (\(name,testCase)
               -> reducePatternToSpec name
                                      (_underTypeCheckCtx testCase)
-                                     (stripPatternComments $ _isPattern testCase)
+                                     (_resolvesTo testCase)
                                      (_typed testCase)
                                      (_checkMatchWithResult testCase)
                                      ppExpr

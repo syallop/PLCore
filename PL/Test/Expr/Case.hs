@@ -38,7 +38,7 @@ bindExprTestCase
 bindExprTestCase src
   = ExprTestCase
       { _underTypeCtx = ctx
-      , _isExpr       = e
+      , _parsesTo       = e
       , _typed        = ty
       , _parsesFrom   = src
       }

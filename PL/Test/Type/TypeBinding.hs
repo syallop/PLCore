@@ -64,9 +64,11 @@ simpleTypeBindingTestCase
   -> TypeTestCase
 simpleTypeBindingTestCase src
   = TypeTestCase
-  { _isType = TypeBinding $ TyVar $ VZ
+  { _parsesFrom = src
+  , _parsesTo = TypeBinding $ TyVar $ VZ
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo      = TypeBinding $ TyVar $ VZ
 
   , _underTypeCheckCtx = (topTypeCheckCtx sharedTypeCtx){_typeBindings = unbound emptyBindings, _typeBindCtx = addBinding Kind emptyCtx}
   , _hasKind = Kind
@@ -122,10 +124,14 @@ buriedTypeBindingTestCase
   -> TypeTestCase
 buriedTypeBindingTestCase src
   = TypeTestCase
-  { _isType = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
+  { _parsesFrom = src
+  , _parsesTo = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
                                  (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ)
 
-  , _parsesFrom = src
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
+                                 (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ)
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = KindArrow Kind $ KindArrow Kind $ KindArrow Kind Kind
@@ -133,7 +139,6 @@ buriedTypeBindingTestCase src
   , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
   , _reducesTo = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ))
                                  (TypeLam Kind $ TypeBinding $ TyVar $ VS VZ)
-
   , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Type Bindings are adjusted correctly when buried under type lambdas"
@@ -174,10 +179,13 @@ doubleBuriedTypeBindingTestCase
   -> TypeTestCase
 doubleBuriedTypeBindingTestCase src
   = TypeTestCase
-  { _isType = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
+  { _parsesFrom = src
+  , _parsesTo = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
                                  (TypeLam Kind (TypeBinding $ TyVar $ VS VZ))
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo      = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
+                                 (TypeLam Kind (TypeBinding $ TyVar $ VS VZ))
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = KindArrow Kind (KindArrow Kind (KindArrow Kind (KindArrow Kind Kind)))
@@ -185,7 +193,6 @@ doubleBuriedTypeBindingTestCase src
   , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
   , _reducesTo = TypeLam Kind $ TypeApp (TypeLam (KindArrow Kind Kind) (TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS $ VS VZ))
                                  (TypeLam Kind (TypeBinding $ TyVar $ VS VZ))
-
   , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Type bindings are adjusted correctly when buried under type lambdas"
@@ -220,10 +227,13 @@ buriedTypeBindingsDontMoveTestCase
   -> TypeTestCase
 buriedTypeBindingsDontMoveTestCase src
   = TypeTestCase
-  { _isType = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
+  { _parsesFrom = src
+  , _parsesTo = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
                                 (TypeBinding $ TyVar VZ)
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
+                                (TypeBinding $ TyVar VZ)
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = KindArrow Kind Kind
@@ -231,7 +241,6 @@ buriedTypeBindingsDontMoveTestCase src
   , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
   , _reducesTo = TypeLam Kind $ TypeApp (TypeLam Kind (TypeBinding $ TyVar VZ))
                                 (TypeBinding $ TyVar VZ)
-
   , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Type bindings are not adjusted when they don't move"

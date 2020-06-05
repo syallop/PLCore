@@ -61,7 +61,7 @@ typeChecksTypesSpec testCases ppKind ppError =
   describe "All example types"
   . mapM_ (\(name,testCase)
             -> typeCheckTypeSpec name
-                                 (_isType testCase)
+                                 (_resolvesTo testCase)
                                  (_typeBindCtx    . _underTypeCheckCtx $ testCase)
                                  (_contentHasKind . _underTypeCheckCtx $ testCase)
                                  (_typeCtx        . _underTypeCheckCtx $ testCase)
@@ -76,7 +76,7 @@ typeChecksTypesSpec testCases ppKind ppError =
 -- | Test whether a type typechecks (kind checks) to the intended kind.
 typeCheckTypeSpec
   :: Text.Text
-  -> TypeFor CommentedPhase
+  -> Type
   -> BindCtx TyVar Kind
   -> Map.Map ContentName Kind
   -> TypeCtx
@@ -85,7 +85,7 @@ typeCheckTypeSpec
   -> (Kind -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
-typeCheckTypeSpec name inputType bindCtx contentHasKind underTypeCtx bindings expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx contentHasKind underTypeCtx $ stripTypeComments inputType of
+typeCheckTypeSpec name inputType bindCtx contentHasKind underTypeCtx bindings expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx contentHasKind underTypeCtx inputType of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err
 

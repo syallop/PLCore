@@ -64,11 +64,16 @@ emptyProductTestCase
   -> TypeTestCase
 emptyProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = ProductT []
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
+  { _parsesFrom = src
+  , _parsesTo   = ProductT []
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = ProductT []
+
+  , _underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  , _hasKind              = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
   ,_reducesTo            = ProductT []
   ,_reducesToWhenApplied = []
   }
@@ -78,13 +83,18 @@ singletonProductTestCase
   -> TypeTestCase
 singletonProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = ProductT [unitTypeName]
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = ProductT [unitTypeName]
-  ,_reducesToWhenApplied = []
+  { _parsesFrom = src
+  , _parsesTo   = ProductT [unitTypeName]
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = ProductT [unitTypeName]
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind           = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo             = ProductT [unitTypeName]
+  , _reducesToWhenApplied  = []
   }
 
 twoProductTestCase
@@ -92,13 +102,18 @@ twoProductTestCase
   -> TypeTestCase
 twoProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = ProductT [unitTypeName,natTypeName]
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = ProductT [unitTypeName,natTypeName]
-  ,_reducesToWhenApplied =
+  { _parsesFrom = src
+  , _parsesTo   = ProductT [unitTypeName,natTypeName]
+
+  , _underResolveCtx = undefined
+  , _resolvesTo = ProductT [unitTypeName,natTypeName]
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind           = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo             = ProductT [unitTypeName,natTypeName]
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Is not the same as it's reverse"
           , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
@@ -117,13 +132,18 @@ duplicateProductTestCase
   -> TypeTestCase
 duplicateProductTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = ProductT [unitTypeName,unitTypeName]
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = ProductT [unitTypeName,unitTypeName]
-  ,_reducesToWhenApplied =
+  { _parsesFrom = src
+  , _parsesTo   = ProductT [unitTypeName,unitTypeName]
+
+  , _underResolveCtx = undefined
+  , _resolvesTo = ProductT [unitTypeName,unitTypeName]
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind           = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo            = ProductT [unitTypeName,unitTypeName]
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Does not lose duplicates"
           , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx

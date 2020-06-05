@@ -30,6 +30,7 @@ import PL.Name
 import PL.Reduce
 import PL.ReduceType
 import PL.TyVar
+import PL.Resolve
 import PL.Type
 import PL.Type.Eq
 import PL.TypeCheck
@@ -60,10 +61,13 @@ import PL.Test.Util
 --
 -- It's likely factored badly.
 data TypeTestCase = TypeTestCase
-  { _isType :: TypeFor CommentedPhase -- ^ A Type
+  { -- Parsing tests
+    _parsesFrom            :: Text    -- ^ Parses from this textual representation
+  , _parsesTo              :: TypeFor CommentedPhase
 
-   -- Parsing tests
-  , _parsesFrom            :: Text    -- ^ Parses from this textual representation
+    -- Resolution tests
+  , _underResolveCtx       :: ResolveCtx
+  , _resolvesTo            :: Type
 
   -- Type/ kind checking tests
   , _underTypeCheckCtx     :: TypeCheckCtx -- ^ Under this given typing context

@@ -55,93 +55,102 @@ functionTestCases t =
   ]
 
 -- The polymorphic identity function
+--
+-- forall a::k. a -> a
 idExprTestCase
   :: Source
   -> ExprTestCase
 idExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ)
 
-      , _reducesTo = stripComments e
-      , _reducesToWhenApplied = reduces
+      , _underResolveCtx = undefined
+      , _resolvesTo      = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ)
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo         = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ)
+      , _reducesToWhenApplied = []
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = emptyTypeCtx
 
-    -- forall a::k. a -> a
-    e   = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) (Binding VZ) -- \(x:a) -> x
-    ty  = BigArrow Kind $ Arrow (TypeBinding $ TyVar VZ) (TypeBinding $ TyVar VZ)
-
-    -- TODO
-    reduces =
-      [
-      ]
-
+-- forall a::k0. forall b::k1. a -> b -> a
+-- const a b = a
 constExprTestCase
   :: Source
   -> ExprTestCase
 constExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
-
-      , _reducesTo = stripComments e
-      , _reducesToWhenApplied = reduces
-      }
-  where
-    ctx = emptyTypeCtx
-
-    -- forall a::k0. forall b::k1. a -> b -> a
-    -- const a b = a
-    e   = BigLam Kind -- k0
+      { _parsesFrom = src
+      , _parsesTo   = BigLam Kind -- k0
         $ BigLam Kind -- k1
         $ Lam (TypeBinding . TyVar . VS $ VZ) -- a :: k0
         $ Lam (TypeBinding . TyVar $ VZ)      -- b :: k1
         $ Binding $ VS VZ                               -- a
 
-    ty  = BigArrow Kind -- k0
-        $ BigArrow Kind -- k1
-        $ Arrow (TypeBinding . TyVar . VS $ VZ) -- a
-        $ Arrow (TypeBinding $ TyVar VZ)        -- b
-        $ TypeBinding . TyVar $ VS VZ                     -- a
+      , _underResolveCtx = undefined
+      , _resolvesTo      = BigLam Kind -- k0
+        $ BigLam Kind -- k1
+        $ Lam (TypeBinding . TyVar . VS $ VZ) -- a :: k0
+        $ Lam (TypeBinding . TyVar $ VZ)      -- b :: k1
+        $ Binding $ VS VZ                               -- a
 
-    -- TODO
-    reduces =
-      []
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = BigArrow Kind -- k0
+          $ BigArrow Kind -- k1
+          $ Arrow (TypeBinding . TyVar . VS $ VZ) -- a
+          $ Arrow (TypeBinding $ TyVar VZ)        -- b
+          $ TypeBinding . TyVar $ VS VZ                     -- a
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = BigLam Kind -- k0
+          $ BigLam Kind -- k1
+          $ Lam (TypeBinding . TyVar . VS $ VZ) -- a :: k0
+          $ Lam (TypeBinding . TyVar $ VZ)      -- b :: k1
+          $ Binding $ VS VZ                               -- a
+      , _reducesToWhenApplied = []
+      }
+  where
+    ctx = emptyTypeCtx
 
 applyExprTestCase
   :: Source
   -> ExprTestCase
 applyExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = BigLam Kind $ BigLam Kind
+          $ Lam (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+          $ Lam (TypeBinding . TyVar . VS $ VZ)
+          $ App (Binding . VS $ VZ) (Binding VZ)
 
-      , _reducesTo = stripComments e
-      , _reducesToWhenApplied = reduces
+      , _underResolveCtx = undefined
+      , _resolvesTo      = BigLam Kind $ BigLam Kind
+          $ Lam (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+          $ Lam (TypeBinding . TyVar . VS $ VZ)
+          $ App (Binding . VS $ VZ) (Binding VZ)
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+        -- forall k0 k1. \(f::k0 -> k1) (a::k0) -> f a:: k1
+      , _typed = BigArrow Kind $ BigArrow Kind
+          $ Arrow (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+          $ Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ)
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = BigLam Kind $ BigLam Kind
+          $ Lam (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
+          $ Lam (TypeBinding . TyVar . VS $ VZ)
+          $ App (Binding . VS $ VZ) (Binding VZ)
+      , _reducesToWhenApplied = []
       }
   where
     ctx = emptyTypeCtx
 
-    e   = BigLam Kind $ BigLam Kind
-        $ Lam (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
-        $ Lam (TypeBinding . TyVar . VS $ VZ)
-        $ App (Binding . VS $ VZ) (Binding VZ)
-
-    -- forall k0 k1. \(f::k0 -> k1) (a::k0) -> f a:: k1
-    ty  = BigArrow Kind $ BigArrow Kind
-        $ Arrow (Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ))
-        $ Arrow (TypeBinding . TyVar . VS $ VZ) (TypeBinding . TyVar $ VZ)
-
-    -- TODO
-    reduces = []

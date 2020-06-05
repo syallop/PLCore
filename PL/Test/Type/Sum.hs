@@ -62,13 +62,18 @@ sumTwoTestCase
   -> TypeTestCase
 sumTwoTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = SumT $ NE.fromList [unitTypeName,natTypeName]
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = SumT $ NE.fromList [unitTypeName,natTypeName]
-  ,_reducesToWhenApplied =
+  { _parsesFrom = src
+  , _parsesTo   = SumT $ NE.fromList [unitTypeName,natTypeName]
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = SumT $ NE.fromList [unitTypeName,natTypeName]
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind           = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo            = SumT $ NE.fromList [unitTypeName,natTypeName]
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Is NOT the same as the reverse sum"
           , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
@@ -88,13 +93,18 @@ singletonSumTestCase
   -> TypeTestCase
 singletonSumTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = SumT $ NE.fromList [unitTypeName]
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = SumT $ NE.fromList [unitTypeName]
-  ,_reducesToWhenApplied =
+  { _parsesFrom = src
+  , _parsesTo   = SumT $ NE.fromList [unitTypeName]
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = SumT $ NE.fromList [unitTypeName]
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind           = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo            = SumT $ NE.fromList [unitTypeName]
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Sum(Unit) != Sum(Unit,Unit)"
           , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
@@ -112,13 +122,18 @@ duplicateSumTestCase
   -> TypeTestCase
 duplicateSumTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = SumT $ NE.fromList [unitTypeName,unitTypeName]
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = SumT $ NE.fromList [unitTypeName,unitTypeName]
-  ,_reducesToWhenApplied =
+  { _parsesFrom = src
+  , _parsesTo   = SumT $ NE.fromList [unitTypeName,unitTypeName]
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = SumT $ NE.fromList [unitTypeName,unitTypeName]
+
+  , _underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
+  , _hasKind              = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo = SumT $ NE.fromList [unitTypeName,unitTypeName]
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Sum(Unit,Unit) != Sum(Unit)"
           , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
@@ -131,3 +146,4 @@ duplicateSumTestCase src
           }
       ]
   }
+

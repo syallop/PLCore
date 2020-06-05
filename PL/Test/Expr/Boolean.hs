@@ -58,18 +58,8 @@ andExprTestCase
   -> ExprTestCase
 andExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
-
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reductions
-      }
-  where
-    ctx = boolTypeCtx
-    e   = Lam boolTypeName $ Lam boolTypeName $                               -- \x:Bool y:Bool ->
+      { _parsesFrom = src
+      , _parsesTo   = Lam boolTypeName $ Lam boolTypeName $                   -- \x:Bool y:Bool ->
         CaseAnalysis $ Case (Binding VZ)                                      -- case y of
           $ CaseBranches                                                      --
             (CaseBranch falsePat falseTerm :| []                              --     False -> False
@@ -84,24 +74,62 @@ andExprTestCase src
                     )
                 )
             )
-    ty  = Arrow boolType (Arrow boolType boolType)
 
-    reductions =
-      [ ("true"
-        , [(`App` trueTerm)]
-        , Just $ Lam (Named "Bool") $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
-            (CaseBranch falsePat falseTerm :| [])
-            (Just trueTerm)
-        )
+      , _underResolveCtx = undefined
+      , _resolvesTo      = Lam boolTypeName $ Lam boolTypeName $                   -- \x:Bool y:Bool ->
+              CaseAnalysis $ Case (Binding VZ)                                     -- case y of
+                $ CaseBranches                                                     --
+                  (CaseBranch falsePat falseTerm :| []                             --     False -> False
+                  )                                                                --
+                  (Just                                                            --     _      ->
+                      (CaseAnalysis $ Case (Binding $ VS VZ)                       --               case x of
+                        $ CaseBranches                                             --
+                          (CaseBranch falsePat falseTerm :|[]                      --                 False -> False
+                          )                                                        --
+                          (Just                                                    --                        _     ->
+                              trueTerm                                             --                                 True
+                          )
+                      )
+                  )
 
-      , ("false true"
-        , [(`App` falseTerm), (`App` trueTerm)]
-        , Just falseTerm
-        )
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = Arrow boolType (Arrow boolType boolType)
 
-      , ("true true"
-        , [(`App` trueTerm), (`App` trueTerm)]
-        , Just trueTerm
-        )
-      ]
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = Lam boolTypeName $ Lam boolTypeName $                         -- \x:Bool y:Bool ->
+              CaseAnalysis $ Case (Binding VZ)                                     -- case y of
+                $ CaseBranches                                                     --
+                  (CaseBranch falsePat falseTerm :| []                             --     False -> False
+                  )                                                                --
+                  (Just                                                            --     _      ->
+                      (CaseAnalysis $ Case (Binding $ VS VZ)                       --               case x of
+                        $ CaseBranches                                             --
+                          (CaseBranch falsePat falseTerm :|[]                      --                 False -> False
+                          )                                                        --
+                          (Just                                                    --                        _     ->
+                              trueTerm                                             --                                 True
+                          )
+                      )
+                  )
+      ,_reducesToWhenApplied =
+          [ ("true"
+            , [(`App` trueTerm)]
+            , Just $ Lam (Named "Bool") $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+                (CaseBranch falsePat falseTerm :| [])
+                (Just trueTerm)
+            )
+
+          , ("false true"
+            , [(`App` falseTerm), (`App` trueTerm)]
+            , Just falseTerm
+            )
+
+          , ("true true"
+            , [(`App` trueTerm), (`App` trueTerm)]
+            , Just trueTerm
+            )
+          ]
+      }
+  where
+    ctx = boolTypeCtx
 

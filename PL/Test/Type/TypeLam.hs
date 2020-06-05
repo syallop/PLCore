@@ -60,9 +60,11 @@ simpleTypeLamTestCase
   -> TypeTestCase
 simpleTypeLamTestCase src
   = TypeTestCase
-  { _isType = TypeLam Kind $ TypeBinding $ TyVar VZ
+  { _parsesFrom = src
+  , _parsesTo = TypeLam Kind $ TypeBinding $ TyVar VZ
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo = TypeLam Kind $ TypeBinding $ TyVar VZ
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = KindArrow Kind Kind
@@ -89,9 +91,11 @@ nestedTypeLamTestCase
   -> TypeTestCase
 nestedTypeLamTestCase src
  = TypeTestCase
-  { _isType = TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS VZ
+  { _parsesFrom = src
+  , _parsesTo   = TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS VZ
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo = TypeLam Kind $ TypeLam Kind $ TypeBinding $ TyVar $ VS VZ
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = KindArrow Kind $ KindArrow Kind Kind
@@ -125,5 +129,4 @@ nestedTypeLamTestCase src
           }
       ]
   }
-
 

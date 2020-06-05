@@ -60,10 +60,11 @@ defaultBindingPatternTestCase src
          ,_typeBindCtx  = emptyCtx
          ,_typeBindings = emptyBindings
          }
-      ,_isPattern            = isPattern
+      ,_parsesFrom = parsesFrom
+      ,_parsesTo   = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
-      ,_parsesFrom           = parsesFrom
+      ,_resolvesTo = BindingPattern VZ
       }
   where
     isPattern           = BindingPattern VZ

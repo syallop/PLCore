@@ -54,28 +54,19 @@ maybeTestCases t =
   ]
 
 -- Extract a Natural number from a Maybe with a default value.
+--
+-- \x:Maybe Nat ->
+-- case x of
+--   Nothing -> 0
+--   Just n  -> n
 defaultNatTestCase
   :: Source
   -> ExprTestCase
 defaultNatTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
-
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reductions
-      }
-  where
-    ctx = maybeTypeCtx <> natTypeCtx
-
-    -- \x:Maybe Nat ->
-    -- case x of
-    --   Nothing -> 0
-    --   Just n  -> n
-    e   = Lam (TypeApp maybeTypeName natTypeName) $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+      { _parsesFrom = src
+      , _parsesTo   =
+          Lam (TypeApp maybeTypeName natTypeName) $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
             (NE.fromList
               [ CaseBranch nothingPat zero
               , CaseBranch justPat (Binding VZ)
@@ -83,17 +74,45 @@ defaultNatTestCase src
             )
             Nothing
 
-    ty  = Arrow (TypeApp maybeTypeName natTypeName) natTypeName
+      , _underResolveCtx = undefined
+      , _resolvesTo      =
+          Lam (TypeApp maybeTypeName natTypeName) $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+            (NE.fromList
+              [ CaseBranch nothingPat zero
+              , CaseBranch justPat (Binding VZ)
+              ]
+            )
+            Nothing
 
-    reductions =
-      [ ( "Default to 0"
-        , [(`App` (BigApp nothingTerm natType))]
-        , Just zero
-        )
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = Arrow (TypeApp maybeTypeName natTypeName) natTypeName
 
-      , ( "Extract 1"
-        , [(`App` (App (BigApp justTerm natType) one))]
-        , Just one
-        )
-      ]
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo          =
+          Lam (TypeApp maybeTypeName natTypeName) $ CaseAnalysis $ Case (Binding VZ) $ CaseBranches
+            (NE.fromList
+              [ CaseBranch nothingPat zero
+              , CaseBranch justPat (Binding VZ)
+              ]
+            )
+            Nothing
+      , _reducesToWhenApplied =
+          [ ( "Default to 0"
+            , [(`App` (BigApp nothingTerm natType))]
+            , Just zero
+            )
+
+          , ( "Extract 1"
+            , [(`App` (App (BigApp justTerm natType) one))]
+            , Just one
+            )
+          ]
+
+      , _underEvaluationCtx     = undefined
+      , _evaluatesTo            = undefined
+      , _evaluatesToWhenApplied = undefined
+      }
+  where
+    ctx = maybeTypeCtx <> natTypeCtx
+
 

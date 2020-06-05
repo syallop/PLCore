@@ -54,12 +54,19 @@ import PL.Test.Util
 parsesToSpec
   :: Map.Map Text.Text ExprTestCase
   -> (Source -> Either (Error Expr Type Pattern TypeCtx) (ExprFor CommentedPhase, Source))
-  -> (Expr -> Doc)
+  -> (ExprFor CommentedPhase -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parsesToSpec testCases parseExpression ppExpr ppError
   = describe "All example programs"
-  . mapM_ (\(name,testCase) -> parseToSpec parseExpression name (_parsesFrom testCase) (_isExpr testCase) ppExpr ppError)
+  . mapM_ (\(name,testCase)
+            -> parseToSpec parseExpression
+                           name
+                           (_parsesFrom testCase)
+                           (_parsesTo testCase)
+                           ppExpr
+                           ppError
+          )
   . Map.toList
   $ testCases
 
@@ -70,7 +77,7 @@ parseToSpec
   -> Text.Text
   -> Source
   -> ExprFor CommentedPhase
-  -> (Expr -> Doc)
+  -> (ExprFor CommentedPhase -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (Text.unpack name) $ case parseExpression inputSource of

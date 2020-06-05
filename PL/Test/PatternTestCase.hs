@@ -26,6 +26,7 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
+import PL.Resolve
 import PL.Bindings
 
 import PLGrammar
@@ -50,10 +51,19 @@ type TestType = Type
 type TestPattern = Pattern
 
 data PatternTestCase = PatternTestCase
-  {_underTypeCheckCtx    :: TypeCheckCtx
-  ,_isPattern            :: PatternFor CommentedPhase -- ^ A Pattern
-  ,_typed                :: Type                        -- ^ Has this type
+  { -- Parsing tests
+    _parsesFrom :: Text
+  , _parsesTo   :: PatternFor CommentedPhase
+
+    -- Resolution tests
+  , _underResolveCtx :: ResolveCtx
+  , _resolvesTo      :: Pattern
+
+    -- Type checking tests
+  , _underTypeCheckCtx    :: TypeCheckCtx
+  , _typed                :: Type
+
+    -- Matching tests
   ,_checkMatchWithResult :: Either (Error Expr Type Pattern TypeCtx) [Type] -- ^ Either produces an error or a list of bound types.
-  ,_parsesFrom           :: Text                              -- ^ And also parses from this textual representation
   }
 

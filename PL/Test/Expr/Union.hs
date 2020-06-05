@@ -62,20 +62,8 @@ unionTwoExprTestCase
   -> ExprTestCase
 unionTwoExprTestCase src =
   ExprTestCase
-    { _underTypeCheckCtx = topTypeCheckCtx ctx
-    , _underReductionCtx = topReductionCtx ctx
-    , _isExpr       = e
-    , _typed        = ty
-    , _parsesFrom   = src
-
-    ,_reducesTo = stripComments e
-    ,_reducesToWhenApplied = reduces
-    }
-  where
-    ctx = boolTypeCtx <> natTypeCtx
-
-    e :: ExprFor CommentedPhase
-    e   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
+    { _parsesFrom = src
+    , _parsesTo   = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
             CaseAnalysis $ Case (Binding VZ)                                    -- case x of
               $ CaseBranches                                                    --
                 (CaseBranch (UnionPattern natTypeName   zPat)      falseTerm      -- Nat | Z    -> False
@@ -86,22 +74,52 @@ unionTwoExprTestCase src =
                 (Just                                                           --
                     falseTerm                                                   -- _          -> False
                 )
-    ty  = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
 
-    reduces =
-      [("∪ 1 Nat Nat Bool"
-       ,[(`App` (Union one natTypeName $ Set.fromList [natTypeName,boolTypeName]))]
-       ,Just trueTerm
-       )
+    , _underResolveCtx = undefined
+    , _resolvesTo      = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
+            CaseAnalysis $ Case (Binding VZ)                                    -- case x of
+              $ CaseBranches                                                    --
+                (CaseBranch (UnionPattern natTypeName   zPat)      falseTerm      -- Nat | Z    -> False
+                 :| [CaseBranch (UnionPattern natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
+                    ,CaseBranch (UnionPattern boolTypeName  truePat)   trueTerm   -- Bool| True -> True
+                    ]                                                           --
+                )                                                               --
+                (Just                                                           --
+                    falseTerm                                                   -- _          -> False
+                )
 
-      ,("∪ False Bool Nat Bool"
-       ,[(`App` (Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]))]
-       ,Just falseTerm
-       )
+    , _underTypeCheckCtx = topTypeCheckCtx ctx
+    , _typed = Arrow (UnionT $ Set.fromList [natTypeName,boolTypeName]) boolTypeName
 
-      ,("∪ True Bool Bool Nat"
-       ,[(`App` (Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]))]
-       ,Just falseTerm
-       )
-      ]
+    , _underReductionCtx = topReductionCtx ctx
+    , _reducesTo = Lam (UnionT $ Set.fromList [natTypeName,boolTypeName]) $    -- \x : <Nat|Bool>
+            CaseAnalysis $ Case (Binding VZ)                                    -- case x of
+              $ CaseBranches                                                    --
+                (CaseBranch (UnionPattern natTypeName   zPat)      falseTerm      -- Nat | Z    -> False
+                 :| [CaseBranch (UnionPattern natTypeName $ sPat Bind) trueTerm   -- Nat | S n  -> True
+                    ,CaseBranch (UnionPattern boolTypeName  truePat)   trueTerm   -- Bool| True -> True
+                    ]                                                           --
+                )                                                               --
+                (Just                                                           --
+                    falseTerm                                                   -- _          -> False
+                )
+    , _reducesToWhenApplied =
+          [("∪ 1 Nat Nat Bool"
+           ,[(`App` (Union one natTypeName $ Set.fromList [natTypeName,boolTypeName]))]
+           ,Just trueTerm
+           )
+
+          ,("∪ False Bool Nat Bool"
+           ,[(`App` (Union falseTerm boolTypeName $ Set.fromList [natTypeName,boolTypeName]))]
+           ,Just falseTerm
+           )
+
+          ,("∪ True Bool Bool Nat"
+           ,[(`App` (Union falseTerm boolTypeName $ Set.fromList [boolTypeName,natTypeName]))]
+           ,Just falseTerm
+           )
+          ]
+    }
+  where
+    ctx = boolTypeCtx <> natTypeCtx
 

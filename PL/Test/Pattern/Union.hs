@@ -57,17 +57,18 @@ defaultUnionPatternTestCase
   -> PatternTestCase
 defaultUnionPatternTestCase src
   = PatternTestCase
-      {_underTypeCheckCtx    = topTypeCheckCtx emptyTypeCtx
-      ,_isPattern            = isPattern
-      ,_typed                = typed
-      ,_checkMatchWithResult = checkMatchWithResult
-      ,_parsesFrom           = parsesFrom
+      { _parsesFrom = src
+      , _parsesTo   = UnionPattern EmptyProductT EmptyProductPattern
+
+      , _underResolveCtx = undefined
+      , _resolvesTo = UnionPattern EmptyProductT EmptyProductPattern
+
+      , _underTypeCheckCtx = topTypeCheckCtx emptyTypeCtx
+      , _typed             = UnionT $ Set.fromList $ [EmptyProductT]
+
+      , _checkMatchWithResult = Right []
       }
   where
-    isPattern           = UnionPattern EmptyProductT EmptyProductPattern
-    typed                = UnionT $ Set.fromList $ [EmptyProductT]
-    checkMatchWithResult = Right []
-    parsesFrom           = src
 
 unionPatternTestCase
   :: Source

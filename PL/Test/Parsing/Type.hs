@@ -52,12 +52,19 @@ import PL.Test.Util
 parsesToTypesSpec
   :: Map.Map Text.Text TypeTestCase
   -> (Source -> Either (Error Expr Type Pattern TypeCtx) (TypeFor CommentedPhase, Source))
-  -> (Type -> Doc)
+  -> (TypeFor CommentedPhase -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parsesToTypesSpec testCases parseType ppType ppError
   = describe "All example types"
-  . mapM_ (\(name,testCase) -> parseToTypeSpec parseType name (_parsesFrom testCase) (_isType testCase) ppType ppError)
+  . mapM_ (\(name,testCase)
+            -> parseToTypeSpec parseType
+                               name
+                               (_parsesFrom testCase)
+                               (_parsesTo testCase)
+                               ppType
+                               ppError
+          )
   . Map.toList
   $ testCases
 
@@ -68,7 +75,7 @@ parseToTypeSpec
   -> Text.Text
   -> Source
   -> TypeFor CommentedPhase
-  -> (Type -> Doc)
+  -> (TypeFor CommentedPhase -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name) $ case parseType inputSource of
@@ -86,11 +93,11 @@ parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Tex
          , lineBreak
          , text "After parsing:"
          , lineBreak
-         , indent1 . ppType . stripTypeComments $ parsedType
+         , indent1 . ppType $ parsedType
          , lineBreak
          , text "when we expected: "
          , lineBreak
-         , indent1 . ppType . stripTypeComments $ expectedType
+         , indent1 . ppType $ expectedType
          ]
 
     -- TODO:

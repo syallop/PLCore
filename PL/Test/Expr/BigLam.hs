@@ -49,55 +49,64 @@ bigLamTestCases t =
   [("Single big-lambda" , singleBigLamTestCase . _singleBigLamTestCase $ t)
   ]
 
--- \(a::k) -> a
 -- Test a single big-lambda that takes and returns a type.
 -- (id)
+--
+-- /\a. \(x:a). x
 singleBigLamTestCase
   :: Source
   -> ExprTestCase
 singleBigLamTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
-
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reduces
-      }
-  where
-    ctx = boolTypeCtx
-
-    -- /\a. \(x:a). x
-    e   = BigLam Kind
+      { _parsesFrom = src
+      , _parsesTo   = BigLam Kind
             (Lam (TypeBinding . TyVar $ VZ)
                  (Binding VZ)
             )
 
-    -- forall (a :: Kind). a -> a
-    ty  = BigArrow
+      , _underResolveCtx = undefined
+      , _resolvesTo = BigLam Kind
+            (Lam (TypeBinding . TyVar $ VZ)
+                 (Binding VZ)
+            )
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+        -- forall (a :: Kind). a -> a
+      , _typed = BigArrow
             Kind
             (Arrow (TypeBinding . TyVar $ VZ)
                    (TypeBinding . TyVar $ VZ)
             )
 
-    reduces =
-      [ ("Can be applied to types"
-        , [(`BigApp` boolTypeName)
-          ]
-        , Just $ Lam boolTypeName $ Binding $ VZ
-        )
-      , ("Can be used to specify types for lambdas"
-        , [(`BigApp` boolTypeName)
-          ,(`App` trueTerm)
-          ]
-        , Just $ trueTerm
-        )
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = BigLam Kind
+            (Lam (TypeBinding . TyVar $ VZ)
+                 (Binding VZ)
+            )
+      , _reducesToWhenApplied =
+          [ ("Can be applied to types"
+            , [(`BigApp` boolTypeName)
+              ]
+            , Just $ Lam boolTypeName $ Binding $ VZ
+            )
+          , ("Can be used to specify types for lambdas"
+            , [(`BigApp` boolTypeName)
+              ,(`App` trueTerm)
+              ]
+            , Just $ trueTerm
+            )
 
-      , ("Cannot be applied to values"
-        , [(`App` trueTerm)
+          , ("Cannot be applied to values"
+            , [(`App` trueTerm)
+              ]
+            , Nothing
+            )
           ]
-        , Nothing
-        )
-      ]
+
+      , _underEvaluationCtx     = undefined
+      , _evaluatesTo            = undefined
+      , _evaluatesToWhenApplied = undefined
+      }
+  where
+    ctx = boolTypeCtx
+

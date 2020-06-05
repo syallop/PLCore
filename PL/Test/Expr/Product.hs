@@ -60,47 +60,67 @@ productThreeExprTestCase
   -> ExprTestCase
 productThreeExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
+          CaseAnalysis $ Case (Binding VZ)                                      -- case x of
+            $ CaseBranches                                                                --
+              (CaseBranch (ProductPattern [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
+               :| [CaseBranch (ProductPattern [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
+              )                                                                 --
+              (Just                                                             --
+                  falseTerm                                                     -- _ -> False
+              )
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reduces
+      , _underResolveCtx = undefined
+      , _resolvesTo      = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
+          CaseAnalysis $ Case (Binding VZ)                                      -- case x of
+            $ CaseBranches                                                                --
+              (CaseBranch (ProductPattern [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
+               :| [CaseBranch (ProductPattern [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
+              )                                                                 --
+              (Just                                                             --
+                  falseTerm                                                     -- _ -> False
+              )
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
+          CaseAnalysis $ Case (Binding VZ)                                      -- case x of
+            $ CaseBranches                                                                --
+              (CaseBranch (ProductPattern [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
+               :| [CaseBranch (ProductPattern [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
+              )                                                                 --
+              (Just                                                             --
+                  falseTerm                                                     -- _ -> False
+              )
+      , _reducesToWhenApplied =
+            [("1 True 0"
+             ,[(`App` Product [one,trueTerm,zero])]
+             ,Just trueTerm
+             )
+
+            ,("1 False 0"
+             , [(`App` Product [one,falseTerm,zero])]
+             , Just falseTerm
+             )
+
+            , ("1 True 1"
+              ,[(`App` Product [one,trueTerm,one])]
+              ,Just falseTerm
+              )
+
+            , ("4 False 1"
+              ,[(`App` Product [four,falseTerm,one])]
+              ,Just falseTerm
+              )
+            ]
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = natTypeCtx <> boolTypeCtx
-    e   = Lam (ProductT [natTypeName,boolTypeName,natTypeName]) $ -- \x : Nat*Bool*Nat ->
-      CaseAnalysis $ Case (Binding VZ)                                      -- case x of
-        $ CaseBranches                                                                --
-          (CaseBranch (ProductPattern [zPat,Bind,zPat]) (Binding VZ)          -- Z,y,Z -> y
-           :| [CaseBranch (ProductPattern [Bind,Bind,zPat]) (Binding VZ)]     -- x,y,Z -> y
-          )                                                                 --
-          (Just                                                             --
-              falseTerm                                                     -- _ -> False
-          )
-    ty = Arrow (ProductT [natTypeName,boolTypeName,natTypeName]) boolTypeName
-
-    reduces =
-      [("1 True 0"
-       ,[(`App` Product [one,trueTerm,zero])]
-       ,Just trueTerm
-       )
-
-      ,("1 False 0"
-       , [(`App` Product [one,falseTerm,zero])]
-       , Just falseTerm
-       )
-
-      , ("1 True 1"
-        ,[(`App` Product [one,trueTerm,one])]
-        ,Just falseTerm
-        )
-
-      , ("4 False 1"
-        ,[(`App` Product [four,falseTerm,one])]
-        ,Just falseTerm
-        )
-      ]
 

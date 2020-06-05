@@ -58,13 +58,18 @@ simpleArrowTestCase
   -> TypeTestCase
 simpleArrowTestCase src
   = TypeTestCase
-  {_underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
-  ,_underTypeCheckCtx     = topTypeCheckCtx sharedTypeCtx
-  ,_isType               = Arrow unitTypeName unitTypeName
-  ,_parsesFrom           = src
-  ,_hasKind              = Kind
-  ,_reducesTo            = Arrow unitTypeName unitTypeName
-  ,_reducesToWhenApplied =
+  { _parsesFrom = src
+  , _parsesTo   = Arrow unitTypeName unitTypeName
+
+  , _underResolveCtx = undefined
+  , _resolvesTo      = Arrow unitTypeName unitTypeName
+
+  , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
+  , _hasKind           = Kind
+
+  , _underTypeReductionCtx = topTypeReductionCtx sharedTypeCtx
+  , _reducesTo            = Arrow unitTypeName unitTypeName
+  , _reducesToWhenApplied =
       [ TypeReductionTestCase
           { _typeReductionName = "Can be nested in the first argument"
           , _typeReductionUnderTypeReductionCtx = topTypeReductionCtx sharedTypeCtx

@@ -95,6 +95,7 @@ import PL.Name
 import PL.Hash
 import PL.Kind
 import PL.FixPhase
+import PL.HashStore
 import PL.Pattern
 
 import Data.Text
@@ -180,9 +181,9 @@ type instance PatternExtension CommentedPhase = Commented (PatternFor CommentedP
 
 -- The commented phase uses variables and types for bindings and abstractions
 type instance BindingFor            CommentedPhase = Var
-type instance ContentBindingFor     CommentedPhase = ContentName
+type instance ContentBindingFor     CommentedPhase = ShortHash
 type instance TypeBindingFor        CommentedPhase = TyVar
-type instance TypeContentBindingFor CommentedPhase = ContentName
+type instance TypeContentBindingFor CommentedPhase = ShortHash
 type instance AbstractionFor        CommentedPhase = TypeFor CommentedPhase
 
 -- | Expressions at some phase that have been extended with a commented

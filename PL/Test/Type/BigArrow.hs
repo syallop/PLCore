@@ -60,9 +60,11 @@ simpleBigArrowTestCase
   -> TypeTestCase
 simpleBigArrowTestCase src
   = TypeTestCase
-  { _isType = BigArrow Kind unitTypeName
+  { _parsesFrom = src
+  , _parsesTo   = BigArrow Kind unitTypeName
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo = BigArrow Kind unitTypeName
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = Kind
@@ -91,9 +93,11 @@ complexBigArrowTestCase
   -> TypeTestCase
 complexBigArrowTestCase src
   = TypeTestCase
-  { _isType = BigArrow Kind (TypeBinding $ TyVar $ VZ)
+  { _parsesFrom = src
+  , _parsesTo   = BigArrow Kind (TypeBinding $ TyVar $ VZ)
 
-  , _parsesFrom = src
+  , _underResolveCtx = undefined
+  , _resolvesTo      = BigArrow Kind (TypeBinding $ TyVar $ VZ)
 
   , _underTypeCheckCtx = topTypeCheckCtx sharedTypeCtx
   , _hasKind = Kind

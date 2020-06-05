@@ -53,12 +53,19 @@ import PL.Test.Util
 parsesToPatternsSpec
   :: Map.Map Text.Text PatternTestCase
   -> (Source -> Either (Error Expr Type Pattern TypeCtx) (PatternFor CommentedPhase, Source))
-  -> (Pattern -> Doc)
+  -> (PatternFor CommentedPhase -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parsesToPatternsSpec testCases parsePattern ppPattern ppError
   = describe "All example patterns"
-  . mapM_ (\(name,testCase) -> parseToPatternSpec parsePattern name (_parsesFrom testCase) (_isPattern testCase) ppPattern ppError)
+  . mapM_ (\(name,testCase)
+            -> parseToPatternSpec parsePattern
+                                  name
+                                  (_parsesFrom testCase)
+                                  (_parsesTo testCase)
+                                  ppPattern
+                                  ppError
+          )
   . Map.toList
   $ testCases
 
@@ -69,7 +76,7 @@ parseToPatternSpec
   -> Text.Text
   -> Source
   -> PatternFor CommentedPhase
-  -> (Pattern -> Doc)
+  -> (PatternFor CommentedPhase -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppError = it (Text.unpack name) $ case parsePattern inputSource of
@@ -87,11 +94,11 @@ parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppErr
          , lineBreak
          , text "After parsing:"
          , lineBreak
-         , indent1 . ppPattern . stripPatternComments $ parsedPattern
+         , indent1 . ppPattern $ parsedPattern
          , lineBreak
          , text "when we expected: "
          , lineBreak
-         , indent1 . ppPattern . stripPatternComments $ expectedPattern
+         , indent1 . ppPattern $ expectedPattern
          ]
 
     -- TODO:

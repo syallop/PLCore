@@ -56,22 +56,19 @@ defaultSumPatternTestCase
   -> PatternTestCase
 defaultSumPatternTestCase src
   = PatternTestCase
-      {_underTypeCheckCtx    = topTypeCheckCtx typeCtx
-      ,_isPattern            = isPattern
-      ,_typed                = typed
-      ,_checkMatchWithResult = checkMatchWithResult
-      ,_parsesFrom           = parsesFrom
+      { _parsesFrom = src
+      , _parsesTo   = SumPattern 0 EmptyProductPattern
+
+      , _underResolveCtx = undefined
+      , _resolvesTo      = SumPattern 0 EmptyProductPattern
+
+      , _underTypeCheckCtx = topTypeCheckCtx typeCtx
+      , _typed             = SumT $ NE.fromList [EmptyProductT]
+
+      , _checkMatchWithResult = Right []
       }
   where
-    typeCtx              = emptyTypeCtx
-
-    -- Pattern might not support matching on empty sums.
-    -- One of the simplest patterns is therefore a single sum of an empty
-    -- product.
-    isPattern           = SumPattern 0 EmptyProductPattern
-    typed                = SumT $ NE.fromList [EmptyProductT]
-    checkMatchWithResult = Right []
-    parsesFrom           = src
+    typeCtx = emptyTypeCtx
 
 sumPatternTestCase
   :: Source

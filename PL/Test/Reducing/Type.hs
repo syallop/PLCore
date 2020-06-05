@@ -53,7 +53,6 @@ import Test.Hspec
 import PL.Test.Source
 import PL.Test.Util
 
-
 -- Test each testcase reduces to expected results.
 reducesTypesToSpec
   :: Map.Map Text.Text TypeTestCase
@@ -67,7 +66,7 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
   describe "All example types"
     . mapM_ (\(name,testCase)
               -> reduceTypeToSpec name
-                                  (_isType testCase)
+                                  (_resolvesTo testCase)
                                   ((TypeReductionTestCase
                                       { _typeReductionName = "Reduces"
                                       , _typeReductionUnderTypeReductionCtx = _underTypeReductionCtx testCase
@@ -91,7 +90,7 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
 -- Where the type in turn applied to each list of arguments must reduce to the given expected result
 reduceTypeToSpec
   :: Text.Text
-  -> TypeFor CommentedPhase
+  -> Type
   -> [TypeReductionTestCase]
   -> Map ContentName Type
   -> (ExprFor DefaultPhase -> Doc)
@@ -102,7 +101,7 @@ reduceTypeToSpec
   -> Spec
 reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
   mapM_ (\(TypeReductionTestCase name underCtx underTypeBindCtx mutations expectReduction)
-          -> let mutatedType = apply (stripTypeComments inputType) mutations
+          -> let mutatedType = apply inputType mutations
               in reduceSpec name underCtx underTypeBindCtx (_typeReductionTypeBindings underCtx) mutatedType expectReduction) reductions
   where
     reduceSpec

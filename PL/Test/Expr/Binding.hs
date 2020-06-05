@@ -62,167 +62,185 @@ bindingTestCase
   -> ExprTestCase
 bindingTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = Lam unitTypeName $ Binding VZ
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reductions
+      , _underResolveCtx = undefined
+      , _resolvesTo      = Lam unitTypeName $ Binding VZ
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed = Arrow unitTypeName unitType
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = Lam unitTypeName $ Binding VZ
+      , _reducesToWhenApplied =
+          [ ("Unbound"
+            , []
+            , Just $ Lam (Named "Unit") $ Binding VZ
+            )
+
+          , ("Bound"
+            , [(`App` unitTerm)]
+            , Just unitTerm
+            )
+          ]
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = unitTypeCtx
-    e   = Lam unitTypeName $ Binding VZ
-    ty  = Arrow unitTypeName unitType
-
-    reductions =
-      [ ("Unbound"
-        , []
-        , Just $ Lam (Named "Unit") $ Binding VZ
-        )
-
-      , ("Bound"
-        , [(`App` unitTerm)]
-        , Just unitTerm
-        )
-      ]
 
 -- Test that burried bindings are incremented
+--
+-- \t. ( (\(t->t). (\t. 1)) (\t. 1)
+--  |      |____________|        |
+--  -----------------------------
+--
+-- Should reduce:
+--
+-- \t. \t. \t. 2
 buriedBindingTestCase
   :: Source
   -> ExprTestCase
 buriedBindingTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Binding $ VS VZ))
+                                 (Lam boolTypeName (Binding $ VS VZ))
 
-      , _reducesTo = stripComments e
-      , _reducesToWhenApplied = reductions
+      , _underResolveCtx = undefined
+      , _resolvesTo      = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Binding $ VS VZ))
+                                 (Lam boolTypeName (Binding $ VS VZ))
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed = Arrow boolTypeName (Arrow boolTypeName (Arrow boolTypeName boolTypeName))
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Binding $ VS VZ))
+                                 (Lam boolTypeName (Binding $ VS VZ))
+      , _reducesToWhenApplied =
+          [
+           ( "Bindings are adjusted correctly when buried under lambdas"
+           , []
+           , Just $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VZ -- Note the original binding should have been increased from 1 to 2 as it's application moved its binding further away.
+           )
+
+          ,( "Buried bindings reduce to the correct value"
+           , [(`App` trueTerm)
+             ,(`App` falseTerm)
+             ]
+           , Just $ Lam boolTypeName $ trueTerm
+           )
+          ]
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = boolTypeCtx
 
-    -- \t. ( (\(t->t). (\t. 1)) (\t. 1)
-    --  |      |____________|        |
-    --  -----------------------------
-    --
-    -- Should reduce:
-    --
-    -- \t. \t. \t. 2
-    e   = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Binding $ VS VZ))
-                                 (Lam boolTypeName (Binding $ VS VZ))
-
-    ty  = Arrow boolTypeName (Arrow boolTypeName (Arrow boolTypeName boolTypeName))
-
-    reductions =
-      [
-       ( "Bindings are adjusted correctly when buried under lambdas"
-       , []
-       , Just $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VZ -- Note the original binding should have been increased from 1 to 2 as it's application moved its binding further away.
-       )
-
-      ,( "Buried bindings reduce to the correct value"
-       , [(`App` trueTerm)
-         ,(`App` falseTerm)
-         ]
-       , Just $ Lam boolTypeName $ trueTerm
-       )
-      ]
-
 -- Test that burried bindings are incremented by more than 1 where necessary
+--
+-- \t. ( (\(t->t). (\t. (\t. 2))) (\t. 1)
+-- |       |_________________|         |
+-- ------------------------------------
+--
+-- Should reduce
+--
+-- \t. \t. \t. t. 3
 doubleBuriedBindingTestCase
   :: Source
   -> ExprTestCase
 doubleBuriedBindingTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS VZ))
+                                 (Lam boolTypeName (Binding $ VS VZ))
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reductions
+      , _underResolveCtx = undefined
+      , _resolvesTo = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS VZ))
+                                 (Lam boolTypeName (Binding $ VS VZ))
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed = Arrow boolTypeName (Arrow boolTypeName (Arrow boolTypeName (Arrow boolTypeName boolTypeName)))
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS VZ))
+                                 (Lam boolTypeName (Binding $ VS VZ))
+      , _reducesToWhenApplied =
+          [
+           ( "Bindings are adjusted correctly when buried under lambdas"
+           , []
+           , Just $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VS $ VZ
+           )
+
+          ,( "Buried bindings reduce to the correct value"
+           , [(`App` trueTerm)
+             ,(`App` falseTerm)
+             ,(`App` falseTerm)
+             ]
+           , Just $ Lam boolTypeName $ trueTerm
+           )
+          ]
+
+      , _underEvaluationCtx     = undefined
+      , _evaluatesTo            = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = boolTypeCtx
 
-
-    -- \t. ( (\(t->t). (\t. (\t. 2))) (\t. 1)
-    -- |       |_________________|         |
-    -- ------------------------------------
-    --
-    -- Should reduce
-    --
-    -- \t. \t. \t. t. 3
-    e   = Lam boolTypeName $ App (Lam (Arrow boolTypeName boolTypeName) (Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS VZ))
-                                 (Lam boolTypeName (Binding $ VS VZ))
-
-    ty  = Arrow boolTypeName (Arrow boolTypeName (Arrow boolTypeName (Arrow boolTypeName boolTypeName)))
-
-    reductions =
-      [
-       ( "Bindings are adjusted correctly when buried under lambdas"
-       , []
-       , Just $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Lam boolTypeName $ Binding $ VS $ VS $ VS $ VZ
-       )
-
-      ,( "Buried bindings reduce to the correct value"
-       , [(`App` trueTerm)
-         ,(`App` falseTerm)
-         ,(`App` falseTerm)
-         ]
-       , Just $ Lam boolTypeName $ trueTerm
-       )
-      ]
-
 -- Test that burried bindings are not incremented when the binding does not move
+--
+-- Should reduce:
+--
+-- \t. \t. \t. 2
+
+-- \t ( (\t. 0) (0))
+-- |      |__|   |
+-- --------------
+--
+-- Should reduce:
+--
+-- \t 0.
+--
+-- NOT
+--
+-- \t 1.
 buriedBindingsDontMoveTestCase
   :: Source
   -> ExprTestCase
 buriedBindingsDontMoveTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = Lam boolTypeName $ App (Lam boolTypeName (Binding VZ))
+                                 (Binding VZ)
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reductions
+      , _underResolveCtx = undefined
+      , _resolvesTo      = Lam boolTypeName $ App (Lam boolTypeName (Binding VZ))
+                                 (Binding VZ)
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed = Arrow boolTypeName boolTypeName
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = Lam boolTypeName $ App (Lam boolTypeName (Binding VZ))
+                                 (Binding VZ)
+      ,_reducesToWhenApplied =
+          [
+           ( "Bindings are not adjusted when they don't move"
+           , []
+           , Just $ Lam boolTypeName $ Binding $ VZ
+           )
+          ]
+
+      , _underEvaluationCtx     = undefined
+      , _evaluatesTo            = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = boolTypeCtx
-
-    -- Should reduce:
-    --
-    -- \t. \t. \t. 2
-
-    -- \t ( (\t. 0) (0))
-    -- |      |__|   |
-    -- --------------
-    --
-    -- Should reduce:
-    --
-    -- \t 0.
-    --
-    -- NOT
-    --
-    -- \t 1.
-    e   = Lam boolTypeName $ App (Lam boolTypeName (Binding VZ))
-                                 (Binding VZ)
-
-    ty  = Arrow boolTypeName boolTypeName
-
-    reductions =
-      [
-       ( "Bindings are not adjusted when they don't move"
-       , []
-       , Just $ Lam boolTypeName $ Binding $ VZ
-       )
-      ]
 

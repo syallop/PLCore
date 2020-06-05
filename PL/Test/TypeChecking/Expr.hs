@@ -57,25 +57,29 @@ typeChecksSpec
   -> Spec
 typeChecksSpec testCases ppType ppError
   = describe "All example programs"
-  . mapM_ (\(name,testCase) -> typeCheckSpec name (_isExpr testCase) (_underTypeCheckCtx testCase) (_typed testCase) ppType ppError)
+  . mapM_ (\(name,testCase)
+            -> typeCheckSpec name
+                             (_resolvesTo testCase)
+                             (_underTypeCheckCtx testCase)
+                             (_typed testCase)
+                             ppType
+                             ppError
+          )
   . Map.toList
   $ testCases
 
 -- | Test whether an expression typechecks to the intended type.
 typeCheckSpec
   :: Text.Text
-  -> ExprFor CommentedPhase
+  -> Expr
   -> TypeCheckCtx
   -> Type
   -> (Type -> Doc)
   -> (Error Expr Type Pattern TypeCtx -> Doc)
   -> Spec
 typeCheckSpec name inputExpr ctx expectedType ppType ppError = it (Text.unpack name) $
-  let expr :: ExprFor DefaultPhase
-      expr = stripComments inputExpr
-
-      exprTy :: Either (Error Expr Type Pattern TypeCtx) (TypeFor DefaultPhase)
-      exprTy = exprType ctx expr
+  let exprTy :: Either (Error Expr Type Pattern TypeCtx) (TypeFor DefaultPhase)
+      exprTy = exprType ctx inputExpr
    in case exprTy of
   Left err
     -> expectationFailure . Text.unpack . render . ppError $ err

@@ -52,7 +52,6 @@ lamTestCases
 lamTestCases t =
   [ ("Single lambda" , singleLamTestCase . _singleLamTestCase $ t)
   , ("Nested lambda" , nestedLamTestCase . _nestedLamTestCase $ t)
-  {-,("Chained lambda", chainedLamTestCase)-} -- TODO: Re-enable chaining
   ]
 
 -- Test a single lambda that takes and returns a specific named type.
@@ -62,21 +61,18 @@ singleLamTestCase
   -> ExprTestCase
 singleLamTestCase src
   = ExprTestCase
-  {_underTypeCheckCtx = topTypeCheckCtx ctx
-  ,_underReductionCtx = topReductionCtx ctx
-  ,_isExpr       = e
-  ,_typed        = ty
-  ,_parsesFrom   = src
+  { _parsesFrom   = src
+  , _parsesTo     = Lam boolTypeName $ Binding VZ
 
-  ,_reducesTo            = stripComments e
-  ,_reducesToWhenApplied = reduces
-  }
-  where
-    ctx = boolTypeCtx <> natTypeCtx
-    e   = Lam boolTypeName $ Binding VZ
-    ty  = Arrow boolType boolType
+  , _underResolveCtx = undefined
+  , _resolvesTo      = Lam boolTypeName $ Binding VZ
 
-    reduces =
+  , _underTypeCheckCtx = topTypeCheckCtx ctx
+  , _typed             = Arrow boolType boolType
+
+  , _underReductionCtx    = topReductionCtx ctx
+  , _reducesTo            = Lam boolTypeName $ Binding VZ
+  , _reducesToWhenApplied =
       [ ( "true ~> true"
         , [(`App` trueTerm)
           ]
@@ -88,6 +84,9 @@ singleLamTestCase src
         , Just falseTerm
         )
       ]
+  }
+  where
+    ctx = boolTypeCtx <> natTypeCtx
 
 -- \Bool -> \Nat -> Bool
 -- Test a nested lambda that takes two different named types and returns the first.
@@ -97,67 +96,36 @@ nestedLamTestCase
   -> ExprTestCase
 nestedLamTestCase src
   = ExprTestCase
-      {_underTypeCheckCtx = topTypeCheckCtx ctx
-      ,_underReductionCtx = topReductionCtx ctx
-      ,_isExpr       = e
-      ,_typed        = ty
-      ,_parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = Lam boolTypeName . Lam natTypeName . Binding . VS $ VZ
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reduces
-      }
-  where
-    ctx = boolTypeCtx <> natTypeCtx
-    e   = Lam boolTypeName . Lam natTypeName . Binding . VS $ VZ
-    ty  = Arrow boolType (Arrow natType boolType)
+      , _underResolveCtx = undefined
+      , _resolvesTo      = Lam boolTypeName . Lam natTypeName . Binding . VS $ VZ
 
-    reduces =
-      [ ("Reduce to outer value"
-        , [ (`App` trueTerm)
-          , (`App` zero)
-          ]
-        , Just trueTerm
-        )
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = Arrow boolType (Arrow natType boolType)
 
-      , ("Reduce under lambda"
-        , [ (`App` trueTerm)
-          ]
-        , Just $ Lam natTypeName trueTerm
-        )
-      ]
-
--- \Bool Nat -> Unit
--- Test a chained lambda that takes two different named types in succession and
--- returns the first.
--- (Specialised const2).
-chainedLamTestCase
-  :: Source
-  -> ExprTestCase
-chainedLamTestCase src
-  = (nestedLamTestCase src)
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
       , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      , _reducesTo         = Lam boolTypeName . Lam natTypeName . Binding . VS $ VZ
+      , _reducesToWhenApplied =
+          [ ("Reduce to outer value"
+            , [ (`App` trueTerm)
+              , (`App` zero)
+              ]
+            , Just trueTerm
+            )
 
-      ,_reducesTo = stripComments e
-      ,_reducesToWhenApplied = reduces
+          , ("Reduce under lambda"
+            , [ (`App` trueTerm)
+              ]
+            , Just $ Lam natTypeName trueTerm
+            )
+          ]
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = boolTypeCtx <> natTypeCtx
-    e   = Lam boolTypeName
-        . Lam natTypeName
-        . Lam unitTypeName
-        . Binding
-        . VS
-        . VS
-        $ VZ
-    ty  = Arrow boolType
-        . Arrow natType
-        . Arrow unitType
-        $ boolType
-
-    -- TODO
-    reduces = []
 

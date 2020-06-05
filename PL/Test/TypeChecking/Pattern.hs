@@ -53,7 +53,6 @@ import PL.Test.Util
 -- themselves currently have a type? If they did we might be able to pass them around
 -- first class more easily.
 
-
 typeChecksPatternsSpec
   :: Map.Map Text.Text PatternTestCase
   -> (Type -> Doc)
@@ -61,7 +60,14 @@ typeChecksPatternsSpec
   -> Spec
 typeChecksPatternsSpec testCases ppType ppError =
   describe "All example patterns"
-  . mapM_ (\(name,testCase) -> typeCheckPatternSpec name (_isPattern testCase) (_typeCtx . _underTypeCheckCtx $ testCase) (_typed testCase) ppType ppError)
+  . mapM_ (\(name,testCase)
+            -> typeCheckPatternSpec name
+                                    (_resolvesTo testCase)
+                                    (_typeCtx . _underTypeCheckCtx $ testCase)
+                                    (_typed testCase)
+                                    ppType
+                                    ppError
+          )
   . Map.toList
   $ testCases
 
@@ -73,7 +79,7 @@ typeChecksPatternsSpec testCases ppType ppError =
 
 typeCheckPatternSpec
   :: Text.Text
-  -> PatternFor CommentedPhase
+  -> Pattern
   -> TypeCtx
   -> Type
   -> (Type -> Doc)

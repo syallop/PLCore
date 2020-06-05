@@ -59,14 +59,16 @@ defaultBindPatternTestCase
 defaultBindPatternTestCase src
   = PatternTestCase
       {_underTypeCheckCtx    = topTypeCheckCtx emptyTypeCtx
-      ,_isPattern            = isPattern
       ,_typed                = typed
       ,_checkMatchWithResult = checkMatchWithResult
       ,_parsesFrom           = parsesFrom
+      ,_parsesTo = Bind
+
+      ,_underResolveCtx = undefined
+      ,_resolvesTo      = Bind
       }
   where
     typeCtx              = emptyTypeCtx
-    isPattern            = Bind
     typed                = SumT $ NE.fromList [EmptyProductT]
     checkMatchWithResult = Right [SumT $ NE.fromList [EmptyProductT]]
     parsesFrom           = src

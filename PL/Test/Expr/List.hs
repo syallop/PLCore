@@ -63,38 +63,40 @@ listTestCases t =
   ]
 
 -- Empty lists can be instantiated with types.
+-- [] :: forall a. [a]
 emptyListTestCase
   :: Source
   -> ExprTestCase
 emptyListTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _underReductionCtx = topReductionCtx ctx
-      , _isExpr       = e
-      , _typed        = ty
-      , _parsesFrom   = src
+      { _parsesFrom = src
+      , _parsesTo   = emptyTerm
 
-      , _reducesTo = stripComments e
-      , _reducesToWhenApplied = reduces
+      , _underResolveCtx = undefined
+      , _resolvesTo      = emptyTerm
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed = BigArrow Kind $ (SumT $ NE.fromList [EmptyProductT, ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]])
+
+      , _underReductionCtx = topReductionCtx ctx
+      , _reducesTo = emptyTerm
+      , _reducesToWhenApplied =
+           [("[] : [Nat]"
+             , [(`BigApp` natTypeName)
+               ]
+             , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
+             )
+
+            ,("[] : [[Bool]]"
+            , [(`BigApp` (TypeApp listTypeName boolTypeName))]
+            , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
+            )
+            ]
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo = emptyTerm
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = sharedTypeCtx
-
-    -- [] :: forall a. [a]
-    e   = emptyTerm
-
-    ty :: Type
-    ty  = BigArrow Kind $ (SumT $ NE.fromList [EmptyProductT, ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]])
-
-    reduces = [("[] : [Nat]"
-               , [(`BigApp` natTypeName)
-                 ]
-               , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
-               )
-
-              ,("[] : [[Bool]]"
-              , [(`BigApp` (TypeApp listTypeName boolTypeName))]
-              , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
-              )
-              ]
 

@@ -64,7 +64,7 @@ reducesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
     . mapM_ (\(name,testCase)
               -> reduceToSpec name
                               (_underReductionCtx testCase)
-                              (_isExpr testCase)
+                              (_resolvesTo testCase)
                               (("Reduces",[],Just . _reducesTo $ testCase) : _reducesToWhenApplied testCase)
                               ppExpr
                               ppType
@@ -82,7 +82,7 @@ reducesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
 reduceToSpec
   :: Text.Text
   -> ReductionCtx
-  -> ExprFor CommentedPhase
+  -> Expr
   -> [ReductionTestCase]
   -> (Expr -> Doc)
   -> (Type -> Doc)
@@ -92,9 +92,7 @@ reduceToSpec
   -> Spec
 reduceToSpec name ctx inputExpr reductions ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
   mapM_ (\(name,args,expectReduction)
-          -> let expr :: ExprFor DefaultPhase
-                 expr = stripComments inputExpr
-              in reduceSpec name (apply expr args) expectReduction
+          -> reduceSpec name (apply inputExpr args) expectReduction
         )
         reductions
   where

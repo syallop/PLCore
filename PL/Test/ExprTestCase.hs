@@ -30,6 +30,7 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.Resolve
 import PL.TypeCheck
 import PL.Var
 import PL.Bindings
@@ -60,10 +61,13 @@ import PL.Test.Util
 --
 -- It's likely factored badly.
 data ExprTestCase = ExprTestCase
-  { _isExpr :: ExprFor CommentedPhase -- ^ An Expr
+  { -- Parsing tests
+   _parsesFrom :: Text -- ^ And also parses from this textual representation
+  ,_parsesTo   :: ExprFor CommentedPhase
 
-  -- Parsing tests
-  ,_parsesFrom :: Text -- ^ And also parses from this textual representation
+   -- Resolution tests
+  , _underResolveCtx :: ResolveCtx
+  , _resolvesTo      :: Expr
 
   -- Type-checking tests
   ,_underTypeCheckCtx :: TypeCheckCtx -- ^ Under this given typing context

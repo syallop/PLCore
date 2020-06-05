@@ -80,43 +80,63 @@ subTwoExprTestCase
   -> ExprTestCase
 subTwoExprTestCase src
   = ExprTestCase
-      { _underTypeCheckCtx    = topTypeCheckCtx ctx
+      { _parsesFrom = src
+      , _parsesTo   =
+          Lam natTypeName $                                       -- \n : Nat ->
+            CaseAnalysis $ Case (Binding $ VZ)                    -- case n of
+              $ CaseBranches                                      --
+                (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| [] --   S S n -> n
+                )                                                 --
+                (Just                                             --
+                      zTerm                                       --   _     -> Z
+                )
+
+      , _underResolveCtx = undefined
+      , _resolvesTo      =
+          Lam natTypeName $                                       -- \n : Nat ->
+            CaseAnalysis $ Case (Binding $ VZ)                    -- case n of
+              $ CaseBranches                                      --
+                (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| [] --   S S n -> n
+                )                                                 --
+                (Just                                             --
+                      zTerm                                       --   _     -> Z
+                )
+
+      , _underTypeCheckCtx = topTypeCheckCtx ctx
+      , _typed             = Arrow natType natType
+
       , _underReductionCtx    = topReductionCtx ctx
-      , _isExpr               = e
-      , _typed                = ty
-      , _parsesFrom           = src
-      , _reducesTo            = stripComments e
-      , _reducesToWhenApplied = reduces
+      , _reducesTo            =
+          Lam natTypeName $                                       -- \n : Nat ->
+            CaseAnalysis $ Case (Binding $ VZ)                    -- case n of
+              $ CaseBranches                                      --
+                (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| [] --   S S n -> n
+                )                                                 --
+                (Just                                             --
+                      zTerm                                       --   _     -> Z
+                )
+
+      , _reducesToWhenApplied =
+          [ ( "3 - 2 = 1"
+            , [(`App` three)]
+            , Just one
+            )
+
+          , ( "2 -2 = 0"
+            , [(`App` two)]
+            , Just zero
+            )
+
+          , ( "1 - 2 = 0"
+            , [(`App` one)]
+            , Just zero
+            )
+          ]
+
+      , _underEvaluationCtx = undefined
+      , _evaluatesTo        = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = natTypeCtx
-
-    e :: ExprFor CommentedPhase
-    e =
-      Lam natTypeName $                                       -- \n : Nat ->
-        CaseAnalysis $ Case (Binding $ VZ)                    -- case n of
-          $ CaseBranches                                      --
-            (CaseBranch (sPat $ sPat Bind) (Binding VZ) :| [] --   S S n -> n
-            )                                                 --
-            (Just                                             --
-                  zTerm                                       --   _     -> Z
-            )
-    ty = Arrow natType natType
-
-    reduces =
-      [ ( "3 - 2 = 1"
-        , [(`App` three)]
-        , Just one
-        )
-
-      , ( "2 -2 = 0"
-        , [(`App` two)]
-        , Just zero
-        )
-
-      , ( "1 - 2 = 0"
-        , [(`App` one)]
-        , Just zero
-        )
-      ]
 

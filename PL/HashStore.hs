@@ -27,6 +27,8 @@ module PL.HashStore
   , lookupByHash
 
   , ShortHash ()
+  , mkBase58ShortHash
+  , unBase58ShortHash
   , largerHashes
   , shortenHash
   )
@@ -43,6 +45,7 @@ import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base58 as B58
 import Data.Text.Encoding
+import Data.Maybe
 import qualified Data.Text as Text
 
 import PL.Store
@@ -135,6 +138,34 @@ instance Show ShortHash where
     , "/"
     , decodeUtf8 . B58.encodeBase58 B58.bitcoinAlphabet $ h
     ]
+
+-- | Attempt to construct a ShortHash from an optional algorithm and Base58
+-- encoded Bytes.
+--
+-- Unlike a full Hash:
+-- - If an algorithm is not provided, it is assumed to be SHA512
+-- - The number of bytes may be less than expected (but not zero)
+mkBase58ShortHash :: Maybe HashAlgorithm -> Text -> Maybe ShortHash
+mkBase58ShortHash mAlg txt = case fromMaybe SHA512 mAlg of
+  SHA512
+    -> do bytes <- B58.decodeBase58 B58.bitcoinAlphabet . encodeUtf8 $ txt
+          if BS.length bytes == 0  || 128 < BS.length bytes
+            then Nothing
+            else Just $ ShortHash SHA512 bytes
+  _
+    -> error "Unrecognised hashing algorithm"
+
+-- | Extract a Hashes algorithm (if it is not the default) and (possibly
+-- truncated) base58 interpretation of the hash.
+unBase58ShortHash :: ShortHash -> (Maybe HashAlgorithm, Text)
+unBase58ShortHash (ShortHash alg bytes) =
+  let mAlg = case alg of
+               SHA512
+                 -> Nothing
+               a -> Just a
+      txt  = decodeUtf8 . B58.encodeBase58 B58.bitcoinAlphabet $ bytes
+   in (mAlg, txt)
+
 
 instance Shortable Hash ShortHash where
   shortLength = shortLength . _unShortHash

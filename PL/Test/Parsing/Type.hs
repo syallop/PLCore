@@ -93,7 +93,7 @@ parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Tex
          , indent1 . ppType . stripTypeComments $ expectedType
          ]
 
-    -- | TODO:
+    -- TODO:
     -- Several hacks are colliding here. Unpick them:
     -- - Stored types are used as examples.
     -- - This means they're commented.

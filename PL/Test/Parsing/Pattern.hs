@@ -94,7 +94,7 @@ parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppErr
          , indent1 . ppPattern . stripPatternComments $ expectedPattern
          ]
 
-    -- | TODO:
+    -- TODO:
     -- Several hacks are colliding here. Unpick them:
     -- - Stored patterns are used as examples.
     -- - This means they're commented.

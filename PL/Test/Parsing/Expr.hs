@@ -95,7 +95,7 @@ parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (T
          , indent1 . ppExpr . stripComments $ expectedExpr
          ]
 
-    -- | TODO:
+    -- TODO:
     -- Several hacks are colliding here. Unpick them:
     -- - Stored exprs are used as examples.
     -- - This means they're commented.

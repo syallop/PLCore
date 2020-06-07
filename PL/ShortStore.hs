@@ -7,6 +7,7 @@ module PL.ShortStore
     Shortable ()
   , shortenAgainst
   , shortLength
+  , isShortened
   , toShort
 
   , ShortStore ()
@@ -55,6 +56,8 @@ class Shortable long short | long -> short, short -> long where
   -- For comparing the length of shorts to each other
   shortLength :: short -> Int
 
+  isShortened :: short -> long -> Bool
+
   -- Coerce a long thing into a short thing. Not guaranteed to actually make the
   -- thing shorter.
   toShort :: long -> short
@@ -63,6 +66,8 @@ instance Shortable BS.ByteString BS.ByteString where
   shortLength = BS.length
 
   toShort bs = bs
+
+  isShortened = BS.isPrefixOf
 
   shortenAgainst sourceBs Nothing = case BS.uncons sourceBs of
     Nothing
@@ -84,6 +89,7 @@ instance Shortable BS.ByteString BS.ByteString where
 instance Shortable Text Text where
   shortLength = shortLength . encodeUtf8
 
+  isShortened short long = isShortened (encodeUtf8 short) (encodeUtf8 long)
   toShort = decodeUtf8 . toShort . encodeUtf8
 
   shortenAgainst sourceBs againstBs = decodeUtf8 $ shortenAgainst (encodeUtf8 sourceBs) (fmap encodeUtf8 againstBs)

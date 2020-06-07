@@ -140,6 +140,7 @@ test-suite hspec
   other-modules:     PL.Test.ExprSpec
                    , PL.Test.PatternSpec
                    , PL.Test.TypeSpec
+                   , PL.Test.Store.File.PathSpec
 
   build-depends:     base >=4.7
                    , PL

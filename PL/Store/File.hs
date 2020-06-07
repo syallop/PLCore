@@ -289,7 +289,7 @@ largerKeysFromFiles
   => FileStore k v
   -> shortK
   -> IO [k]
-largerKeysFromFiles f shortKey = filter (\key -> shortKey <= toShort key) <$> getAllKeys f
+largerKeysFromFiles f shortKey = filter (isShortened shortKey) <$> getAllKeys f
 -- TODO: We should be able to search along promising paths rather than grabbing
 -- every path and checking it.
 

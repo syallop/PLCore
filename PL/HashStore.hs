@@ -184,7 +184,6 @@ instance Shortable Hash ShortHash where
                                                    Just (w,_)
                                                      -> BS.singleton w
                                                 )
-
   shortenAgainst sourceHash (Just againstHash)
     -- If the hashes use a different algorithm the bytes arent needed to
     -- identify them.
@@ -196,6 +195,13 @@ instance Shortable Hash ShortHash where
     | otherwise
      = let bs = shortenAgainst (hashBytes sourceHash) (Just $ hashBytes againstHash)
         in ShortHash (hashAlgorithm sourceHash) bs
+
+  isShortened (ShortHash shortAlg shortBytes) longHash
+    | shortAlg /= hashAlgorithm longHash
+     = False
+
+    | otherwise
+     = isShortened shortBytes (hashBytes longHash)
 
 -- | Given a ShortHash, return all known larger Hashes
 largerHashes

@@ -115,7 +115,7 @@ largerKeysInMemory
   => MemoryStore k v
   -> shortK
   -> [k]
-largerKeysInMemory (MemoryStore s) shortKey = filter (\key -> shortKey <= toShort key) . Map.keys $ s
+largerKeysInMemory (MemoryStore s) shortKey = filter (isShortened shortKey) . Map.keys $ s
 -- TODO: If we maintained a Trie we may be able to perform this operation
 -- more efficiently.
 -- Alternatively, Maps can be queried using the Ord instance like lookupGE. If

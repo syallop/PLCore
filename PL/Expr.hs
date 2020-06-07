@@ -490,68 +490,68 @@ type family AbstractionFor phase
 type family ContentBindingFor phase
 
 -- LamF for phases where there is no extension to the constructor.
-pattern Lam :: LamExtension phase ~ Void => AbstractionFor phase -> ExprFor phase -> ExprFor phase
+pattern Lam :: LamExtension phase ~ NoExt => AbstractionFor phase -> ExprFor phase -> ExprFor phase
 pattern Lam abs expr <- FixPhase (LamF _ abs expr)
-  where Lam abs expr =  FixPhase (LamF void abs expr)
+  where Lam abs expr =  FixPhase (LamF noExt abs expr)
 
 pattern LamExt :: LamExtension phase -> AbstractionFor phase -> ExprFor phase -> ExprFor phase
 pattern LamExt ext abs expr <- FixPhase (LamF ext abs expr)
   where LamExt ext abs expr =  FixPhase (LamF ext abs expr)
 
 -- AppF for phases where there is no extension to the constructor.
-pattern App :: AppExtension phase ~ Void => ExprFor phase -> ExprFor phase -> ExprFor phase
+pattern App :: AppExtension phase ~ NoExt => ExprFor phase -> ExprFor phase -> ExprFor phase
 pattern App f x <- FixPhase (AppF _ f x)
-  where App f x =  FixPhase (AppF void f x)
+  where App f x =  FixPhase (AppF noExt f x)
 
 pattern AppExt :: AppExtension phase -> ExprFor phase -> ExprFor phase -> ExprFor phase
 pattern AppExt ext f x <- FixPhase (AppF ext f x)
   where AppExt ext f x =  FixPhase (AppF ext f x)
 
 -- BindingF for phases where there is no extension to the constructor.
-pattern Binding :: BindingExtension phase ~ Void => BindingFor phase -> ExprFor phase
+pattern Binding :: BindingExtension phase ~ NoExt => BindingFor phase -> ExprFor phase
 pattern Binding b <- FixPhase (BindingF _ b)
-  where Binding b = FixPhase (BindingF void b)
+  where Binding b = FixPhase (BindingF noExt b)
 
 pattern BindingExt :: BindingExtension phase -> BindingFor phase -> ExprFor phase
 pattern BindingExt ext b <- FixPhase (BindingF ext b)
   where BindingExt ext b = FixPhase (BindingF ext b)
 
 -- ContentBindingF for phases where there is no extension to the constructor.
-pattern ContentBinding :: ContentBindingExtension phase ~ Void => ContentBindingFor phase -> ExprFor phase
+pattern ContentBinding :: ContentBindingExtension phase ~ NoExt => ContentBindingFor phase -> ExprFor phase
 pattern ContentBinding c <- FixPhase (ContentBindingF _ c)
-  where ContentBinding c = FixPhase (ContentBindingF void c)
+  where ContentBinding c = FixPhase (ContentBindingF noExt c)
 
 pattern ContentBindingExt :: ContentBindingExtension phase -> ContentBindingFor phase -> ExprFor phase
 pattern ContentBindingExt ext c <- FixPhase (ContentBindingF ext c)
   where ContentBindingExt ext c = FixPhase (ContentBindingF ext c)
 
 -- CaseAnalysisF for phases where there is no extension to the constructor.
-pattern CaseAnalysis :: CaseAnalysisExtension phase ~ Void => Case (ExprFor phase) (PatternFor phase) -> ExprFor phase
+pattern CaseAnalysis :: CaseAnalysisExtension phase ~ NoExt => Case (ExprFor phase) (PatternFor phase) -> ExprFor phase
 pattern CaseAnalysis c <- FixPhase (CaseAnalysisF _ c)
-  where CaseAnalysis c =  FixPhase (CaseAnalysisF void c)
+  where CaseAnalysis c =  FixPhase (CaseAnalysisF noExt c)
 
 pattern CaseAnalysisExt :: CaseAnalysisExtension phase -> Case (ExprFor phase) (PatternFor phase) -> ExprFor phase
 pattern CaseAnalysisExt ext c <- FixPhase (CaseAnalysisF ext c)
   where CaseAnalysisExt ext c =  FixPhase (CaseAnalysisF ext c)
 
 -- SumF for phases where there is no extension to the constructor.
-pattern Sum :: SumExtension phase ~ Void =>  ExprFor phase -> Int -> NonEmpty (TypeFor phase) -> ExprFor phase
+pattern Sum :: SumExtension phase ~ NoExt =>  ExprFor phase -> Int -> NonEmpty (TypeFor phase) -> ExprFor phase
 pattern Sum expr ix types <- FixPhase (SumF _ expr ix types)
-  where Sum expr ix types =  FixPhase (SumF void expr ix types)
+  where Sum expr ix types =  FixPhase (SumF noExt expr ix types)
 
 pattern SumExt :: SumExtension phase -> ExprFor phase -> Int -> NonEmpty (TypeFor phase) -> ExprFor phase
 pattern SumExt ext expr ix types <- FixPhase (SumF ext expr ix types)
   where SumExt ext expr ix types =  FixPhase (SumF ext expr ix types)
 
 -- ProductF for phases where there is no extension to the constructor.
-pattern Product :: ProductExtension phase ~ Void =>  [ExprFor phase] -> ExprFor phase
+pattern Product :: ProductExtension phase ~ NoExt =>  [ExprFor phase] -> ExprFor phase
 pattern Product exprs <- FixPhase (ProductF _ exprs)
-  where Product exprs =  FixPhase (ProductF void exprs)
+  where Product exprs =  FixPhase (ProductF noExt exprs)
 
 -- The empty product for phases where there is no extension to the constructor.
-pattern EmptyProduct :: ProductExtension phase ~ Void => ExprFor phase
+pattern EmptyProduct :: ProductExtension phase ~ NoExt => ExprFor phase
 pattern EmptyProduct <- FixPhase (ProductF _ [])
-  where EmptyProduct =  FixPhase (ProductF void [])
+  where EmptyProduct =  FixPhase (ProductF noExt [])
 
 pattern ProductExt :: ProductExtension phase ->  [ExprFor phase] -> ExprFor phase
 pattern ProductExt ext exprs <- FixPhase (ProductF ext exprs)
@@ -562,36 +562,36 @@ pattern EmptyProductExt ext <- FixPhase (ProductF ext [])
   where EmptyProductExt ext =  FixPhase (ProductF ext [])
 
 -- UnionF for phases where there is no extension to the constructor.
-pattern Union :: UnionExtension phase ~ Void =>  ExprFor phase -> TypeFor phase -> Set.Set (TypeFor phase) -> ExprFor phase
+pattern Union :: UnionExtension phase ~ NoExt =>  ExprFor phase -> TypeFor phase -> Set.Set (TypeFor phase) -> ExprFor phase
 pattern Union expr typeIx types <- FixPhase (UnionF _ expr typeIx types)
-  where Union expr typeIx types =  FixPhase (UnionF void expr typeIx types)
+  where Union expr typeIx types =  FixPhase (UnionF noExt expr typeIx types)
 
 pattern UnionExt :: UnionExtension phase ->  ExprFor phase -> TypeFor phase -> Set.Set (TypeFor phase) -> ExprFor phase
 pattern UnionExt ext expr typeIx types <- FixPhase (UnionF ext expr typeIx types)
   where UnionExt ext expr typeIx types =  FixPhase (UnionF ext expr typeIx types)
 
 -- BigLamF for phases where there is no extension to the constructor.
-pattern BigLam :: BigLamExtension phase ~ Void =>  Kind -> ExprFor phase -> ExprFor phase
+pattern BigLam :: BigLamExtension phase ~ NoExt =>  Kind -> ExprFor phase -> ExprFor phase
 pattern BigLam typeAbs expr <- FixPhase (BigLamF _ typeAbs expr)
-  where BigLam typeAbs expr =  FixPhase (BigLamF void typeAbs expr)
+  where BigLam typeAbs expr =  FixPhase (BigLamF noExt typeAbs expr)
 
 pattern BigLamExt :: BigLamExtension phase ->  Kind -> ExprFor phase -> ExprFor phase
 pattern BigLamExt ext typeAbs expr <- FixPhase (BigLamF ext typeAbs expr)
   where BigLamExt ext typeAbs expr =  FixPhase (BigLamF ext typeAbs expr)
 
 -- BigAppF for phases where there is no extension to the constructor.
-pattern BigApp :: BigAppExtension phase ~ Void =>  ExprFor phase -> TypeFor phase -> ExprFor phase
+pattern BigApp :: BigAppExtension phase ~ NoExt =>  ExprFor phase -> TypeFor phase -> ExprFor phase
 pattern BigApp f xType <- FixPhase (BigAppF _ f xType)
-  where BigApp f xType =  FixPhase (BigAppF void f xType)
+  where BigApp f xType =  FixPhase (BigAppF noExt f xType)
 
 pattern BigAppExt :: BigAppExtension phase ->  ExprFor phase -> TypeFor phase -> ExprFor phase
 pattern BigAppExt ext f xType <- FixPhase (BigAppF ext f xType)
   where BigAppExt ext f xType =  FixPhase (BigAppF ext f xType)
 
 -- ExprExtensionF for phases where there is no extension to the number of constructors.
-pattern ExprExtension :: ExprExtension phase ~ Void =>  ExprFor phase
+pattern ExprExtension :: ExprExtension phase ~ NoExt =>  ExprFor phase
 pattern ExprExtension <- FixPhase (ExprExtensionF _)
-  where ExprExtension =  FixPhase (ExprExtensionF void)
+  where ExprExtension =  FixPhase (ExprExtensionF noExt)
 
 pattern ExprExtensionExt :: ExprExtension phase ->  ExprFor phase
 pattern ExprExtensionExt ext <- FixPhase (ExprExtensionF ext)
@@ -605,19 +605,19 @@ pattern ExprExtensionExt ext <- FixPhase (ExprExtensionF ext)
 -- - There are no other extensions (such as comments on constructors)
 -- This concrete phases can therefore be used for
 -- {typechecking,reducing,printing,storing} but not {parsing,resolving}.
-type instance LamExtension DefaultPhase = Void
-type instance AppExtension DefaultPhase = Void
-type instance BindingExtension DefaultPhase = Void
-type instance ContentBindingExtension DefaultPhase = Void
-type instance CaseAnalysisExtension DefaultPhase = Void
-type instance SumExtension DefaultPhase = Void
-type instance ProductExtension DefaultPhase = Void
-type instance UnionExtension DefaultPhase = Void
-type instance BigLamExtension DefaultPhase = Void
-type instance BigAppExtension DefaultPhase = Void
+type instance LamExtension DefaultPhase = NoExt
+type instance AppExtension DefaultPhase = NoExt
+type instance BindingExtension DefaultPhase = NoExt
+type instance ContentBindingExtension DefaultPhase = NoExt
+type instance CaseAnalysisExtension DefaultPhase = NoExt
+type instance SumExtension DefaultPhase = NoExt
+type instance ProductExtension DefaultPhase = NoExt
+type instance UnionExtension DefaultPhase = NoExt
+type instance BigLamExtension DefaultPhase = NoExt
+type instance BigAppExtension DefaultPhase = NoExt
 
--- TODO: Should _this_ be unit instead of void?
-type instance ExprExtension DefaultPhase = Void
+-- TODO: Should _this_ be unit instead of noExt?
+type instance ExprExtension DefaultPhase = NoExt
 
 type instance ContentBindingFor DefaultPhase = ContentName
 type instance AbstractionFor    DefaultPhase = Type
@@ -1049,12 +1049,12 @@ gatherExprsTypeContentNames = gather Set.empty
     gatherCaseBranch :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
     gatherCaseBranch accNames (CaseBranch _pattern exprResult) = gather accNames exprResult
 
-appise :: AppExtension phase ~ Void => [ExprFor phase] -> ExprFor phase
+appise :: AppExtension phase ~ NoExt => [ExprFor phase] -> ExprFor phase
 appise []        = error "Cant appise empty list of expressions"
 appise [e]       = e
 appise (e:e':es) = appise (App e e' : es)
 
-lamise :: (LamExtension phase ~ Void, AbstractionFor phase ~ TypeFor phase) => [TypeFor phase] -> ExprFor phase -> ExprFor phase
+lamise :: (LamExtension phase ~ NoExt, AbstractionFor phase ~ TypeFor phase) => [TypeFor phase] -> ExprFor phase -> ExprFor phase
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise [t]       e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)

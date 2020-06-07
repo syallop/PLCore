@@ -435,41 +435,41 @@ type family TypeBindingFor phase
 type family TypeContentBindingFor phase
 
 -- NamedF for phases where there is no extension to the constructor.
-pattern Named :: NamedExtension phase ~ Void => TypeName -> TypeFor phase
+pattern Named :: NamedExtension phase ~ NoExt => TypeName -> TypeFor phase
 pattern Named name <- FixPhase (NamedF _ name)
-  where Named name =  FixPhase (NamedF void name)
+  where Named name =  FixPhase (NamedF noExt name)
 
 pattern NamedExt :: NamedExtension phase -> TypeName -> TypeFor phase
 pattern NamedExt ext name <- FixPhase (NamedF ext name)
   where NamedExt ext name =  FixPhase (NamedF ext name)
 
 -- ArrowF for phases where there is no extension to the constructor.
-pattern Arrow :: ArrowExtension phase ~ Void => TypeFor phase -> TypeFor phase -> TypeFor phase
+pattern Arrow :: ArrowExtension phase ~ NoExt => TypeFor phase -> TypeFor phase -> TypeFor phase
 pattern Arrow fromTy toTy <- FixPhase (ArrowF _ fromTy toTy)
-  where Arrow fromTy toTy =  FixPhase (ArrowF void fromTy toTy)
+  where Arrow fromTy toTy =  FixPhase (ArrowF noExt fromTy toTy)
 
 pattern ArrowExt :: ArrowExtension phase -> TypeFor phase -> TypeFor phase -> TypeFor phase
 pattern ArrowExt ext fromTy toTy <- FixPhase (ArrowF ext fromTy toTy)
   where ArrowExt ext fromTy toTy =  FixPhase (ArrowF ext fromTy toTy)
 
 -- SumT for phases where there is no extension to the constructor.
-pattern SumT :: SumTExtension phase ~ Void => NonEmpty (TypeFor phase) -> TypeFor phase
+pattern SumT :: SumTExtension phase ~ NoExt => NonEmpty (TypeFor phase) -> TypeFor phase
 pattern SumT types <- FixPhase (SumTF _ types)
-  where SumT types =  FixPhase (SumTF void types)
+  where SumT types =  FixPhase (SumTF noExt types)
 
 pattern SumTExt :: SumTExtension phase -> NonEmpty (TypeFor phase) -> TypeFor phase
 pattern SumTExt ext types <- FixPhase (SumTF ext types)
   where SumTExt ext types =  FixPhase (SumTF ext types)
 
 -- ProductT for phases where there is no extension to the constructor.
-pattern ProductT :: ProductTExtension phase ~ Void => [TypeFor phase] -> TypeFor phase
+pattern ProductT :: ProductTExtension phase ~ NoExt => [TypeFor phase] -> TypeFor phase
 pattern ProductT types <- FixPhase (ProductTF _ types)
-  where ProductT types =  FixPhase (ProductTF void types)
+  where ProductT types =  FixPhase (ProductTF noExt types)
 
 -- ProductT for the empty product in phases where there is no extension to the constructor.
-pattern EmptyProductT :: ProductTExtension phase ~ Void => TypeFor phase
+pattern EmptyProductT :: ProductTExtension phase ~ NoExt => TypeFor phase
 pattern EmptyProductT <- FixPhase (ProductTF _ [])
-  where EmptyProductT =  FixPhase (ProductTF void [])
+  where EmptyProductT =  FixPhase (ProductTF noExt [])
 
 pattern ProductTExt :: ProductTExtension phase -> [TypeFor phase] -> TypeFor phase
 pattern ProductTExt ext types <- FixPhase (ProductTF ext types)
@@ -480,81 +480,81 @@ pattern EmptyProductTExt ext <- FixPhase (ProductTF ext [])
   where EmptyProductTExt ext =  FixPhase (ProductTF ext [])
 
 -- UnionT for phases where there is no extension to the constructor.
-pattern UnionT :: UnionTExtension phase ~ Void => Set.Set (TypeFor phase) -> TypeFor phase
+pattern UnionT :: UnionTExtension phase ~ NoExt => Set.Set (TypeFor phase) -> TypeFor phase
 pattern UnionT types <- FixPhase (UnionTF _ types)
-  where UnionT types =  FixPhase (UnionTF void types)
+  where UnionT types =  FixPhase (UnionTF noExt types)
 
 pattern UnionTExt :: UnionTExtension phase -> Set.Set (TypeFor phase) -> TypeFor phase
 pattern UnionTExt ext types <- FixPhase (UnionTF ext types)
   where UnionTExt ext types =  FixPhase (UnionTF ext types)
 
 -- BigArrow for phases where there is no extension to the constructor.
-pattern BigArrow :: BigArrowExtension phase ~ Void => Kind -> TypeFor phase -> TypeFor phase
+pattern BigArrow :: BigArrowExtension phase ~ NoExt => Kind -> TypeFor phase -> TypeFor phase
 pattern BigArrow kind ty <- FixPhase (BigArrowF _ kind ty)
-  where BigArrow kind ty =  FixPhase (BigArrowF void kind ty)
+  where BigArrow kind ty =  FixPhase (BigArrowF noExt kind ty)
 
 pattern BigArrowExt :: BigArrowExtension phase -> Kind -> TypeFor phase -> TypeFor phase
 pattern BigArrowExt ext kind ty <- FixPhase (BigArrowF ext kind ty)
   where BigArrowExt ext kind ty =  FixPhase (BigArrowF ext kind ty)
 
 -- TypeLam for phases where there is no extension to the constructor.
-pattern TypeLam :: TypeLamExtension phase ~ Void => Kind -> TypeFor phase -> TypeFor phase
+pattern TypeLam :: TypeLamExtension phase ~ NoExt => Kind -> TypeFor phase -> TypeFor phase
 pattern TypeLam absTy ty <- FixPhase (TypeLamF _ absTy ty)
-  where TypeLam absTy ty =  FixPhase (TypeLamF void absTy ty)
+  where TypeLam absTy ty =  FixPhase (TypeLamF noExt absTy ty)
 
 pattern TypeLamExt :: TypeLamExtension phase -> Kind -> TypeFor phase -> TypeFor phase
 pattern TypeLamExt ext absTy ty <- FixPhase (TypeLamF ext absTy ty)
   where TypeLamExt ext absTy ty =  FixPhase (TypeLamF ext absTy ty)
 
 -- TypeApp for phases where there is no extension to the constructor.
-pattern TypeApp :: TypeAppExtension phase ~ Void => TypeFor phase -> TypeFor phase -> TypeFor phase
+pattern TypeApp :: TypeAppExtension phase ~ NoExt => TypeFor phase -> TypeFor phase -> TypeFor phase
 pattern TypeApp fTy xTy <- FixPhase (TypeAppF _ fTy xTy)
-  where TypeApp fTy xTy =  FixPhase (TypeAppF void fTy xTy)
+  where TypeApp fTy xTy =  FixPhase (TypeAppF noExt fTy xTy)
 
 pattern TypeAppExt :: TypeAppExtension phase -> TypeFor phase -> TypeFor phase -> TypeFor phase
 pattern TypeAppExt ext fTy xTy <- FixPhase (TypeAppF ext fTy xTy)
   where TypeAppExt ext fTy xTy =  FixPhase (TypeAppF ext fTy xTy)
 
 -- TypeBinding for phases where there is no extension to the constructor.
-pattern TypeBinding :: TypeBindingExtension phase ~ Void => TypeBindingFor phase -> TypeFor phase
+pattern TypeBinding :: TypeBindingExtension phase ~ NoExt => TypeBindingFor phase -> TypeFor phase
 pattern TypeBinding tyVar <- FixPhase (TypeBindingF _ tyVar)
-  where TypeBinding tyVar =  FixPhase (TypeBindingF void tyVar)
+  where TypeBinding tyVar =  FixPhase (TypeBindingF noExt tyVar)
 
 pattern TypeBindingExt :: TypeBindingExtension phase -> TypeBindingFor phase -> TypeFor phase
 pattern TypeBindingExt ext tyVar <- FixPhase (TypeBindingF ext tyVar)
   where TypeBindingExt ext tyVar =  FixPhase (TypeBindingF ext tyVar)
 
 -- TypeContentBinding for phases where there is no extension to the constructor.
-pattern TypeContentBinding :: TypeContentBindingExtension phase ~ Void => TypeContentBindingFor phase -> TypeFor phase
+pattern TypeContentBinding :: TypeContentBindingExtension phase ~ NoExt => TypeContentBindingFor phase -> TypeFor phase
 pattern TypeContentBinding c <- FixPhase (TypeContentBindingF _ c)
-  where TypeContentBinding c =  FixPhase (TypeContentBindingF void c)
+  where TypeContentBinding c =  FixPhase (TypeContentBindingF noExt c)
 
 pattern TypeContentBindingExt :: TypeContentBindingExtension phase -> TypeContentBindingFor phase -> TypeFor phase
 pattern TypeContentBindingExt ext c <- FixPhase (TypeContentBindingF ext c)
   where TypeContentBindingExt ext c =  FixPhase (TypeContentBindingF ext c)
 
 -- TypeExtensionF for phases where there is no extension to number of constructors.
-pattern TypeExtension :: TypeExtension phase ~ Void => TypeFor phase
+pattern TypeExtension :: TypeExtension phase ~ NoExt => TypeFor phase
 pattern TypeExtension <- FixPhase (TypeExtensionF _)
-  where TypeExtension = FixPhase (TypeExtensionF void)
+  where TypeExtension = FixPhase (TypeExtensionF noExt)
 
 pattern TypeExtensionExt :: TypeExtension phase -> TypeFor phase
 pattern TypeExtensionExt ext <- FixPhase (TypeExtensionF ext)
   where TypeExtensionExt ext = FixPhase (TypeExtensionF ext)
 
-type instance NamedExtension DefaultPhase = Void
-type instance ArrowExtension DefaultPhase = Void
-type instance SumTExtension DefaultPhase = Void
-type instance ProductTExtension DefaultPhase = Void
-type instance UnionTExtension DefaultPhase = Void
-type instance BigArrowExtension DefaultPhase = Void
-type instance TypeLamExtension DefaultPhase = Void
-type instance TypeAppExtension DefaultPhase = Void
-type instance TypeBindingExtension DefaultPhase = Void
-type instance TypeContentBindingExtension DefaultPhase = Void
+type instance NamedExtension DefaultPhase = NoExt
+type instance ArrowExtension DefaultPhase = NoExt
+type instance SumTExtension DefaultPhase = NoExt
+type instance ProductTExtension DefaultPhase = NoExt
+type instance UnionTExtension DefaultPhase = NoExt
+type instance BigArrowExtension DefaultPhase = NoExt
+type instance TypeLamExtension DefaultPhase = NoExt
+type instance TypeAppExtension DefaultPhase = NoExt
+type instance TypeBindingExtension DefaultPhase = NoExt
+type instance TypeContentBindingExtension DefaultPhase = NoExt
 
--- TODO: Should _this_ be unit instead of void?
-type instance TypeExtension DefaultPhase = Void
+-- TODO: Should _this_ be unit instead of noExt?
+type instance TypeExtension DefaultPhase = NoExt
 
 type instance TypeBindingFor DefaultPhase = TyVar
 type instance TypeContentBindingFor DefaultPhase = ContentName

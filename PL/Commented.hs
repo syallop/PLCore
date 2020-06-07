@@ -47,7 +47,7 @@ module PL.Commented
   , pattern CommentedPattern
 
     -- A concrete phase where expr, types and patterns are commented but all
-    -- other extensions are Void.
+    -- other extensions are NoExt.
   , CommentedPhase
 
   -- Aliases which extend phases with comments
@@ -141,39 +141,39 @@ type instance TypeExtension CommentedPhase = Commented (TypeFor CommentedPhase)
 -- No extensions to Type level constructors
 -- An alternative would be to store comments on each constructor.
 -- We've currently chosen wrapping instead.
-type instance NamedExtension CommentedPhase = Void
-type instance ArrowExtension CommentedPhase = Void
-type instance SumTExtension CommentedPhase = Void
-type instance ProductTExtension CommentedPhase = Void
-type instance UnionTExtension CommentedPhase = Void
-type instance BigArrowExtension CommentedPhase = Void
-type instance TypeLamExtension CommentedPhase = Void
-type instance TypeAppExtension CommentedPhase = Void
-type instance TypeBindingExtension CommentedPhase = Void
-type instance TypeContentBindingExtension CommentedPhase = Void
+type instance NamedExtension CommentedPhase = NoExt
+type instance ArrowExtension CommentedPhase = NoExt
+type instance SumTExtension CommentedPhase = NoExt
+type instance ProductTExtension CommentedPhase = NoExt
+type instance UnionTExtension CommentedPhase = NoExt
+type instance BigArrowExtension CommentedPhase = NoExt
+type instance TypeLamExtension CommentedPhase = NoExt
+type instance TypeAppExtension CommentedPhase = NoExt
+type instance TypeBindingExtension CommentedPhase = NoExt
+type instance TypeContentBindingExtension CommentedPhase = NoExt
 
 -- No extensions to Expr level constructors
-type instance LamExtension CommentedPhase = Void
-type instance AppExtension CommentedPhase = Void
-type instance BindingExtension CommentedPhase = Void
-type instance ContentBindingExtension CommentedPhase = Void
-type instance CaseAnalysisExtension CommentedPhase = Void
-type instance SumExtension CommentedPhase = Void
-type instance ProductExtension CommentedPhase = Void
-type instance UnionExtension CommentedPhase = Void
-type instance BigLamExtension CommentedPhase = Void
-type instance BigAppExtension CommentedPhase = Void
+type instance LamExtension CommentedPhase = NoExt
+type instance AppExtension CommentedPhase = NoExt
+type instance BindingExtension CommentedPhase = NoExt
+type instance ContentBindingExtension CommentedPhase = NoExt
+type instance CaseAnalysisExtension CommentedPhase = NoExt
+type instance SumExtension CommentedPhase = NoExt
+type instance ProductExtension CommentedPhase = NoExt
+type instance UnionExtension CommentedPhase = NoExt
+type instance BigLamExtension CommentedPhase = NoExt
+type instance BigAppExtension CommentedPhase = NoExt
 
 -- | An expression is in the commented phase when it has an additional
 -- constructor which may recursively contain expressions wrapped in comments
 type instance ExprExtension CommentedPhase = Commented (ExprFor CommentedPhase)
 
 -- No extensions to Pattern level constructors
-type instance SumPatternExtension CommentedPhase = Void
-type instance ProductPatternExtension CommentedPhase = Void
-type instance UnionPatternExtension CommentedPhase = Void
-type instance BindingPatternExtension CommentedPhase = Void
-type instance BindExtension CommentedPhase = Void
+type instance SumPatternExtension CommentedPhase = NoExt
+type instance ProductPatternExtension CommentedPhase = NoExt
+type instance UnionPatternExtension CommentedPhase = NoExt
+type instance BindingPatternExtension CommentedPhase = NoExt
+type instance BindExtension CommentedPhase = NoExt
 
 -- | A Pattern is in the commented phase when it has an additional
 -- constructor which may recursively contain Patterns wrapped in comments

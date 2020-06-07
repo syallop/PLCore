@@ -143,7 +143,7 @@ underTypeTypeAbstraction ctx = ctx{_typeReductionTypeBindings = unbound . bury .
 --   substituted into the body of the type function.
 reduceType
   :: ( Eq (TypeFor phase)
-     , Void ~ TypeAppExtension phase
+     , NoExt ~ TypeAppExtension phase
      , TyVar ~ TypeBindingFor phase
      , HasAbs (TypeFor phase)
      , HasBinding (TypeFor phase) TyVar
@@ -176,7 +176,7 @@ reduceType ctx ty
 -- | 'reduceType' a single step with a collection of initial type bindings as if
 -- Types have already been applied to an outer type lambda abstraction.
 reduceTypeStep
-  :: ( Void ~ TypeAppExtension phase
+  :: ( NoExt ~ TypeAppExtension phase
      , TyVar ~ TypeBindingFor phase
 
      , HasAbs (TypeFor phase)

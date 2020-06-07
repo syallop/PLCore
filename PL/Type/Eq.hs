@@ -47,7 +47,7 @@ import Debug.Trace
 typeEq
   :: ( TyVar ~ TypeBindingFor phase
      , ContentName ~ TypeContentBindingFor phase
-     , Void  ~ TypeAppExtension phase
+     , NoExt  ~ TypeAppExtension phase
 
      , Show (TypeFor phase)
      , Ord (TypeFor phase)
@@ -72,7 +72,7 @@ typeEq typeBindCtx typeBindings typeNameCtx contentIsType type0 type1 = typeEqWi
 typeEqWith
   :: ( TyVar ~ TypeBindingFor   phase
      , ContentName ~ TypeContentBindingFor phase
-     , Void  ~ TypeAppExtension phase
+     , NoExt  ~ TypeAppExtension phase
 
      , Show (TypeFor phase)
      , Ord (TypeFor phase)
@@ -252,7 +252,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 typeEqs
   :: ( TyVar ~ TypeBindingFor phase
      , ContentName ~ TypeContentBindingFor phase
-     , Void ~ TypeAppExtension phase
+     , NoExt ~ TypeAppExtension phase
 
      , Show (TypeFor phase)
      , Ord (TypeFor phase)
@@ -278,7 +278,7 @@ typeEqs typeBindCtx typeBindings typeNameCtx contentIsType ts0 ts1 = typeEqsWith
 typeEqsWith
   :: ( TyVar ~ TypeBindingFor phase
      , ContentName ~ TypeContentBindingFor phase
-     , Void ~ TypeAppExtension phase
+     , NoExt ~ TypeAppExtension phase
      , Show (TypeFor phase)
      , Ord (TypeFor phase)
 

@@ -221,24 +221,24 @@ type family BindExtension phase
 type family PatternExtension phase
 
 -- SumF for phases where there is no extension to the constructor.Pattern
-pattern SumPattern :: SumPatternExtension phase ~ Void => Int -> PatternFor phase -> PatternFor phase
+pattern SumPattern :: SumPatternExtension phase ~ NoExt => Int -> PatternFor phase -> PatternFor phase
 pattern SumPattern ix pat <- FixPhase (SumPatternF _ ix pat)
-  where SumPattern ix pat =  FixPhase (SumPatternF void ix pat)
+  where SumPattern ix pat =  FixPhase (SumPatternF noExt ix pat)
 
 pattern SumPatternExt :: SumPatternExtension phase -> Int -> PatternFor phase -> PatternFor phase
 pattern SumPatternExt ext ix pat <- FixPhase (SumPatternF ext ix pat)
   where SumPatternExt ext ix pat =  FixPhase (SumPatternF ext ix pat)
 
 -- ProductF for phases where there is no extension to the constructor.Pattern
-pattern ProductPattern :: ProductPatternExtension phase ~ Void => [PatternFor phase] -> PatternFor phase
+pattern ProductPattern :: ProductPatternExtension phase ~ NoExt => [PatternFor phase] -> PatternFor phase
 pattern ProductPattern pates <- FixPhase (ProductPatternF _ pates)
-  where ProductPattern pates =  FixPhase (ProductPatternF void pates)
+  where ProductPattern pates =  FixPhase (ProductPatternF noExt pates)
 
 -- ProductF for the empty product in phase with no extension to thePattern
 -- constructor.
-pattern EmptyProductPattern :: ProductPatternExtension phase ~ Void => PatternFor phase
+pattern EmptyProductPattern :: ProductPatternExtension phase ~ NoExt => PatternFor phase
 pattern EmptyProductPattern <- FixPhase (ProductPatternF _ [])
-  where EmptyProductPattern =  FixPhase (ProductPatternF void [])
+  where EmptyProductPattern =  FixPhase (ProductPatternF noExt [])
 
 pattern ProductPatternExt :: ProductPatternExtension phase -> [PatternFor phase] -> PatternFor phase
 pattern ProductPatternExt ext pates <- FixPhase (ProductPatternF ext pates)
@@ -249,50 +249,50 @@ pattern EmptyProductPatternExt ext <- FixPhase (ProductPatternF ext [])
   where EmptyProductPatternExt ext =  FixPhase (ProductPatternF ext [])
 
 -- UnionF for phases where there is no extension to the constructor.Pattern
-pattern UnionPattern :: UnionPatternExtension phase ~ Void => TypeFor phase -> PatternFor phase -> PatternFor phase
+pattern UnionPattern :: UnionPatternExtension phase ~ NoExt => TypeFor phase -> PatternFor phase -> PatternFor phase
 pattern UnionPattern typeIx pat <- FixPhase (UnionPatternF _ typeIx pat)
-  where UnionPattern typeIx pat =  FixPhase (UnionPatternF void typeIx pat)
+  where UnionPattern typeIx pat =  FixPhase (UnionPatternF noExt typeIx pat)
 
 pattern UnionPatternExt :: UnionPatternExtension phase -> TypeFor phase -> PatternFor phase -> PatternFor phase
 pattern UnionPatternExt ext typeIx pat <- FixPhase (UnionPatternF ext typeIx pat)
   where UnionPatternExt ext typeIx pat =  FixPhase (UnionPatternF ext typeIx pat)
 
 -- BindingPatternF for phases where there is no extension to the constructor.Pattern
-pattern BindingPattern :: BindingPatternExtension phase ~ Void => BindingFor phase -> PatternFor phase
+pattern BindingPattern :: BindingPatternExtension phase ~ NoExt => BindingFor phase -> PatternFor phase
 pattern BindingPattern equalTo <- FixPhase (BindingPatternF _ equalTo)
-  where BindingPattern equalTo =  FixPhase (BindingPatternF void equalTo)
+  where BindingPattern equalTo =  FixPhase (BindingPatternF noExt equalTo)
 
 pattern BindingPatternExt :: BindingPatternExtension phase -> BindingFor phase -> PatternFor phase
 pattern BindingPatternExt ext equalTo <- FixPhase (BindingPatternF ext equalTo)
   where BindingPatternExt ext equalTo =  FixPhase (BindingPatternF ext equalTo)
 
 -- BindF for phases where there is no extension to the constructor.
-pattern Bind :: BindExtension phase ~ Void => PatternFor phase
+pattern Bind :: BindExtension phase ~ NoExt => PatternFor phase
 pattern Bind <- FixPhase (BindF _)
-  where Bind =  FixPhase (BindF void)
+  where Bind =  FixPhase (BindF noExt)
 
 pattern BindExt :: BindExtension phase -> PatternFor phase
 pattern BindExt ext <- FixPhase (BindF ext)
   where BindExt ext =  FixPhase (BindF ext)
 
 -- PatternExtensionF for phases where there is no extension to the number of constructors.
-pattern PatternExtension :: PatternExtension phase ~ Void => PatternFor phase
+pattern PatternExtension :: PatternExtension phase ~ NoExt => PatternFor phase
 pattern PatternExtension <- FixPhase (PatternExtensionF _)
-  where PatternExtension =  FixPhase (PatternExtensionF void)
+  where PatternExtension =  FixPhase (PatternExtensionF noExt)
 
 pattern PatternExtensionExt :: PatternExtension phase -> PatternFor phase
 pattern PatternExtensionExt ext <- FixPhase (PatternExtensionF ext)
   where PatternExtensionExt ext =  FixPhase (PatternExtensionF ext)
 
 -- The DefaultPhase has no extensions to constructors or the Pattern itself
-type instance SumPatternExtension DefaultPhase = Void
-type instance ProductPatternExtension DefaultPhase = Void
-type instance UnionPatternExtension DefaultPhase = Void
-type instance BindingPatternExtension DefaultPhase = Void
-type instance BindExtension DefaultPhase = Void
+type instance SumPatternExtension DefaultPhase = NoExt
+type instance ProductPatternExtension DefaultPhase = NoExt
+type instance UnionPatternExtension DefaultPhase = NoExt
+type instance BindingPatternExtension DefaultPhase = NoExt
+type instance BindExtension DefaultPhase = NoExt
 
--- TODO: Should _this_ be unit instead of void?
-type instance PatternExtension DefaultPhase = Void
+-- TODO: Should _this_ be unit instead of noExt?
+type instance PatternExtension DefaultPhase = NoExt
 
 -- Type check a case branch, requiring it pattern the expected type
 -- , if so, type checking the result expression which is returned.

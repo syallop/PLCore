@@ -40,8 +40,8 @@ module PL.FixPhase
 
   -- Misc phase-related things
   , DefaultPhase
-  , Void
-  , void
+  , NoExt
+  , noExt
   , Error
   )
   where
@@ -139,24 +139,23 @@ hyloPhaseM phi psi = (cataPhaseM phi =<<) . anaPhaseM psi
 
 data DefaultPhase
 
-data Void
+data NoExt = NoExt
 
 -- | Errors that occur in the DefaultPhase
 type Error = ErrorFor DefaultPhase
 
-instance Show Void where
+instance Show NoExt where
   show _ = ""
 
-instance Eq Void where
+instance Eq NoExt where
   _ == _ = True
 
-instance Ord Void where
+instance Ord NoExt where
   compare _ _ = EQ
 
-instance Hashable Void where
+instance Hashable NoExt where
   toHashToken _ = HashTag "" []
 
--- Some patterns to make working with ExprF nicer
-void :: Void
-void = error "Cannot evaluate Void"
+noExt :: NoExt
+noExt = NoExt
 

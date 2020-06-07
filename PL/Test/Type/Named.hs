@@ -57,9 +57,9 @@ namedTestCases t =
   ]
 
 namedTypeCtx
-  :: (NamedExtension    phase ~ Void
-     ,SumTExtension     phase ~ Void
-     ,ProductTExtension phase ~ Void
+  :: (NamedExtension    phase ~ NoExt
+     ,SumTExtension     phase ~ NoExt
+     ,ProductTExtension phase ~ NoExt
      )
   => TypeCtxFor phase
 namedTypeCtx
@@ -70,16 +70,16 @@ namedTypeCtx
   $ emptyTypeCtx
 
 preExistingType
-  :: (SumTExtension     phase ~ Void
-     ,ProductTExtension phase ~ Void
+  :: (SumTExtension     phase ~ NoExt
+     ,ProductTExtension phase ~ NoExt
      )
   => TypeFor phase
 preExistingType = SumT $ NE.fromList [EmptyProductT]
 
 recursiveType
-  :: (SumTExtension phase     ~ Void
-     ,ProductTExtension phase ~ Void
-     ,NamedExtension phase    ~ Void
+  :: (SumTExtension phase     ~ NoExt
+     ,ProductTExtension phase ~ NoExt
+     ,NamedExtension phase    ~ NoExt
      )
   => TypeFor phase
 recursiveType = SumT $ NE.fromList [EmptyProductT,Named "Recursive"]

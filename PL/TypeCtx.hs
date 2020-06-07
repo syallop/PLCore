@@ -244,7 +244,7 @@ lookupTypeNameInitialInfo n0 ctx = case lookupTypeNameInfo n0 ctx of
 
 -- As with "lookupTypeNameInitialInfo" but trace each intermediate TypeInfo looked up to find the intitial info.
 traceLookupTypeNameInitialInfo
-  :: (NamedExtension phase ~ Void)
+  :: (NamedExtension phase ~ NoExt)
   => TypeName
   -> TypeCtxFor phase
   -> Maybe (TypeInfoFor phase,[TypeInfoFor phase])
@@ -270,7 +270,7 @@ resolveTypeInfo t ctx = case t of
 
 -- If a Named type, then recursively lookup the associated TypeInfo, also returning a trace of each intermediate TypeInfo.
 traceResolveTypeInitialInfo
-  :: (NamedExtension phase ~ Void)
+  :: (NamedExtension phase ~ NoExt)
   => TypeFor phase
   -> TypeCtxFor phase
   -> Maybe (TypeInfoFor phase,[TypeInfoFor phase])

@@ -15,6 +15,8 @@ Variables which can be used within a binding context to Types.
 module PL.Var where
 
 import PL.Hash
+import PL.Error
+import PL.FixPhase
 import PL.Binds
 import PL.Binds.Ix
 import PLPrinter
@@ -77,7 +79,10 @@ instance BindingIx Var where
   buryBinding v 0 = v
   buryBinding v n = buryBinding (VS v) (n-1)
 
-type family BindingFor     phase
+type family BindingFor phase
+type instance BindingFor        DefaultPhase = Var
 
 instance Hashable Var where
   toHashToken = HashInt . bindDepth
+
+type instance ErrorBinding DefaultPhase = Var

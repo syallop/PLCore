@@ -23,6 +23,7 @@ import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.TypeCheck
+import PL.FixPhase
 import PL.Var
 import PL.Bindings
 import PL.Pattern
@@ -52,18 +53,16 @@ import PL.Test.Util
 -- | Test that for each test case, whether an expression typechecks to the intended type.
 typeChecksSpec
   :: Map.Map Text.Text ExprTestCase
-  -> (Type -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-typeChecksSpec testCases ppType ppError
+typeChecksSpec testCases pp
   = describe "All example programs"
   . mapM_ (\(name,testCase)
             -> typeCheckSpec name
                              (_resolvesTo testCase)
                              (_underTypeCheckCtx testCase)
                              (_typed testCase)
-                             ppType
-                             ppError
+                             pp
           )
   . Map.toList
   $ testCases
@@ -74,15 +73,14 @@ typeCheckSpec
   -> Expr
   -> TypeCheckCtx
   -> Type
-  -> (Type -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-typeCheckSpec name inputExpr ctx expectedType ppType ppError = it (Text.unpack name) $
-  let exprTy :: Either (Error Expr Type Pattern TypeCtx) (TypeFor DefaultPhase)
+typeCheckSpec name inputExpr ctx expectedType pp = it (Text.unpack name) $
+  let exprTy :: Either Error Type
       exprTy = exprType ctx inputExpr
    in case exprTy of
   Left err
-    -> expectationFailure . Text.unpack . render . ppError $ err
+    -> expectationFailure . Text.unpack . render . ppError pp $ err
 
   Right resultType
     -> case checkEqual resultType expectedType ctx of
@@ -90,7 +88,7 @@ typeCheckSpec name inputExpr ctx expectedType ppType ppError = it (Text.unpack n
            -> expectationFailure . Text.unpack . render $ text "A given type name does not exist in the context"
 
          Right False
-           -> expectationFailure . Text.unpack . render $ text "Expected: " <> ppType expectedType <> text " got: " <> ppType resultType
+           -> expectationFailure . Text.unpack . render $ text "Expected: " <> _ppType pp expectedType <> text " got: " <> _ppType pp resultType
 
          Right True
            -> return ()

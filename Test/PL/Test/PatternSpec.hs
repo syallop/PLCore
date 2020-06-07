@@ -8,6 +8,7 @@ import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.TyVar
+import PL.FixPhase
 import PL.Type
 import PL.Var
 import PL.Pattern
@@ -38,17 +39,31 @@ spec
   :: Spec
 spec = do
   describe "Patterns" $ do
-    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppType (ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar)
-    describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppExpr ppType ppPattern ppVar ppTyVar
+    describe "Type check" $ typeChecksPatternsSpec patternTestCases ppDefaultError
+    describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppDefaultError
   where
     patternTestCases :: Map.Map Text PatternTestCase
     patternTestCases = mkPatternTestCases $ TestPatternSources {}
+
+    ppDefaultError = PPError
+      { _ppExpr        = ppExpr
+      , _ppType        = ppType
+      , _ppPattern     = ppPattern
+      , _ppKind        = ppKind
+      , _ppTypeCtx     = ppTypeCtx document (ppTypeInfo ppType)
+      , _ppTypeName    = document
+      , _ppBinding     = ppVar
+      , _ppTypeBinding = ppTyVar
+      }
 
     ppExpr :: ExprFor DefaultPhase -> Doc
     ppExpr = text . Text.pack . show
 
     ppType :: TypeFor DefaultPhase -> Doc
     ppType = text . Text.pack . show
+
+    ppKind :: Kind -> Doc
+    ppKind = text . Text.pack . show
 
     ppPattern :: PatternFor DefaultPhase -> Doc
     ppPattern = text . Text.pack . show

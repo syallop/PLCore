@@ -42,11 +42,13 @@ module PL.FixPhase
   , DefaultPhase
   , Void
   , void
+  , Error
   )
   where
 
 import PL.Hash
 import PLPrinter.Doc
+import PL.Error
 
 -- | Fix a phase-indexed type with nested sub-types 'f'.
 newtype FixPhase phase f
@@ -138,6 +140,9 @@ hyloPhaseM phi psi = (cataPhaseM phi =<<) . anaPhaseM psi
 data DefaultPhase
 
 data Void
+
+-- | Errors that occur in the DefaultPhase
+type Error = ErrorFor DefaultPhase
 
 instance Show Void where
   show _ = ""

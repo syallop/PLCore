@@ -107,14 +107,14 @@ generatePath
   :: Show k
   => k
   -> PathPattern k
-  -> Either (Error expr typ pattern typectx) FilePath
+  -> Either (ErrorFor phase) FilePath
 generatePath k pattern =
   let PathGenerator f = toPathGenerator pattern
    in Text.unpack <$> f k
 
 -- A PathGenerator transforms some key into a possible path where it can be
 -- stored.
-newtype PathGenerator k = PathGenerator (forall expr typ pattern typectx. k -> Either (Error expr typ pattern typectx) Text)
+newtype PathGenerator k = PathGenerator (forall phase. k -> Either (ErrorFor phase) Text)
 
 -- Convert a PathPattern into a Generator by interpreting it 'backwards'.
 toPathGenerator

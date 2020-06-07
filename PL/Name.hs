@@ -2,6 +2,7 @@
     GeneralizedNewtypeDeriving
   , TypeSynonymInstances
   , OverloadedStrings
+  , TypeFamilies
   #-}
 {-|
 Module      : PL.Name
@@ -30,6 +31,8 @@ module PL.Name
   where
 
 import PL.Hash
+import PL.Error
+import PL.FixPhase
 
 import Data.Monoid
 import Data.Text (Text)
@@ -127,3 +130,4 @@ instance Document ContentName where document (ContentName n) = text . showBase58
 instance Hashable ContentName where
   toHashToken (ContentName n) = HashIs n
 
+type instance ErrorTypeName DefaultPhase = TypeName

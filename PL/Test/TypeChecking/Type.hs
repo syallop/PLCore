@@ -19,6 +19,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixPhase
 import PL.Name
 import PL.Pattern
 import PL.Type.Eq
@@ -54,10 +55,9 @@ import PL.Test.Util
 -- kind.
 typeChecksTypesSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (Kind -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-typeChecksTypesSpec testCases ppKind ppError =
+typeChecksTypesSpec testCases pp =
   describe "All example types"
   . mapM_ (\(name,testCase)
             -> typeCheckTypeSpec name
@@ -67,8 +67,7 @@ typeChecksTypesSpec testCases ppKind ppError =
                                  (_typeCtx        . _underTypeCheckCtx $ testCase)
                                  (_typeBindings   . _underTypeCheckCtx $ testCase)
                                  (_hasKind testCase)
-                                 ppKind
-                                 ppError
+                                 pp
           )
   . Map.toList
   $ testCases
@@ -82,16 +81,15 @@ typeCheckTypeSpec
   -> TypeCtx
   -> Bindings Type
   -> Kind
-  -> (Kind -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-typeCheckTypeSpec name inputType bindCtx contentHasKind underTypeCtx bindings expectedKind ppKind ppError = it (Text.unpack name) $ case typeKind bindCtx contentHasKind underTypeCtx inputType of
+typeCheckTypeSpec name inputType bindCtx contentHasKind underTypeCtx bindings expectedKind pp = it (Text.unpack name) $ case typeKind bindCtx contentHasKind underTypeCtx inputType of
   Left err
-    -> expectationFailure . Text.unpack . render . ppError $ err
+    -> expectationFailure . Text.unpack . render . ppError pp $ err
 
   Right resultKind
     | not (kindEq resultKind expectedKind)
-     -> expectationFailure . Text.unpack . render $ text "Expected:" <> ppKind expectedKind <> text " got:" <> ppKind resultKind
+     -> expectationFailure . Text.unpack . render $ text "Expected:" <> _ppKind pp expectedKind <> text " got:" <> _ppKind pp resultKind
 
     | otherwise
     -> pure ()

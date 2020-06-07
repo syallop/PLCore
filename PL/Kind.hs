@@ -1,5 +1,6 @@
 {-# LANGUAGE
     OverloadedStrings
+  , TypeFamilies
   #-}
 {-|
 Module      : PL.Kind
@@ -16,6 +17,8 @@ module PL.Kind
   where
 
 import PL.Hash
+import PL.Error
+import PL.FixPhase
 
 import PLPrinter
 import PLPrinter.Doc
@@ -54,3 +57,4 @@ instance Hashable Kind where
     KindArrow fromKy toKy
       -> HashTag "KindArrow" [toHashToken fromKy, toHashToken toKy]
 
+type instance ErrorKind DefaultPhase = Kind

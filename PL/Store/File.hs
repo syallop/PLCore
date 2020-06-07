@@ -70,7 +70,7 @@ data FileStore k v = Ord v => FileStore
   { _subDirectories       :: [ByteString]
   , _filePattern          :: PathPattern k
   , _serializeFileBytes   :: v -> ByteString
-  , _deserializeFileBytes :: ByteString -> Maybe v
+  , _deserializeFileBytes :: forall phase. ByteString -> Either (ErrorFor phase) v
   , _valuesEqual          :: v -> v -> Bool
   }
 
@@ -106,7 +106,7 @@ newSimpleFileStore subDirs keyLength fileName = newFileStore subDirs (mkPathPatt
   where
     iso :: Iso Text k
     iso = Iso
-      {_forwards  = deserialize . encodeUtf8
+      {_forwards  = \txt-> either (const Nothing) Just . deserialize . encodeUtf8 $ txt
       ,_backwards = Just . decodeUtf8 . serialize
       }
 
@@ -115,7 +115,7 @@ newFileStore
   => [ByteString]
   -> PathPattern k
   -> (v -> ByteString)
-  -> (ByteString -> Maybe v)
+  -> (forall phase. ByteString -> Either (ErrorFor phase) v)
   -> (v -> v -> Bool)
   -> FileStore k v
 newFileStore subDirs filePattern serializeBytes deserializeBytes valuesEqual = FileStore
@@ -142,7 +142,7 @@ generateFullPath
   :: Show k
   => k
   -> FileStore k v
-  -> Either (Error expr typ pattern typectx) FilePath
+  -> Either (ErrorFor phase) FilePath
 generateFullPath key f = case generatePath key (_filePattern f) of
   Left err
     -> Left err
@@ -159,7 +159,7 @@ storeAsFile
   => FileStore k v
   -> k
   -> v
-  -> IO (Either (Error expr typ pattern typectx) (FileStore k v, StoreResult v))
+  -> IO (Either (ErrorFor phase) (FileStore k v, StoreResult v))
 storeAsFile filestore key value = do
   -- TODO: Consider mapping relevant filesystem exceptions to Nothing.
   case generateFullPath key filestore of
@@ -183,8 +183,8 @@ storeAsFile filestore key value = do
                         -- - Serialization does not round trip correctly
                         -- - The file has been tampered with
                         -- - We have a hash collision
-                        Nothing
-                          -> pure . Left . EMsg . mconcat $
+                        Left err
+                          -> pure . Left . EContext (EMsg . mconcat $
                                [ text "When attempting to store a key-value in the filesystem store we encountered an existing file which did not deserialize as expected. This could indicate:"
                                , lineBreak
                                , text "- Serialization does not round trip correctly"
@@ -196,9 +196,10 @@ storeAsFile filestore key value = do
                                , text "The file in question is at path: "
                                , lineBreak
                                , string . show $ keyPath
-                               ]
+                               ])
+                               $ err
 
-                        Just existingValue
+                        Right existingValue
                           | _valuesEqual filestore existingValue value
                            -> pure . Right $ (filestore, AlreadyStored)
 
@@ -215,7 +216,7 @@ lookupFromFile
   :: Show k
   => FileStore k v
   -> k
-  -> IO (Either (Error expr typ pattern typectx) (FileStore k v, Maybe v))
+  -> IO (Either (ErrorFor phase) (FileStore k v, Maybe v))
 lookupFromFile filestore key = do
   case generateFullPath key filestore of
     Left err
@@ -230,8 +231,8 @@ lookupFromFile filestore key = do
               then pure . Right $ (filestore, Nothing)
               else do fileBytes <- readFile keyPath
                       case _deserializeFileBytes filestore fileBytes of
-                        Nothing
-                          -> pure . Left . EMsg . mconcat $
+                        Left err
+                          -> pure . Left . EContext (EMsg . mconcat $
                                [ text "File store cannot deserialize the file associated with a path to the expected value type:"
                                , lineBreak
                                , indent1 . mconcat $
@@ -239,13 +240,20 @@ lookupFromFile filestore key = do
                                    , lineBreak
                                    , indent1 . string . show $ key
                                    , lineBreak
+
                                    , text "Path:"
                                    , lineBreak
                                    , indent1 . string . show $ keyPath
-                                   ]
-                               ]
+                                   , lineBreak
 
-                        Just value
+                                   , text "File bytes:"
+                                   , lineBreak
+                                   , indent1 . string . show $ fileBytes
+                                   ]
+                               ])
+                               $ err
+
+                        Right value
                           -> pure .  Right $ (filestore, Just value)
 
 -- Ensure a FileStores directory exists - create it if it does not.

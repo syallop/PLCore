@@ -22,6 +22,7 @@ import PL.Type
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
+import PL.FixPhase
 import PL.Pattern
 import PL.Var
 import PL.Bindings
@@ -53,11 +54,11 @@ import PL.Test.Util
 -- order to produce the intended expression.
 parsesToSpec
   :: Map.Map Text.Text ExprTestCase
-  -> (Source -> Either (Error Expr Type Pattern TypeCtx) (ExprFor CommentedPhase, Source))
+  -> (Source -> Either Error (ExprFor CommentedPhase, Source))
   -> (ExprFor CommentedPhase -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-parsesToSpec testCases parseExpression ppExpr ppError
+parsesToSpec testCases parseExpression ppExpr pp
   = describe "All example programs"
   . mapM_ (\(name,testCase)
             -> parseToSpec parseExpression
@@ -65,7 +66,7 @@ parsesToSpec testCases parseExpression ppExpr ppError
                            (_parsesFrom testCase)
                            (_parsesTo testCase)
                            ppExpr
-                           ppError
+                           pp
           )
   . Map.toList
   $ testCases
@@ -73,16 +74,16 @@ parsesToSpec testCases parseExpression ppExpr ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended expression.
 parseToSpec
-  :: (Source -> Either (Error Expr Type Pattern TypeCtx) (ExprFor CommentedPhase,Source))
+  :: (Source -> Either Error (ExprFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> ExprFor CommentedPhase
   -> (ExprFor CommentedPhase -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-parseToSpec parseExpression name inputSource expectedExpr ppExpr ppError = it (Text.unpack name) $ case parseExpression inputSource of
+parseToSpec parseExpression name inputSource expectedExpr ppExpr pp = it (Text.unpack name) $ case parseExpression inputSource of
   Left err
-    -> expectationFailure . Text.unpack . render . ppError $ err
+    -> expectationFailure . Text.unpack . render . ppError pp $ err
 
   -- No leftovers are allowed and the parsed expression must equal the expected
   -- expression.

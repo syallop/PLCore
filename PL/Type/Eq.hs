@@ -55,6 +55,10 @@ typeEq
      , HasAbs (TypeFor phase)
      , HasBinding (TypeFor phase) TyVar
      , HasNonAbs (TypeFor phase)
+
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeName phase ~ TypeName
      )
   => BindCtx TyVar Kind   -- ^ Associate type variables to their kinds
   -> Bindings (TypeFor phase) -- ^ Type variables are either unbound or bound with some type
@@ -62,7 +66,7 @@ typeEq
   -> Map ContentName (TypeFor phase) -- ^ Cache a mapping of known type content names to their type definitions
   -> TypeFor phase
   -> TypeFor phase
-  -> Either (Error expr (TypeFor phase) patternFor (TypeCtxFor phase)) Bool
+  -> Either (ErrorFor phase) Bool
 typeEq typeBindCtx typeBindings typeNameCtx contentIsType type0 type1 = typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (Just 128) type0 type1
 
 typeEqWith
@@ -76,6 +80,10 @@ typeEqWith
      , HasAbs (TypeFor phase)
      , HasBinding (TypeFor phase) TyVar
      , HasNonAbs (TypeFor phase)
+
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeName phase ~ TypeName
      )
   => BindCtx TyVar Kind
   -> Bindings (TypeFor phase)
@@ -84,7 +92,7 @@ typeEqWith
   -> Maybe Int
   -> TypeFor phase
   -> TypeFor phase
-  -> Either (Error expr (TypeFor phase) patternFor (TypeCtxFor phase)) Bool
+  -> Either (ErrorFor phase) Bool
 typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type0 type1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -252,6 +260,10 @@ typeEqs
      , HasAbs (TypeFor phase)
      , HasBinding (TypeFor phase) TyVar
      , HasNonAbs (TypeFor phase)
+
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeName phase ~ TypeName
      )
   => BindCtx TyVar Kind
   -> Bindings (TypeFor phase)
@@ -259,7 +271,7 @@ typeEqs
   -> Map ContentName (TypeFor phase)
   -> [TypeFor phase]
   -> [TypeFor phase]
-  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) Bool
+  -> Either (ErrorFor phase) Bool
 typeEqs typeBindCtx typeBindings typeNameCtx contentIsType ts0 ts1 = typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (Just 128) ts0 ts1
 
 -- Are two lists of types pairwise equivalent under a typectx?
@@ -273,6 +285,10 @@ typeEqsWith
      , HasAbs (TypeFor phase)
      , HasBinding (TypeFor phase) TyVar
      , HasNonAbs (TypeFor phase)
+
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeName phase ~ TypeName
      )
   => BindCtx TyVar Kind
   -> Bindings (TypeFor phase)
@@ -281,7 +297,7 @@ typeEqsWith
   -> Maybe Int
   -> [TypeFor phase]
   -> [TypeFor phase]
-  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) Bool
+  -> Either (ErrorFor phase) Bool
 typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts0 ts1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
@@ -305,12 +321,17 @@ typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts
 typeKind
   :: ( TyVar ~ TypeBindingFor phase
      , ContentName ~ TypeContentBindingFor phase
+
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeBinding phase ~ TyVar
+     , ErrorKind phase ~ Kind
      )
   => BindCtx TyVar Kind
   -> Map ContentName Kind
   -> TypeCtxFor phase
   -> TypeFor phase
-  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) Kind
+  -> Either (ErrorFor phase) Kind
 typeKind typeBindCtx contentKinds typeCtx ty = case ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.

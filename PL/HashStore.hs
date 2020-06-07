@@ -87,7 +87,7 @@ storeByHash
   :: HashStore v
   -> HashAlgorithm
   -> v
-  -> IO (Either (Error expr typ pattern typectx) (HashStore v, StoreResult v, Hash))
+  -> IO (Either (ErrorFor phase) (HashStore v, StoreResult v, Hash))
 storeByHash h alg v = case h of
   HashStore s
     -> do let hashKey = hashWith alg v
@@ -103,7 +103,7 @@ storeByHash h alg v = case h of
 lookupByHash
   :: HashStore v
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (HashStore v, Maybe v))
+  -> IO (Either (ErrorFor phase) (HashStore v, Maybe v))
 lookupByHash h hashKey = case h of
   HashStore s
     -> lookup s hashKey >>= \case
@@ -201,13 +201,13 @@ instance Shortable Hash ShortHash where
 largerHashes
   :: HashStore v
   -> ShortHash
-  -> IO (Either (Error expr typ pattern typectx) (HashStore v, [Hash]))
+  -> IO (Either (ErrorFor phase) (HashStore v, [Hash]))
 largerHashes (HashStore s) shortHash = fmap (\(s',hashes) -> (HashStore s',hashes)) <$> largerKeys s shortHash
 
 -- | Given a regular Hash, return the shortest unambiguous Hash.
 shortenHash
   :: HashStore v
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (HashStore v, ShortHash))
+  -> IO (Either (ErrorFor phase) (HashStore v, ShortHash))
 shortenHash (HashStore s) hash = fmap (\(s',shortHash) -> (HashStore s',shortHash)) <$> shortenKey s hash
 

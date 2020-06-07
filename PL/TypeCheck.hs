@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs #-}
 {-|
 Module      : PL.TypeCheck
 Copyright   : (c) Samuel A. Yallop, 2020
@@ -68,6 +69,7 @@ import PL.Type.Eq
 import PL.TypeCtx
 import PL.Name
 import PL.Var
+import PL.FixPhase
 
 import PLPrinter
 
@@ -129,7 +131,7 @@ underTypeAbstraction underAbstractionKind ctx = ctx{ _typeBindCtx  = addBinding 
 kindCheck
   :: Type
   -> TypeCheckCtx
-  -> Either (Error expr Type p TypeCtx) Kind
+  -> Either Error Kind
 kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_contentHasKind ctx) (_typeCtx ctx) ty
 
 -- | Context after a Type with Kind is applied.
@@ -150,14 +152,18 @@ checkEqual
   :: Type
   -> Type
   -> TypeCheckCtx
-  -> Either (Error expr Type patternFor TypeCtx) Bool
+  -> Either Error Bool
 checkEqual aTy bTy ctx = typeEq (_typeBindCtx ctx) (_typeBindings ctx) (_typeCtx ctx) (_contentIsType ctx) aTy bTy
 
 -- | Lookup the Type associated with an expression variable.
 lookupVarType
-  :: Var
+  :: ( ErrorType phase ~ Type
+     , ErrorTypeCtx phase ~ TypeCtx
+     , ErrorBinding phase ~ Var
+     )
+  => Var
   -> TypeCheckCtx
-  -> Either (Error expr Type patternFor TypeCtx) Type
+  -> Either (ErrorFor phase) Type
 lookupVarType v ctx = case lookupBindingTy v (_exprBindCtx ctx) of
   Nothing
     -> Left $ EBindCtxExprLookupFailure (fromEnum v) (_exprBindCtx ctx)
@@ -166,9 +172,12 @@ lookupVarType v ctx = case lookupBindingTy v (_exprBindCtx ctx) of
 
 -- | Lookup the Type associated with a named expression.
 lookupExprContentType
-  :: ContentName
+  :: ( ErrorType phase ~ Type
+     , ErrorTypeCtx phase ~ TypeCtx
+     )
+  => ContentName
   -> TypeCheckCtx
-  -> Either (Error expr Type patternFor TypeCtx) Type
+  -> Either (ErrorFor phase) Type
 lookupExprContentType contentName ctx = case Map.lookup contentName . _contentHasType $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
@@ -183,9 +192,12 @@ lookupExprContentType contentName ctx = case Map.lookup contentName . _contentHa
 
 -- | Lookup the Kind associated with a named type.
 lookupTypeContentKind
-  :: ContentName
+  :: ( ErrorType phase ~ Type
+     , ErrorTypeCtx phase ~ TypeCtx
+     )
+  => ContentName
   -> TypeCheckCtx
-  -> Either (Error expr Type patternFor TypeCtx) Kind
+  -> Either (ErrorFor phase) Kind
 lookupTypeContentKind contentName ctx = case Map.lookup contentName . _contentHasKind $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
@@ -200,9 +212,12 @@ lookupTypeContentKind contentName ctx = case Map.lookup contentName . _contentHa
 
 -- | Lookup the Type associated with a named type.
 lookupTypeContentType
-  :: ContentName
+  :: ( ErrorType phase ~ Type
+     , ErrorTypeCtx phase ~ TypeCtx
+     )
+  => ContentName
   -> TypeCheckCtx
-  -> Either (Error err Type patternFor TypeCtx) Type
+  -> Either (ErrorFor phase) Type
 lookupTypeContentType contentName ctx = case Map.lookup contentName . _contentIsType $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
@@ -224,7 +239,7 @@ lookupTypeContentType contentName ctx = case Map.lookup contentName . _contentIs
 reduceTypeUnderCtx
   :: Type
   -> TypeCheckCtx
-  -> Either (Error expr Type patternFor TypeCtx) Type
+  -> Either Error Type
 reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_typeCtx ctx) (Just 100)) ty
 
 

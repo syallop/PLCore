@@ -52,6 +52,7 @@ import PL.TypeCtx
 import PL.ReduceType
 import PL.Name
 import PL.Error
+import PL.FixPhase
 import PL.CodeStore
 import PL.Bindings
 import PL.Case
@@ -101,14 +102,14 @@ topEvaluationCtx typeCtx codeStore = EvaluationCtx
 --
 -- Run with runEvaluate.
 -- Construct a context either from topEvaluationCtx or manually.
-newtype Evaluate a = Evaluate {_evaluate :: EvaluationCtx -> IO (Either (Error Expr Type Pattern TypeCtx) (EvaluationCtx,a))}
+newtype Evaluate a = Evaluate {_evaluate :: EvaluationCtx -> IO (Either Error (EvaluationCtx,a))}
 
 -- | Execute an Evaluate function to produce either the first error or the
 -- result and the final context.
 runEvaluate
   :: EvaluationCtx
   -> Evaluate a
-  -> IO (Either (Error Expr Type Pattern TypeCtx) (EvaluationCtx, a))
+  -> IO (Either Error (EvaluationCtx, a))
 runEvaluate ctx e = _evaluate e ctx
 
 instance Functor Evaluate where
@@ -262,7 +263,7 @@ underAppliedType appliedType = Evaluate $ \ctx -> pure $ Right $ (ctx{_evaluatio
 
 -- | Fail with a given Error
 evaluationFail
-  :: Error Expr Type Pattern TypeCtx
+  :: Error
   -> Evaluate a
 evaluationFail err = Evaluate $ \_ctx -> pure $ Left err
 

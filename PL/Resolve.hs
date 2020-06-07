@@ -76,6 +76,7 @@ import PL.Case
 import PL.Pattern
 import PL.Type
 import PL.TypeCtx
+import PL.FixPhase
 import PL.Name
 import PL.Hash
 import PL.HashStore
@@ -106,14 +107,14 @@ mkResolveCtx codeStore = ResolveCtx
 --
 -- Run with runResolve
 -- Construct a context either from mkResolveCtx or manually.
-newtype Resolve a = Resolve { _resolve :: ResolveCtx -> IO (Either (Error Expr Type Pattern TypeCtx) (ResolveCtx,a)) }
+newtype Resolve a = Resolve { _resolve :: ResolveCtx -> IO (Either Error (ResolveCtx,a)) }
 
 -- | Execute a Resolve function to produce either the first error or the result
 -- and the final context.
 runResolve
   :: ResolveCtx
   -> Resolve a
-  -> IO (Either (Error Expr Type Pattern TypeCtx) (ResolveCtx, a))
+  -> IO (Either Error (ResolveCtx, a))
 runResolve ctx r = _resolve r ctx
 
 instance Functor Resolve where
@@ -185,7 +186,8 @@ resolveExprHash shortHash = Resolve $ \ctx -> do
            hashes
              -> pure . Left . errCtx . EMsg . mconcat $
                  [ text "More than one hash with the given prefix was found. did you mean one of these?"
-                 , string . show $ hashes
+                 , lineBreak
+                 , bulleted . fmap (string . show) $ hashes
                  ]
 
 -- | Attempt to resolve a ShortHash for a type to an unambiguous Hash.
@@ -402,8 +404,9 @@ type PatternWithShortenedHashes long short = PatternWithResolvedHashes short lon
 -- patterns and it's types) into unambiguous ContentNames.
 resolveShortHashes
   :: ( ExprWithResolvedHashes unresolved resolved
-     , AbstractionFor unresolved ~ TypeFor typePhase
-     , AbstractionFor resolved   ~ TypeFor typePhase
+     , TypeWithResolvedHashes unresolved resolved
+     , AbstractionFor unresolved ~ TypeFor unresolved
+     , AbstractionFor resolved   ~ TypeFor resolved
      )
   => ExprFor unresolved
   -> Resolve (ExprFor resolved)
@@ -412,33 +415,46 @@ resolveShortHashes e = case e of
     -> ContentBindingExt ext . mkContentName <$> resolveExprHash shortHash
 
   LamExt ext abs bodyExpr
-    -> LamExt ext abs <$> resolveShortHashes bodyExpr
+    -> LamExt ext
+         <$> resolveTypeShortHashes abs
+         <*> resolveShortHashes bodyExpr
 
   AppExt ext fExpr xExpr
-    -> AppExt ext <$> resolveShortHashes fExpr <*> resolveShortHashes xExpr
+    -> AppExt ext
+         <$> resolveShortHashes fExpr
+         <*> resolveShortHashes xExpr
 
   CaseAnalysisExt ext c
-    -> CaseAnalysisExt ext <$> resolveCaseShortHashes c
+    -> CaseAnalysisExt ext
+         <$> resolveCaseShortHashes c
 
   SumExt ext expr ix ty
-    -> SumExt ext <$> resolveShortHashes expr <*> pure ix <*> mapM resolveTypeShortHashes ty
+    -> SumExt ext
+         <$> resolveShortHashes expr
+         <*> pure ix
+         <*> mapM resolveTypeShortHashes ty
 
   ProductExt ext prodExprs
-    -> ProductExt ext <$> mapM resolveShortHashes prodExprs
+    -> ProductExt ext
+         <$> mapM resolveShortHashes prodExprs
 
   UnionExt ext unionExpr tyIx ty
-    -> UnionExt ext <$> resolveShortHashes unionExpr
-                    <*> resolveTypeShortHashes tyIx
-                    <*> (fmap Set.fromList $ mapM resolveTypeShortHashes $ Set.toList ty)
+    -> UnionExt ext
+         <$> resolveShortHashes unionExpr
+         <*> resolveTypeShortHashes tyIx
+         <*> (fmap Set.fromList $ mapM resolveTypeShortHashes $ Set.toList ty)
 
   BindingExt ext b
     -> pure $ BindingExt ext b
 
   BigLamExt ext takeTy expr
-    -> BigLamExt ext takeTy <$> resolveShortHashes expr
+    -> BigLamExt ext takeTy
+         <$> resolveShortHashes expr
 
   BigAppExt ext fExpr xTy
-    -> BigAppExt ext <$> resolveShortHashes fExpr <*> resolveTypeShortHashes xTy
+    -> BigAppExt ext
+         <$> resolveShortHashes fExpr
+         <*> resolveTypeShortHashes xTy
 
   ExprExtensionExt ext
     -> pure $ ExprExtensionExt ext
@@ -449,8 +465,8 @@ resolveShortHashes e = case e of
 -- unambigous ContentNames.
 resolveCaseShortHashes
   :: ( ExprWithResolvedHashes unresolved resolved
-     , AbstractionFor unresolved ~ TypeFor typePhase
-     , AbstractionFor resolved   ~ TypeFor typePhase
+     , AbstractionFor unresolved ~ TypeFor unresolved
+     , AbstractionFor resolved   ~ TypeFor resolved
      )
   => Case (ExprFor unresolved) (PatternFor unresolved)
   -> Resolve (Case (ExprFor resolved) (PatternFor resolved))
@@ -460,8 +476,8 @@ resolveCaseShortHashes (Case expr branches) = Case <$> resolveShortHashes expr <
 -- unambigous ContentNames.
 resolveCaseBranchesShortHashes
   :: ( ExprWithResolvedHashes unresolved resolved
-     , AbstractionFor unresolved ~ TypeFor typePhase
-     , AbstractionFor resolved   ~ TypeFor typePhase
+     , AbstractionFor unresolved ~ TypeFor unresolved
+     , AbstractionFor resolved   ~ TypeFor resolved
      )
   => CaseBranches (ExprFor unresolved) (PatternFor unresolved)
   -> Resolve (CaseBranches (ExprFor resolved) (PatternFor resolved))
@@ -476,8 +492,8 @@ resolveCaseBranchesShortHashes = \case
 -- unambigous ContentNames.
 resolveCaseBranchShortHashes
   :: ( ExprWithResolvedHashes unresolved resolved
-     , AbstractionFor unresolved ~ TypeFor typePhase
-     , AbstractionFor resolved   ~ TypeFor typePhase
+     , AbstractionFor unresolved ~ TypeFor unresolved
+     , AbstractionFor resolved   ~ TypeFor resolved
      )
   => CaseBranch (ExprFor unresolved) (PatternFor unresolved)
   -> Resolve (CaseBranch (ExprFor resolved) (PatternFor resolved))
@@ -519,31 +535,41 @@ resolveTypeShortHashes
   -> Resolve (TypeFor resolved)
 resolveTypeShortHashes = \case
   TypeContentBindingExt ext shortHash
-    -> TypeContentBindingExt ext . mkContentName <$> resolveTypeHash shortHash
+    -> TypeContentBindingExt ext . mkContentName
+         <$> resolveTypeHash shortHash
 
   NamedExt ext tyName
     -> pure $ NamedExt ext tyName
 
   ArrowExt ext from to
-    -> ArrowExt ext <$> resolveTypeShortHashes from <*> resolveTypeShortHashes to
+    -> ArrowExt ext
+         <$> resolveTypeShortHashes from
+         <*> resolveTypeShortHashes to
 
   SumTExt ext types
-    -> SumTExt ext <$> mapM resolveTypeShortHashes types
+    -> SumTExt ext
+         <$> mapM resolveTypeShortHashes types
 
   ProductTExt ext types
-    -> ProductTExt ext <$> mapM resolveTypeShortHashes types
+    -> ProductTExt ext
+         <$> mapM resolveTypeShortHashes types
 
   UnionTExt ext types
-    -> UnionTExt ext <$> (fmap Set.fromList . mapM resolveTypeShortHashes . Set.toList $ types)
+    -> UnionTExt ext
+         <$> (fmap Set.fromList . mapM resolveTypeShortHashes . Set.toList $ types)
 
   BigArrowExt ext from to
-    -> BigArrowExt ext from <$> resolveTypeShortHashes to
+    -> BigArrowExt ext from
+         <$> resolveTypeShortHashes to
 
   TypeLamExt ext kind typ
-    -> TypeLamExt ext kind <$> resolveTypeShortHashes typ
+    -> TypeLamExt ext kind
+         <$> resolveTypeShortHashes typ
 
   TypeAppExt ext x y
-    -> TypeAppExt ext <$> resolveTypeShortHashes x <*> resolveTypeShortHashes y
+    -> TypeAppExt ext
+         <$> resolveTypeShortHashes x
+         <*> resolveTypeShortHashes y
 
   TypeBindingExt ext b
     -> pure $ TypeBindingExt ext b

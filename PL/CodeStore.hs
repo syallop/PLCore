@@ -70,6 +70,7 @@ import PL.Store
 import PL.ShortStore
 import PL.Hash
 import PL.HashStore
+import PL.FixPhase
 import PL.Serialize
 import PL.Expr
 import PL.Type
@@ -133,7 +134,7 @@ newCodeStore exprStore typeStore kindStore exprTypeStore typeKindStore = CodeSto
 storeExpr
   :: CodeStore
   -> Expr
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, StoreResult Expr, Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, StoreResult Expr, Hash))
 storeExpr codeStore expr = do
   eRes <- storeByHash (_exprStore codeStore) SHA512 expr
   pure $ case eRes of
@@ -149,7 +150,7 @@ storeExpr codeStore expr = do
 storeType
   :: CodeStore
   -> Type
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, StoreResult Type, Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, StoreResult Type, Hash))
 storeType codeStore typ = do
   eRes <- storeByHash (_typeStore codeStore) SHA512 typ
   pure $ case eRes of
@@ -165,7 +166,7 @@ storeType codeStore typ = do
 storeKind
   :: CodeStore
   -> Kind
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, StoreResult Kind, Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, StoreResult Kind, Hash))
 storeKind codeStore kind = do
   eRes <- storeByHash (_kindStore codeStore) SHA512 kind
   pure $ case eRes of
@@ -181,7 +182,7 @@ storeKind codeStore kind = do
 lookupExpr
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, Maybe Expr))
+  -> IO (Either (ErrorFor phase) (CodeStore, Maybe Expr))
 lookupExpr codeStore exprHash = do
   eRes <- lookupByHash (_exprStore codeStore) exprHash
   pure $ case eRes of
@@ -197,7 +198,7 @@ lookupExpr codeStore exprHash = do
 lookupType
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, Maybe Type))
+  -> IO (Either (ErrorFor phase) (CodeStore, Maybe Type))
 lookupType codeStore typeHash = do
   eRes <- lookupByHash (_typeStore codeStore) typeHash
   pure $ case eRes of
@@ -213,7 +214,7 @@ lookupType codeStore typeHash = do
 lookupKind
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, Maybe Kind))
+  -> IO (Either (ErrorFor phase) (CodeStore, Maybe Kind))
 lookupKind codeStore kindHash = do
   eRes <- lookupByHash (_kindStore codeStore) kindHash
   pure $ case eRes of
@@ -233,7 +234,7 @@ lookupKind codeStore kindHash = do
 storeExprHasType
   :: CodeStore
   -> (Hash,Hash)
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, StoreResult Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, StoreResult Hash))
 storeExprHasType codeStore (exprHash,typeHash) = case codeStore of
   CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore
     -> do eRes <- store exprTypeStore exprHash typeHash
@@ -254,7 +255,7 @@ storeExprHasType codeStore (exprHash,typeHash) = case codeStore of
 storeTypeHasKind
   :: CodeStore
   -> (Hash,Hash)
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, StoreResult Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, StoreResult Hash))
 storeTypeHasKind codeStore (typeHash,kindHash) = case codeStore of
   CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore
     -> do eRes <- store typeKindStore typeHash kindHash
@@ -273,7 +274,7 @@ storeTypeHasKind codeStore (typeHash,kindHash) = case codeStore of
 lookupExprType
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, Maybe Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, Maybe Hash))
 lookupExprType codeStore exprHash = case codeStore of
   CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore
     -> do eRes <- lookup exprTypeStore exprHash
@@ -292,7 +293,7 @@ lookupExprType codeStore exprHash = case codeStore of
 lookupTypeKind
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, Maybe Hash))
+  -> IO (Either (ErrorFor phase) (CodeStore, Maybe Hash))
 lookupTypeKind codeStore typeHash = case codeStore of
   CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore
     -> do eRes <- lookup typeKindStore typeHash
@@ -307,7 +308,7 @@ lookupTypeKind codeStore typeHash = case codeStore of
 shortenExprHash
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, ShortHash))
+  -> IO (Either (ErrorFor phase) (CodeStore, ShortHash))
 shortenExprHash codeStore exprHash = case codeStore of
   CodeStore exprStore _typeStore _kindStore _exprTypeStore _typeKindStore
     -> do eRes <- shortenHash exprStore exprHash
@@ -322,7 +323,7 @@ shortenExprHash codeStore exprHash = case codeStore of
 shortenTypeHash
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, ShortHash))
+  -> IO (Either (ErrorFor phase) (CodeStore, ShortHash))
 shortenTypeHash codeStore typeHash = case codeStore of
   CodeStore _exprStore typeStore _kindStore _exprTypeStore _typeKindStore
     -> do eRes <- shortenHash typeStore typeHash
@@ -337,7 +338,7 @@ shortenTypeHash codeStore typeHash = case codeStore of
 shortenKindHash
   :: CodeStore
   -> Hash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, ShortHash))
+  -> IO (Either (ErrorFor phase) (CodeStore, ShortHash))
 shortenKindHash codeStore kindHash = case codeStore of
   CodeStore _exprStore _typeStore kindStore _exprTypeStore _typeKindStore
     -> do eRes <- shortenHash kindStore kindHash
@@ -353,7 +354,7 @@ shortenKindHash codeStore kindHash = case codeStore of
 largerExprHashes
   :: CodeStore
   -> ShortHash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, [Hash]))
+  -> IO (Either (ErrorFor phase) (CodeStore, [Hash]))
 largerExprHashes codeStore shortExprHash = case codeStore of
   CodeStore exprStore _typeStore _kindStore _exprTypeStore _typeKindStore
     -> do eRes <- largerHashes exprStore shortExprHash
@@ -369,7 +370,7 @@ largerExprHashes codeStore shortExprHash = case codeStore of
 largerTypeHashes
   :: CodeStore
   -> ShortHash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, [Hash]))
+  -> IO (Either (ErrorFor phase) (CodeStore, [Hash]))
 largerTypeHashes codeStore shortTypeHash = case codeStore of
   CodeStore _exprStore typeStore _kindStore _exprTypeStore _typeKindStore
     -> do eRes <- largerHashes typeStore shortTypeHash
@@ -385,7 +386,7 @@ largerTypeHashes codeStore shortTypeHash = case codeStore of
 largerKindHashes
   :: CodeStore
   -> ShortHash
-  -> IO (Either (Error expr typ pattern typectx) (CodeStore, [Hash]))
+  -> IO (Either (ErrorFor phase) (CodeStore, [Hash]))
 largerKindHashes codeStore shortKindHash = case codeStore of
   CodeStore _exprStore _typeStore kindStore _exprTypeStore _typeKindStore
     -> do eRes <- largerHashes kindStore shortKindHash

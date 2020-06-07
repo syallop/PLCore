@@ -28,13 +28,13 @@ class (Store s k v, Shortable k shortK) => ShortStore s k shortK v where
   largerKeys
     :: s k v
     -> shortK
-    -> IO (Either (Error expr typ pattern typectx) (s k v, [k]))
+    -> IO (Either (ErrorFor phase) (s k v, [k]))
 
   -- | Given a regualar key, return the shortest unambiguous key.
   shortenKey
     :: s k v
     -> k
-    -> IO (Either (Error expr typ pattern typectx) (s k v, shortK))
+    -> IO (Either (ErrorFor phase) (s k v, shortK))
 
 -- Shortable maps a long type to a shorter version.
 class Shortable long short | long -> short, short -> long where

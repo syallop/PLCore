@@ -297,12 +297,11 @@ type instance PatternExtension DefaultPhase = Void
 -- Type check a case branch, requiring it pattern the expected type
 -- , if so, type checking the result expression which is returned.
 branchType
-  :: (BindingFor DefaultPhase ~ Var)
-  => CaseBranch expr Pattern
-  -> (TypeCheckCtx -> expr -> Either (Error expr Type Pattern TypeCtx) Type)
+  :: CaseBranch expr Pattern
+  -> (TypeCheckCtx -> expr -> Either Error Type)
   -> Type
   -> TypeCheckCtx
-  -> Either (Error expr Type Pattern TypeCtx) Type
+  -> Either Error Type
 branchType (CaseBranch lhs rhs) exprType expectedTy ctx = do
   bindings <- checkWithPattern lhs expectedTy ctx
   exprType (underExpressionAbstractions bindings ctx) rhs
@@ -310,11 +309,10 @@ branchType (CaseBranch lhs rhs) exprType expectedTy ctx = do
 -- | Check that a Pattern patternes the expected Type
 -- If so, return a list of types of any bound bindings.
 checkWithPattern
-  :: (BindingFor DefaultPhase ~ Var)
-  => Pattern
+  :: Pattern
   -> Type
   -> TypeCheckCtx
-  -> Either (Error expr Type Pattern TypeCtx) [Type]
+  -> Either Error [Type]
 checkWithPattern pat expectTy ctx = do
   -- If we've been given a named type, substitute it with its initial
   -- definition.
@@ -406,11 +404,10 @@ checkWithPattern pat expectTy ctx = do
       -> Left . EPatternMismatch expectTy $ pat
 
 checkWithPatterns
-  :: (BindingFor DefaultPhase ~ Var)
-  => [Pattern]
+  :: [Pattern]
   -> [Type]
   -> TypeCheckCtx
-  -> Either (Error expr Type Pattern TypeCtx) [Type]
+  -> Either Error [Type]
 checkWithPatterns pat types ctx = case (pat,types) of
   ([],[]) -> Right []
   ([],_)  -> Left $ EMsg $ text "Expected more patterns in pattern"
@@ -418,3 +415,4 @@ checkWithPatterns pat types ctx = case (pat,types) of
   (m:ms,t:ts)
     -> checkWithPattern m t ctx >>= \boundTs -> checkWithPatterns ms ts ctx >>= Right . (boundTs ++)
 
+type instance ErrorPattern DefaultPhase = Pattern

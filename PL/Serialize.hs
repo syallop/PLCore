@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses
            , FlexibleInstances
            , RankNTypes
+           , OverloadedStrings
   #-}
 {-|
 Module      : PL.Serialize
@@ -26,14 +27,26 @@ import Data.ByteString
 import Data.Text.Encoding
 
 import PL.Hash
+import PL.Error
+
+import PLPrinter.Doc
 
 class Serialize t where
   serialize   :: t -> ByteString
-  deserialize :: ByteString -> Maybe t
+  deserialize :: forall phase. ByteString -> Either (ErrorFor phase) t
 
 instance Serialize Text where
   serialize   = encodeUtf8
-  deserialize = either (const Nothing) Just . decodeUtf8'
+  deserialize = either (\unicodeErr
+                         -> Left . EMsg . mconcat $
+                                 [ text "Failed to deserialize text with unicode error:"
+                                 , lineBreak
+                                 , string . show $ unicodeErr
+                                 ]
+                       )
+                       Right
+
+              . decodeUtf8'
 
 instance Serialize Hash where
   serialize   = serialize . showBase58

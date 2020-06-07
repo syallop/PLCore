@@ -4,6 +4,7 @@
   , UndecidableInstances
   , StandaloneDeriving
   , GADTs
+  , TypeFamilies
   #-}
 {-|
 Module      : PL.TypeCtx
@@ -72,6 +73,7 @@ import PL.Kind
 import PL.Name
 import PL.Type
 import PL.FixPhase
+import PL.Error
 
 import PLPrinter
 
@@ -367,3 +369,4 @@ unionTypeCtx
   -> TypeCtxFor phase
 unionTypeCtx (TypeCtx t0) (TypeCtx t1) = TypeCtx (Map.union t0 t1)
 
+type instance ErrorTypeCtx DefaultPhase = TypeCtx

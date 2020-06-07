@@ -26,6 +26,7 @@ import PL.Commented
 import PL.Error
 import PL.Expr
 import PL.Kind
+import PL.FixPhase
 import PL.Name
 import PL.Reduce
 import PL.ReduceType

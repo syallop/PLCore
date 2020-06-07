@@ -22,6 +22,7 @@ import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.Var
+import PL.FixPhase
 import PL.Bindings
 import PL.Pattern
 
@@ -51,11 +52,11 @@ import PL.Test.Util
 -- order to produce the intended type.
 parsesToTypesSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (Source -> Either (Error Expr Type Pattern TypeCtx) (TypeFor CommentedPhase, Source))
+  -> (Source -> Either Error (TypeFor CommentedPhase, Source))
   -> (TypeFor CommentedPhase -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-parsesToTypesSpec testCases parseType ppType ppError
+parsesToTypesSpec testCases parseType ppType pp
   = describe "All example types"
   . mapM_ (\(name,testCase)
             -> parseToTypeSpec parseType
@@ -63,7 +64,7 @@ parsesToTypesSpec testCases parseType ppType ppError
                                (_parsesFrom testCase)
                                (_parsesTo testCase)
                                ppType
-                               ppError
+                               pp
           )
   . Map.toList
   $ testCases
@@ -71,16 +72,16 @@ parsesToTypesSpec testCases parseType ppType ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended type.
 parseToTypeSpec
-  :: (Source -> Either (Error Expr Type Pattern TypeCtx) (TypeFor CommentedPhase,Source))
+  :: (Source -> Either Error (TypeFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> TypeFor CommentedPhase
   -> (TypeFor CommentedPhase -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-parseToTypeSpec parseType name inputSource expectedType ppType ppError = it (Text.unpack name) $ case parseType inputSource of
+parseToTypeSpec parseType name inputSource expectedType ppType pp = it (Text.unpack name) $ case parseType inputSource of
   Left err
-    -> expectationFailure . Text.unpack . render . ppError $ err
+    -> expectationFailure . Text.unpack . render . ppError pp $ err
 
   -- No leftovers are allowed and the parsed expression must equal the expected
   -- type.

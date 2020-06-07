@@ -72,6 +72,9 @@ import qualified Data.List.NonEmpty as NE
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import PL.Error
+import PLPrinter.Doc
+
 -- | A Hash uniquely identifies a 'hash'ed thing.
 data Hash = Hash
   { _hashAlgorithm :: HashAlgorithm -- ^ By storing the algorithm used to generate the hash we can more easily regenerate/ and switch the algorithm if necessary.
@@ -109,7 +112,7 @@ showBase58 hash =
 
 -- | Attempt to read a Base58 textual representation of a Hash with a preceeding
 -- algorithm identifier, separated by a '/'.
-readBase58 :: Text -> Maybe Hash
+readBase58 :: Text -> Either (ErrorFor phase) Hash
 readBase58 txt = do
   case Text.split (== '/') txt of
     (algText:hashText:[])
@@ -117,20 +120,40 @@ readBase58 txt = do
            Just alg
              -> mkBase58 alg hashText
            _
-             -> error "Failed to read hashing algorithm"
+             -> Left . EMsg . text $ "Failed to read hashing algorithm"
     _
-      -> Nothing
+      -> Left . EMsg . text $ "Failed to find / separating algorithm and bytes of a Hash"
 
 -- | Attempt to construct a Hash from an algorithm and Base58 encoded Bytes.
-mkBase58 :: HashAlgorithm -> Text -> Maybe Hash
-mkBase58 alg txt = case alg of
-  SHA512
-    -> do bytes <- B58.decodeBase58 B58.bitcoinAlphabet . encodeUtf8 $ txt
-          if BS.length bytes /= 128
-            then Nothing
-            else Just $ Hash SHA512 bytes
-  _
-    -> error "Unrecognised hashing algorithm"
+mkBase58 :: HashAlgorithm -> Text -> Either (ErrorFor phase) Hash
+mkBase58 alg txt =
+  let ctx = EContext (EMsg . mconcat $
+                        [ text $ "Constructing hash with algorithm:"
+                        , lineBreak
+                        , indent1 . string . show $ alg
+                        , lineBreak
+                        , text "And base58 encoded text:"
+                        , lineBreak
+                        , indent1 . text $ txt
+                        ])
+   in case alg of
+        SHA512
+          -> case B58.decodeBase58 B58.bitcoinAlphabet . encodeUtf8 $ txt of
+               Nothing
+                 -> Left . ctx . EMsg . mconcat $
+                      [ text "Failed to decode base58 bytes from text"
+                      ]
+
+               Just bytes
+                 -> let len = BS.length bytes
+                     in if len /= 128
+                          then Left . ctx . EMsg . mconcat $
+                                 [ text "Expected exactly 128 bytes but saw "
+                                 , string . show $ len
+                                 ]
+                          else Right $ Hash SHA512 bytes
+        _
+          -> Left . ctx . EMsg . text $ "Unrecognised hashing algorithm"
 
 -- | Extract a Hashes algorithm and base58 interpretation of the hash itself.
 unBase58 :: Hash -> (HashAlgorithm, Text)

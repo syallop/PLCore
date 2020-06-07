@@ -20,6 +20,7 @@ import PL.Expr
 import PL.Type
 import PL.Name
 import PL.Type.Eq
+import PL.FixPhase
 import PL.Pattern
 import PL.TypeCtx
 import PL.Var
@@ -52,11 +53,11 @@ import PL.Test.Util
 -- order to produce the intended Pattern.
 parsesToPatternsSpec
   :: Map.Map Text.Text PatternTestCase
-  -> (Source -> Either (Error Expr Type Pattern TypeCtx) (PatternFor CommentedPhase, Source))
+  -> (Source -> Either Error (PatternFor CommentedPhase, Source))
   -> (PatternFor CommentedPhase -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-parsesToPatternsSpec testCases parsePattern ppPattern ppError
+parsesToPatternsSpec testCases parsePattern ppPattern pp
   = describe "All example patterns"
   . mapM_ (\(name,testCase)
             -> parseToPatternSpec parsePattern
@@ -64,7 +65,7 @@ parsesToPatternsSpec testCases parsePattern ppPattern ppError
                                   (_parsesFrom testCase)
                                   (_parsesTo testCase)
                                   ppPattern
-                                  ppError
+                                  pp
           )
   . Map.toList
   $ testCases
@@ -72,16 +73,16 @@ parsesToPatternsSpec testCases parsePattern ppPattern ppError
 -- | Test that a parser consumes all of some source input in order to produce
 -- the intended pattern.
 parseToPatternSpec
-  :: (Source -> Either (Error Expr Type Pattern TypeCtx) (PatternFor CommentedPhase,Source))
+  :: (Source -> Either Error (PatternFor CommentedPhase,Source))
   -> Text.Text
   -> Source
   -> PatternFor CommentedPhase
   -> (PatternFor CommentedPhase -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern ppError = it (Text.unpack name) $ case parsePattern inputSource of
+parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern pp = it (Text.unpack name) $ case parsePattern inputSource of
   Left err
-    -> expectationFailure . Text.unpack . render . ppError $ err
+    -> expectationFailure . Text.unpack . render . ppError pp $ err
 
   -- No leftovers are allowed and the parsed expression must equal the expected
   -- pattern.

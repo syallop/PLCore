@@ -85,10 +85,13 @@ lookupTyVarBinding
   :: ( HasAbs     (TypeFor phase)
      , HasBinding (TypeFor phase) TyVar
      , HasNonAbs  (TypeFor phase)
+
+     , ErrorType    phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
      )
   => TypeReductionCtx phase
   -> TyVar
-  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) (Binding (TypeFor phase))
+  -> Either (ErrorFor phase) (Binding (TypeFor phase))
 lookupTyVarBinding ctx b =
   let ix       = bindDepth b
       bindings = _typeReductionTypeBindings ctx
@@ -147,10 +150,13 @@ reduceType
      , HasNonAbs (TypeFor phase)
 
      , Ord (TypeFor phase)
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeName phase ~ TypeName
      )
   => TypeReductionCtx phase
   -> TypeFor phase
-  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) (TypeFor phase)
+  -> Either (ErrorFor phase) (TypeFor phase)
 reduceType ctx ty
   | hitTypeReductionLimit ctx
    = Left . ETypeReductionLimitReached $ ty
@@ -178,10 +184,13 @@ reduceTypeStep
      , HasNonAbs (TypeFor phase)
 
      , Ord (TypeFor phase)
+     , ErrorType phase ~ TypeFor phase
+     , ErrorTypeCtx phase ~ TypeCtxFor phase
+     , ErrorTypeName phase ~ TypeName
      )
   => TypeReductionCtx phase
   -> TypeFor phase
-  -> Either (Error expr (TypeFor phase) pattern (TypeCtxFor phase)) (TypeFor phase)
+  -> Either (ErrorFor phase) (TypeFor phase)
 reduceTypeStep ctx ty = case ty of
 
   -- TypeBindings are substituted if they have been bound.

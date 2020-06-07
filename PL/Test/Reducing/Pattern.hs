@@ -20,6 +20,7 @@ import PL.Reduce
 import PL.TyVar
 import PL.Type
 import PL.TypeCheck
+import PL.FixPhase
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
@@ -53,13 +54,9 @@ import PL.Test.Util
 -- | Test each pattern reduces to expected results.
 reducesPatternsToSpec
   :: Map.Map Text.Text PatternTestCase
-  -> (ExprFor DefaultPhase -> Doc)
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (PatternFor DefaultPhase -> Doc)
-  -> (Var -> Doc)
-  -> (TyVar -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-reducesPatternsToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
+reducesPatternsToSpec testCases pp =
   describe "All example patterns"
     . mapM_ (\(name,testCase)
               -> reducePatternToSpec name
@@ -67,11 +64,7 @@ reducesPatternsToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
                                      (_resolvesTo testCase)
                                      (_typed testCase)
                                      (_checkMatchWithResult testCase)
-                                     ppExpr
-                                     ppType
-                                     ppPattern
-                                     ppVar
-                                     ppTyVar
+                                     pp
             )
     . Map.toList
     $ testCases
@@ -82,28 +75,24 @@ reducePatternToSpec
   -> TypeCheckCtx
   -> Pattern
   -> Type
-  -> Either (Error Expr Type Pattern TypeCtx) [Type]
-  -> (Expr -> Doc)
-  -> (Type -> Doc)
-  -> (Pattern -> Doc)
-  -> (Var -> Doc)
-  -> (TyVar -> Doc)
+  -> Either Error [Type]
+  -> PPError DefaultPhase
   -> Spec
-reducePatternToSpec name ctx testPattern expectTy expect ppExpr ppType ppPattern ppVar ppTyVar =
+reducePatternToSpec name ctx testPattern expectTy expect pp =
   it (Text.unpack name) $ isExpected (checkWithPattern testPattern expectTy ctx) expect
   where
     isExpected
-      :: Either (Error Expr Type Pattern TypeCtx) [Type]
-      -> Either (Error Expr Type Pattern TypeCtx) [Type]
+      :: Either Error [Type]
+      -> Either Error [Type]
       -> Expectation
     isExpected result expected = case (result,expected) of
       (Left resultErr, Left expectedErr)
         | resultErr == expectedErr -> return ()
         | otherwise  -> expectationFailure $ Text.unpack $ render $ mconcat
             [ text "Pattern expected error:"
-            , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar expectedErr
+            , indent1 . ppError pp $ expectedErr
             , text "but got:"
-            , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar resultErr
+            , indent1 . ppError pp $ resultErr
             ]
 
       (Right resultTys, Right expectedTys)
@@ -114,25 +103,25 @@ reducePatternToSpec name ctx testPattern expectTy expect ppExpr ppType ppPattern
         | otherwise
           -> expectationFailure $ Text.unpack $ render $ mconcat
                [ text "Pattern expected to bind:"
-               , foldr ((<>) . ppType) mempty expectedTys
+               , foldr ((<>) . _ppType pp) mempty expectedTys
                , text "but bound:"
-               , foldr ((<>) . ppType) mempty resultTys
+               , foldr ((<>) . _ppType pp) mempty resultTys
                ]
 
       (Right resultTys, Left expectedErr)
         -> expectationFailure $ Text.unpack $ render $ mconcat
              [ text "Pattern expected error:"
-             , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar expectedErr
+             , indent1 . ppError pp $ expectedErr
              , text "but got successful result, binding types:"
-             , foldr ((<>) . ppType) mempty resultTys
+             , indent1 . foldr ((<>) . _ppType pp) mempty $ resultTys
              ]
 
       (Left resultErr, Right expectedTys)
         -> expectationFailure $ Text.unpack $ render $ mconcat
              [ text "Pattern expected to bind:"
-             , foldr ((<>) . ppType) mempty expectedTys
+             , indent1 . foldr ((<>) . _ppType pp) mempty $ expectedTys
              , text "but got error:"
-             , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar resultErr
+             , indent1 . ppError pp $ resultErr
              ]
 
     fromRight :: b -> Either a b -> b

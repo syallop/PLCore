@@ -25,6 +25,7 @@ import PL.Pattern
 import PL.Type.Eq
 import PL.TypeCtx
 import PL.TypeCheck
+import PL.FixPhase
 import PL.Var
 import PL.Resolve
 import PL.Bindings
@@ -64,6 +65,6 @@ data PatternTestCase = PatternTestCase
   , _typed                :: Type
 
     -- Matching tests
-  ,_checkMatchWithResult :: Either (Error Expr Type Pattern TypeCtx) [Type] -- ^ Either produces an error or a list of bound types.
+  ,_checkMatchWithResult :: Either Error [Type] -- ^ Either produces an error or a list of bound types.
   }
 

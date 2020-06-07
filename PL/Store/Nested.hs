@@ -111,7 +111,7 @@ lookupNested
      )
   => NestedStore s s' k v
   -> k
-  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, Maybe v))
+  -> IO (Either (ErrorFor phase) (NestedStore s s' k v, Maybe v))
 lookupNested (NestedStore topStore nestedStore) key =
   lookup topStore key >>= \case
     Left err
@@ -172,7 +172,7 @@ storeNested
   => NestedStore s s' k v
   -> k
   -> v
-  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, StoreResult v))
+  -> IO (Either (ErrorFor phase) (NestedStore s s' k v, StoreResult v))
 storeNested (NestedStore topStore nestedStore) key value = lookup topStore key >>= \case
   Left err
     -> pure . Left $ err
@@ -290,7 +290,7 @@ storeNestedThenTop
   -> s' k v
   -> k
   -> v
-  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, StoreResult v))
+  -> IO (Either (ErrorFor phase) (NestedStore s s' k v, StoreResult v))
 storeNestedThenTop top nested key value =
   store nested key value >>= \case
     Left err
@@ -306,10 +306,24 @@ storeNestedThenTop top nested key value =
 
 -- | Lookup all known keys that are 'larger' than a short key.
 largerNestedKeys
-  :: NestedStore s s' k v
+  :: (ShortStore s' k shortK v)
+  => NestedStore s s' k v
   -> shortK
-  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, [k]))
-largerNestedKeys (NestedStore top nested) shortKey = undefined -- TODO
+  -> IO (Either (ErrorFor phase) (NestedStore s s' k v, [k]))
+largerNestedKeys (NestedStore top nested) shortKey = do
+  -- TODO: If the interface was a stream/ returned batches of results and a continuation|done then
+  -- We could query the top store first and potentially avoid touching the
+  -- nested store if the consumer could find what it wanted early.
+  --
+  -- As we have to return all results, we must query the nested store so we
+  -- might as well skip the top store.
+  eRes <- largerKeys nested shortKey
+  case eRes of
+    Left err
+      -> pure . Left $ err
+
+    Right (nestedStore', largerKeys)
+      -> pure . Right $ (NestedStore top nestedStore', largerKeys)
 
 -- | Shorten a key to the smallest possible unambiguous ShortKey.
 shortenNestedKeys
@@ -318,7 +332,7 @@ shortenNestedKeys
      )
   => NestedStore s s' k v
   -> k
-  -> IO (Either (Error expr typ pattern typectx) (NestedStore s s' k v, shortK))
+  -> IO (Either (ErrorFor phase) (NestedStore s s' k v, shortK))
 shortenNestedKeys (NestedStore top nested) key = do
   -- Algorithm:
   -- - Lookup shortest prefix in top

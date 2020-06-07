@@ -89,6 +89,7 @@ module PL.Type
 import PL.Binds.Ix
 import PL.Name
 import PL.Kind
+import PL.Error
 import PL.Hash
 import PL.ExprLike
 import PL.FixPhase
@@ -761,3 +762,7 @@ gatherTypeContentNames = gatherTypeContentNames' Set.empty
         -> accNames
 
       _ -> error "Non-exhaustive pattern gathering type content names"
+
+type instance ErrorType DefaultPhase = Type
+type instance ErrorTypeBinding DefaultPhase = TyVar
+

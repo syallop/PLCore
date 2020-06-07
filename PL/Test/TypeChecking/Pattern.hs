@@ -19,6 +19,7 @@ import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
+import PL.FixPhase
 import PL.Name
 import PL.Type.Eq
 import PL.TypeCtx
@@ -55,18 +56,16 @@ import PL.Test.Util
 
 typeChecksPatternsSpec
   :: Map.Map Text.Text PatternTestCase
-  -> (Type -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-typeChecksPatternsSpec testCases ppType ppError =
+typeChecksPatternsSpec testCases pp =
   describe "All example patterns"
   . mapM_ (\(name,testCase)
             -> typeCheckPatternSpec name
                                     (_resolvesTo testCase)
                                     (_typeCtx . _underTypeCheckCtx $ testCase)
                                     (_typed testCase)
-                                    ppType
-                                    ppError
+                                    pp
           )
   . Map.toList
   $ testCases
@@ -82,8 +81,7 @@ typeCheckPatternSpec
   -> Pattern
   -> TypeCtx
   -> Type
-  -> (Type -> Doc)
-  -> (Error Expr Type Pattern TypeCtx -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-typeCheckPatternSpec name inputPattern underTypeCtx expectedType ppType ppError = it (Text.unpack name) $ pendingWith "There is no defined notion of typechecking for a pattern (yet)"
+typeCheckPatternSpec name inputPattern underTypeCtx expectedType pp = it (Text.unpack name) $ pendingWith "There is no defined notion of typechecking for a pattern (yet)"
 

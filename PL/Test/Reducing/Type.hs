@@ -56,13 +56,9 @@ import PL.Test.Util
 -- Test each testcase reduces to expected results.
 reducesTypesToSpec
   :: Map.Map Text.Text TypeTestCase
-  -> (ExprFor DefaultPhase -> Doc)
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (PatternFor DefaultPhase -> Doc)
-  -> (Var -> Doc)
-  -> (TyVar -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
+reducesTypesToSpec testCases pp =
   describe "All example types"
     . mapM_ (\(name,testCase)
               -> reduceTypeToSpec name
@@ -75,11 +71,7 @@ reducesTypesToSpec testCases ppExpr ppType ppPattern ppVar ppTyVar =
                                       , _typeReductionMatches = [TypeEquals $ _reducesTo testCase]
                                    }) : _reducesToWhenApplied testCase)
                                   (_contentIsType . _underTypeCheckCtx $ testCase)
-                                  ppExpr
-                                  ppType
-                                  ppPattern
-                                  ppVar
-                                  ppTyVar
+                                  pp
             )
     . Map.toList
     $ testCases
@@ -93,13 +85,9 @@ reduceTypeToSpec
   -> Type
   -> [TypeReductionTestCase]
   -> Map ContentName Type
-  -> (ExprFor DefaultPhase -> Doc)
-  -> (TypeFor DefaultPhase -> Doc)
-  -> (PatternFor DefaultPhase -> Doc)
-  -> (Var -> Doc)
-  -> (TyVar -> Doc)
+  -> PPError DefaultPhase
   -> Spec
-reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern ppVar ppTyVar = describe (Text.unpack name) $
+reduceTypeToSpec name inputType reductions contentIsType pp = describe (Text.unpack name) $
   mapM_ (\(TypeReductionTestCase name underCtx underTypeBindCtx mutations expectReduction)
           -> let mutatedType = apply inputType mutations
               in reduceSpec name underCtx underTypeBindCtx (_typeReductionTypeBindings underCtx) mutatedType expectReduction) reductions
@@ -126,18 +114,18 @@ reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern
             -> expectationFailure . Text.unpack . render . mconcat $
                  [ text "Could not reduce:"
                  , lineBreak
-                 , indent1 $ ppType typ
+                 , indent1 . _ppType pp $ typ
                  , lineBreak
                  , text "With error:"
                  , lineBreak
-                 , ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar $ typErr
+                 , indent1 . ppError pp $ typErr
                  ]
 
           (Right redType, TypeError)
             -> expectationFailure . Text.unpack . render $ mconcat
                  [ text "Type reduced to:"
                  , lineBreak
-                 , indent1 $ ppType redType
+                 , indent1 . _ppType pp $ redType
                  , lineBreak
                  , text "But we expected the reducation to fail."
                  ]
@@ -148,26 +136,26 @@ reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"
                         , lineBreak
-                        , indent1 $ ppType redType
+                        , indent1 . _ppType pp $ redType
                         , lineBreak
                         , text "But failed to compare to the expected type:"
                         , lineBreak
-                        , indent1 $ ppType expectedType
+                        , indent1 . _ppType pp $ expectedType
                         , lineBreak
                         , text "Due to error:"
                         , lineBreak
-                        , indent1 $ ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar err
+                        , indent1 . ppError pp $ err
                         ]
 
                  Right False
                    -> expectationFailure . Text.unpack . render . mconcat $
                         [ text "The type reduced to:"
                         , lineBreak
-                        , indent1 $ ppType redType
+                        , indent1 . _ppType pp $ redType
                         , lineBreak
                         , text "But does not equal the expected type:"
                         , lineBreak
-                        , indent1 $ ppType expectedType
+                        , indent1 . _ppType pp $ expectedType
                         ]
 
                  Right True
@@ -179,15 +167,15 @@ reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"
                         , lineBreak
-                        , indent1 $ ppType redType
+                        , indent1 . _ppType pp $ redType
                         , lineBreak
                         , text "But failed to compare to the unexpected type:"
                         , lineBreak
-                        , indent1 $ ppType notExpectedType
+                        , indent1 . _ppType pp $ notExpectedType
                         , lineBreak
                         , text "Due to error:"
                         , lineBreak
-                        , indent1 $ ppError ppPattern ppType ppExpr (ppTypeCtx document (ppTypeInfo ppType)) ppVar ppTyVar err
+                        , indent1 . ppError pp $ err
                         ]
 
                  Right False
@@ -197,11 +185,11 @@ reduceTypeToSpec name inputType reductions contentIsType ppExpr ppType ppPattern
                    -> expectationFailure . Text.unpack . render . mconcat $
                         [ text "The type reduced to:"
                         , lineBreak
-                        , indent1 $ ppType redType
+                        , indent1 . _ppType pp $ redType
                         , lineBreak
                         , text "Which equals the unexpected type:"
                         , lineBreak
-                        , indent1 $ ppType notExpectedType
+                        , indent1 . _ppType pp $ notExpectedType
                         ]
 
     apply :: Type -> [Type -> Type] -> Type

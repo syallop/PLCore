@@ -41,6 +41,7 @@ import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Name
+import PL.FixPhase
 import PL.Type
 import PL.Var
 import PL.TyVar
@@ -140,7 +141,7 @@ underAppliedType appliedType ctx = ctx{_reductionTypeBindings = bind appliedType
 lookupVarBinding
   :: ReductionCtx
   -> Var
-  -> Either (Error Expr Type Pattern TypeCtx) (Binding Expr)
+  -> Either Error (Binding Expr)
 lookupVarBinding ctx b =
   let ix       = bindDepth b
       bindings = _reductionExprBindings ctx
@@ -199,7 +200,7 @@ toTypeReductionCtx ctx = TypeReductionCtx (_reductionTypeBindings ctx) (_reducti
 reduce
   :: ReductionCtx
   -> Expr
-  -> Either (Error Expr Type Pattern TypeCtx) Expr
+  -> Either Error Expr
 reduce ctx initialExpr
   | hitReductionLimit ctx
    = Left . EMsg . mconcat $
@@ -223,7 +224,7 @@ reduce ctx initialExpr
 reduceStep
   :: ReductionCtx
   -> Expr
-  -> Either (Error Expr Type Pattern TypeCtx) Expr
+  -> Either Error Expr
 reduceStep ctx initialExpr = case initialExpr of
   -- TODO: Consider whether/ where we should reduce types.
 
@@ -399,7 +400,7 @@ reduceStep ctx initialExpr = case initialExpr of
 reducePossibleCaseRHSStep
   :: ReductionCtx
   -> CaseBranches Expr Pattern
-  -> Either (Error Expr Type Pattern TypeCtx) (CaseBranches Expr Pattern)
+  -> Either Error (CaseBranches Expr Pattern)
 reducePossibleCaseRHSStep ctx = sequenceCaseBranchesExpr . mapCaseBranchesExpr (reduceStep ctx)
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
@@ -411,7 +412,7 @@ reducePossibleCaseBranchesStep
   :: ReductionCtx
   -> Expr
   -> CaseBranches Expr Pattern
-  -> Either (Error Expr Type Pattern TypeCtx) Expr
+  -> Either Error Expr
 reducePossibleCaseBranchesStep ctx scrutineeExpr = \case
   -- With only a default branch there is no need to bind the matched value as it
   -- should be accessible in the outer scope.
@@ -599,7 +600,7 @@ exprEq
   :: ReductionCtx
   -> Expr
   -> Expr
-  -> Either (Error Expr Type Pattern TypeCtx) Bool
+  -> Either Error Bool
 exprEq ctx e0 e1 = do
   redE0 <- reduce ctx e0
   redE1 <- reduce ctx e1

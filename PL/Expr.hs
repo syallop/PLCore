@@ -66,8 +66,6 @@ module PL.Expr
   , ExprFor
   , ExprF (..)
 
-  , DefaultPhase
-
   , mapSubExpressions
   , exprType
   , branchType
@@ -621,7 +619,6 @@ type instance BigAppExtension DefaultPhase = Void
 -- TODO: Should _this_ be unit instead of void?
 type instance ExprExtension DefaultPhase = Void
 
-type instance BindingFor        DefaultPhase = Var
 type instance ContentBindingFor DefaultPhase = ContentName
 type instance AbstractionFor    DefaultPhase = Type
 
@@ -688,11 +685,14 @@ mapSubExpressions f e = case e of
     -> BigApp (f fExpr) xTy
   e -> e
 
+type instance ErrorExpr DefaultPhase = Expr
+
+
 -- | Under a binding context, type check an expression.
 exprType
   :: TypeCheckCtx
   -> Expr
-  -> Either (Error Expr Type Pattern TypeCtx) Type
+  -> Either Error Type
 exprType ctx e = case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
@@ -797,7 +797,7 @@ exprType ctx e = case e of
 
           -- Type must be in the set somewhere...
           -- TODO
-          _ <- if Set.member (Right True :: Either (Error Expr Type Pattern TypeCtx) Bool) . Set.map (\t -> checkEqual exprTy t ctx) $ unionTypes
+          _ <- if Set.member (Right True) . Set.map (\t -> checkEqual exprTy t ctx) $ unionTypes
                  then Right ()
                  else Left $ EMsg $ text "Expressions type is not within the union"
 
@@ -1058,3 +1058,5 @@ lamise :: (LamExtension phase ~ Void, AbstractionFor phase ~ TypeFor phase) => [
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise [t]       e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
+
+

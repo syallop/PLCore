@@ -196,12 +196,10 @@ instance Shortable Hash ShortHash where
      = let bs = shortenAgainst (hashBytes sourceHash) (Just $ hashBytes againstHash)
         in ShortHash (hashAlgorithm sourceHash) bs
 
-  isShortened (ShortHash shortAlg shortBytes) longHash
-    | shortAlg /= hashAlgorithm longHash
-     = False
-
-    | otherwise
-     = isShortened shortBytes (hashBytes longHash)
+  isShortened shortHash longHash
+    = let (shortAlg,shortText) = unBase58ShortHash shortHash
+          (longAlg, longText)  = unBase58ShortHash . toShort $ longHash
+       in shortAlg == longAlg && Text.isPrefixOf shortText longText
 
 -- | Given a ShortHash, return all known larger Hashes
 largerHashes

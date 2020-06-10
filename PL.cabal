@@ -163,4 +163,3 @@ test-suite hspec
                    , GeneralizedNewtypeDeriving
                    , LambdaCase
 
-  default-language:    Haskell2010

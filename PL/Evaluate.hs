@@ -112,6 +112,25 @@ runEvaluate
   -> IO (Either Error (EvaluationCtx, a))
 runEvaluate ctx e = _evaluate e ctx
 
+evaluateFail
+  :: Error
+  -> Evaluate a
+evaluateFail err = Evaluate $ \_ -> pure . Left $ err
+
+-- Execute a function on the underlying CodeStore.
+withCodeStore
+  :: CodeStoreFunction a
+  -> Evaluate a
+withCodeStore f = Evaluate $ \ctx -> do
+  eRes <- runCodeStoreFunction (_evaluationCodeStore ctx) f
+  case eRes of
+    Left err
+      -> pure . Left $ err
+
+    Right (codeStore, res)
+      -> pure . Right $ (ctx{_evaluationCodeStore = codeStore}, res)
+  undefined
+
 instance Functor Evaluate where
   fmap f (Evaluate e) = Evaluate $ \ctx -> do
     r <- e ctx
@@ -215,31 +234,14 @@ lookupBoundVar b = Evaluate $ \ctx -> pure $
 lookupContentBinding
   :: ContentName
   -> Evaluate Expr
-lookupContentBinding c = Evaluate $ \ctx -> do
-  let errCtx = EMsg . mconcat $
-       [ text "Failed to locate expression named:"
-       , lineBreak
-       , indent1 . string . show . contentName $ c
-       , lineBreak
-       , text "This implies either:"
-       , lineBreak
-       , indent1 . mconcat $ [ text "- The code store has lost data. The final backing storage should be reliable."
-                             , text "- An expression was entered into the store before checking whether the things it referenced existed."
-                             ]
-       ]
+lookupContentBinding c = do
+  mExpr <- withCodeStore $ lookupExpr (contentName c)
+  case mExpr of
+    Nothing
+     -> evaluationFail . EMsg . text $ "Unknown expression. All expressions must be known before the evaluation phase."
 
-  eRes <- lookupExpr (_evaluationCodeStore ctx) (contentName c)
-  case eRes of
-    Left err
-      -> pure . Left . EContext errCtx $ err
-
-    Right (codeStore', mExpr)
-      -> case mExpr of
-           Nothing
-             -> pure . Left . EContext errCtx . EMsg . text $ "Unknown expression. All expressions must be known before the evaluation phase."
-
-           Just expr
-             -> pure . Right $ (ctx{_evaluationCodeStore = codeStore'}, expr)
+    Just expr
+     -> pure expr
 
 -- | Context after an Expr is applied.
 underAppliedExpression

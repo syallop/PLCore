@@ -117,6 +117,24 @@ runResolve
   -> IO (Either Error (ResolveCtx, a))
 runResolve ctx r = _resolve r ctx
 
+resolveFail
+  :: Error
+  -> Resolve a
+resolveFail err = Resolve $ \_ -> pure . Left $ err
+
+-- Execute a function on the underlying CodeStore.
+withCodeStore
+  :: C.CodeStoreFunction a
+  -> Resolve a
+withCodeStore f = Resolve $ \ctx -> do
+  eRes <- C.runCodeStoreFunction (_resolveCodeStore ctx) f
+  case eRes of
+    Left err
+      -> pure . Left $ err
+
+    Right (codeStore, res)
+      -> pure . Right $ (ctx{_resolveCodeStore = codeStore}, res)
+
 instance Functor Resolve where
   fmap f (Resolve resolve) = Resolve $ \ctx -> do
     r <- resolve ctx
@@ -165,30 +183,21 @@ instance Monad Resolve where
 resolveExprHash
   :: ShortHash
   -> Resolve Hash
-resolveExprHash shortHash = Resolve $ \ctx -> do
-  eRes <- C.largerExprHashes (_resolveCodeStore ctx) shortHash
-  let errCtx = EContext (EMsg . mconcat $ [text "Resolving expression short-hash:"
-                                          ,lineBreak
-                                          ,indent1 . string . show $ shortHash
-                                          ])
-  case eRes of
-    Left err
-      -> pure . Left . errCtx $ err
+resolveExprHash shortHash = do
+  hashes <- withCodeStore $ C.largerExprHashes shortHash
+  case hashes of
+    []
+      -> resolveFail . EMsg . text $ "No known matching hashes"
 
-    Right (codeStore', hashes)
-      -> case hashes of
-           []
-             -> pure . Left . errCtx . EMsg . text $ "No known matching hashes"
+    [hash]
+      -> pure hash
 
-           [hash]
-             -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, hash)
-
-           hashes
-             -> pure . Left . errCtx . EMsg . mconcat $
-                 [ text "More than one hash with the given prefix was found. did you mean one of these?"
-                 , lineBreak
-                 , bulleted . fmap (string . show) $ hashes
-                 ]
+    hashes
+      -> resolveFail . EMsg . mconcat $
+          [ text "More than one hash with the given prefix was found. did you mean one of these?"
+          , lineBreak
+          , bulleted . fmap (string . show) $ hashes
+          ]
 
 -- | Attempt to resolve a ShortHash for a type to an unambiguous Hash.
 --
@@ -198,29 +207,21 @@ resolveExprHash shortHash = Resolve $ \ctx -> do
 resolveTypeHash
   :: ShortHash
   -> Resolve Hash
-resolveTypeHash shortHash = Resolve $ \ctx -> do
-  eRes <- C.largerTypeHashes (_resolveCodeStore ctx) shortHash
-  let errCtx = EContext (EMsg . mconcat $ [text "Resolving type short-hash:"
-                                          ,lineBreak
-                                          ,indent1 . string . show $ shortHash
-                                          ])
-  case eRes of
-    Left err
-      -> pure . Left . errCtx $ err
+resolveTypeHash shortHash = do
+  hashes <- withCodeStore $ C.largerTypeHashes shortHash
+  case hashes of
+    []
+      -> resolveFail . EMsg . text $ "No known matching hashes"
 
-    Right (codeStore', hashes)
-      -> case hashes of
-           []
-             -> pure . Left . errCtx . EMsg . text $ "No known matching hashes"
+    [hash]
+      -> pure hash
 
-           [hash]
-             -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, hash)
-
-           hashes
-             -> pure . Left . errCtx . EMsg . mconcat $
-                 [ text "More than one hash with the given prefix was found. did you mean one of these?"
-                 , string . show $ hashes
-                 ]
+    hashes
+      -> resolveFail . EMsg . mconcat $
+          [ text "More than one hash with the given prefix was found. did you mean one of these?"
+          , lineBreak
+          , bulleted . fmap (string . show) $ hashes
+          ]
 
 -- | Attempt to resolve a ShortHash for a kind to an unambiguous Hash.
 --
@@ -230,81 +231,38 @@ resolveTypeHash shortHash = Resolve $ \ctx -> do
 resolveKindHash
   :: ShortHash
   -> Resolve Hash
-resolveKindHash shortHash = Resolve $ \ctx -> do
-  eRes <- C.largerKindHashes (_resolveCodeStore ctx) shortHash
-  let errCtx = EContext (EMsg . mconcat $ [text "Resolving kind short-hash:"
-                                          ,lineBreak
-                                          ,indent1 . string . show $ shortHash
-                                          ])
-  case eRes of
-    Left err
-      -> pure . Left . errCtx $ err
+resolveKindHash shortHash = do
+  hashes <- withCodeStore $ C.largerKindHashes shortHash
+  case hashes of
+    []
+      -> resolveFail . EMsg . text $ "No known matching hashes"
 
-    Right (codeStore', hashes)
-      -> case hashes of
-           []
-             -> pure . Left . errCtx . EMsg . text $ "No known matching hashes"
+    [hash]
+      -> pure hash
 
-           [hash]
-             -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, hash)
-
-           hashes
-             -> pure . Left . errCtx . EMsg . mconcat $
-                 [ text "More than one hash with the given prefix was found. did you mean one of these?"
-                 , string . show $ hashes
-                 ]
+    hashes
+      -> resolveFail . EMsg . mconcat $
+          [ text "More than one hash with the given prefix was found. did you mean one of these?"
+          , string . show $ hashes
+          ]
 
 -- | Given an Expr Hash, shorten it to the shortest unambiguous ShortHash.
 shortenExprHash
   :: Hash
   -> Resolve ShortHash
-shortenExprHash exprHash = Resolve $ \ctx -> do
-  eRes <- C.shortenExprHash (_resolveCodeStore ctx) exprHash
-  case eRes of
-    Left err
-      -> pure . Left . EContext (EMsg . mconcat $ [ text "Shortening expr hash:"
-                                                  , lineBreak
-                                                  , indent1 . string . show $ exprHash
-                                                  ]
-                                ) $ err
-
-    Right (codeStore', shortHash)
-      -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, shortHash)
+shortenExprHash = withCodeStore . C.shortenExprHash
 
 -- | Given a Type Hash, shorten it to the shortest unambiguous ShortHash.
 shortenTypeHash
   :: Hash
   -> Resolve ShortHash
-shortenTypeHash typeHash = Resolve $ \ctx -> do
-  eRes <- C.shortenTypeHash (_resolveCodeStore ctx) typeHash
-  case eRes of
-    Left err
-      -> pure . Left . EContext (EMsg . mconcat $ [ text "Shortening type hash:"
-                                                  , lineBreak
-                                                  , indent1 . string . show $ typeHash
-                                                  ]
-                                ) $ err
-
-    Right (codeStore', shortHash)
-      -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, shortHash)
+shortenTypeHash = withCodeStore . C.shortenTypeHash
 
 -- | Given a Kind Hash, shorten it to the shortest unambiguous ShortHash.
 shortenKindHash
   :: Hash
   -> Resolve ShortHash
-shortenKindHash kindHash = Resolve $ \ctx -> do
-  eRes <- C.shortenKindHash (_resolveCodeStore ctx) kindHash
-  case eRes of
-    Left err
-      -> pure . Left . EContext (EMsg . mconcat $ [ text "Shortening kind hash:"
-                                                  , lineBreak
-                                                  , indent1 . string . show $ kindHash
-                                                  ]
-                                ) $ err
-
-    Right (codeStore', shortHash)
-      -> pure . Right $ (ctx{_resolveCodeStore=codeStore'}, shortHash)
-
+shortenKindHash = withCodeStore . C.shortenKindHash
 
 -- | Two expression phases are identical but:
 -- - The first uses potentially ambiguous ShortHashes

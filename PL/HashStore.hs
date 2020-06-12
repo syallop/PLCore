@@ -23,6 +23,8 @@ module PL.HashStore
   ( HashStore ()
   , HashBackingStorage
   , newHashStore
+
+  , HashStoreResult (..)
   , storeByHash
   , lookupByHash
 
@@ -70,6 +72,12 @@ type HashBackingStorage s v = ShortStore s Hash ShortHash v
 newHashStore :: (Hashable v, HashBackingStorage s v, Show (s Hash v)) => s Hash v -> HashStore v
 newHashStore s = HashStore s
 
+-- | The result of successfully storing something against it's Hash.
+data HashStoreResult k = HashStoreResult
+  { _storedAgainstHash :: Hash          -- ^ The hash key used
+  , _storeResult       :: StoreResult k -- ^ The type of success
+  }
+
 -- | Store a value 'v' in the 'HashStore' using the provided algorithm to
 -- generate the Hash that will be used as the key.
 --
@@ -87,7 +95,7 @@ storeByHash
   :: HashStore v
   -> HashAlgorithm
   -> v
-  -> IO (Either (ErrorFor phase) (HashStore v, StoreResult v, Hash))
+  -> IO (Either (ErrorFor phase) (HashStore v, HashStoreResult v))
 storeByHash h alg v = case h of
   HashStore s
     -> do let hashKey = hashWith alg v
@@ -97,7 +105,7 @@ storeByHash h alg v = case h of
               -> pure . Left $ err
 
             Right (s', res)
-              -> pure . Right $ (HashStore s', res, hashKey)
+              -> pure . Right $ (HashStore s', HashStoreResult hashKey res)
 
 -- | Retrieve a store value from a HashStore using it's Hash as a key.
 lookupByHash

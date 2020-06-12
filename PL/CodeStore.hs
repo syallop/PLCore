@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : PL.CodeStore
 Copyright   : (c) Samuel A. Yallop, 2020
@@ -78,6 +79,8 @@ import PL.Serialize
 import PL.Expr
 import PL.Type
 import PL.Kind
+
+import PLPrinter.Doc
 
 -- | A CodeStore co-ordinates lookup and storage of:
 -- - Expressions
@@ -187,6 +190,20 @@ instance Monad CodeStoreFunction where
         -> let CodeStoreFunction fb = g a
             in fb codeStore'
 
+{- Internal helper functions to reduce chance of mistake modifying
+   stores incorrectly.
+
+   TODO: Explore tagging Hashes with the type of thing they hash to make these
+   bugs difficult. This would also allow resolving the intended stores by type,
+   possibly reducing the api surface area.
+-}
+
+-- Inject an error into the CodeStoreFunction
+codeStoreFunctionFail
+  :: Error
+  -> CodeStoreFunction a
+codeStoreFunctionFail err = CodeStoreFunction $ \_ -> pure . Left $ err
+
 -- Modify the contained expression store, returning a single result.
 withExprStore
   :: (HashStore Expr -> IO (Either Error (HashStore Expr, a)))
@@ -223,6 +240,7 @@ withKindStore f = CodeStoreFunction $ \codeStore -> do
     Right (kindStore',a)
       -> pure . Right $ (codeStore{_kindStore = kindStore'}, a)
 
+-- Modify the contained expr-has-type store, returning a single result
 withExprTypeStore
   :: (forall s. Store s Hash Hash => s Hash Hash -> IO (Either Error (s Hash Hash, a)))
   -> CodeStoreFunction a
@@ -235,6 +253,7 @@ withExprTypeStore f = CodeStoreFunction $ \codeStore -> case codeStore of
             Right (exprTypeStore',a)
               -> pure . Right $ (CodeStore exprStore typeStore kindStore exprTypeStore' typeKindStore, a)
 
+-- Modify the contained type-has-kind store, retuning a single result
 withTypeKindStore
   :: (forall s. Store s Hash Hash => s Hash Hash -> IO (Either Error (s Hash Hash, a)))
   -> CodeStoreFunction a
@@ -247,19 +266,21 @@ withTypeKindStore f = CodeStoreFunction $ \codeStore -> case codeStore of
             Right (typeKindStore',a)
               -> pure . Right $ (CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore', a)
 
-
+-- Over some HashStore, store a value by its SHA512 hash.
 codeHashStore
   :: ((HashStore v -> IO (Either Error (HashStore v, HashStoreResult v))) -> a)
   -> v
   -> a
 codeHashStore withHashStore value = withHashStore $ \s -> storeByHash s SHA512 value
 
+-- Over some HashStore, lookup a value by its hash.
 codeHashLookup
   :: ((HashStore v -> IO (Either Error (HashStore v, Maybe v))) -> a)
   -> Hash
   -> a
 codeHashLookup withHashStore hash = withHashStore $ \s -> lookupByHash s hash
 
+-- Over some Store, store a value against a key.
 codeStore
   :: ((forall s. Store s k v => s k v -> IO (Either Error (s k v, StoreResult v))) -> a)
   -> k
@@ -267,23 +288,28 @@ codeStore
   -> a
 codeStore withStore key value = withStore $ \s -> store s key value
 
+-- Over some Store, lookup a value given it's key.
 codeLookup
   :: ((forall s. Store s k v => s k v -> IO (Either Error (s k v, Maybe v))) -> a)
   -> k
   -> a
 codeLookup withStore k = withStore $ \s -> lookup s k
 
+-- Over some HashStore, shorten a hash.
 codeHashShorten
   :: ((HashStore v -> IO (Either Error (HashStore v, ShortHash))) -> a)
   -> Hash
   -> a
 codeHashShorten withHashStore hash = withHashStore $ \s -> shortenHash s hash
 
+-- Over some HashStore, largen a hash.
 codeHashLargen
   :: ((HashStore v -> IO (Either Error (HashStore v, [Hash]))) -> a)
   -> ShortHash
   -> a
 codeHashLargen withHashStore shortHash = withHashStore $ \s -> largerHashes s shortHash
+
+{- External api -}
 
 -- | Store an expression by it's Hash.
 --
@@ -291,7 +317,12 @@ codeHashLargen withHashStore shortHash = withHashStore $ \s -> largerHashes s sh
 storeExpr
   :: Expr
   -> CodeStoreFunction (HashStoreResult Expr)
-storeExpr = codeHashStore withExprStore
+storeExpr (ContentBinding name) = codeStoreFunctionFail . EMsg . mconcat $
+  [ text "Top-level Content Bindings cannot be stored (as they would replace the expression they reference with themselves!):"
+  , lineBreak
+  , indent1 . string . show $ name
+  ]
+storeExpr expr = codeHashStore withExprStore expr
 
 -- | Store a type by it's Hash.
 --
@@ -299,7 +330,12 @@ storeExpr = codeHashStore withExprStore
 storeType
   :: Type
   -> CodeStoreFunction (HashStoreResult Type)
-storeType = codeHashStore withTypeStore
+storeType (TypeContentBinding name) = codeStoreFunctionFail . EMsg . mconcat $
+  [ text "Top-level Type Content Bindings cannot be stored (as they would replace the type they reference with themselves!):"
+  , lineBreak
+  , indent1 . string . show $ name
+  ]
+storeType typ = codeHashStore withTypeStore typ
 
 -- | Store a kind by it's Hash.
 --

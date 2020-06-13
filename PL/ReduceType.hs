@@ -281,7 +281,7 @@ reduceTypeStep ctx ty = case ty of
             -- Similar to TypeBindings - this should have been reduced away
             -- already.
             NamedExt _ext n
-              -> case lookupTypeNameInfo n (_typeReductionTypeCtx ctx) of
+              -> case lookupTypeNameType n (_typeReductionTypeCtx ctx) of
                    Nothing
                      -> Left $ EMsg $ text "Cant reduce type application to a name which does not exist in the context"
 
@@ -311,17 +311,18 @@ reduceTypeStep ctx ty = case ty of
   -- - Should we reduce the definition of recursive types (being careful not to
   --   expand the recursion?)
   NamedExt ext n
-    -> case lookupTypeNameInitialInfo n (_typeReductionTypeCtx ctx) of
+    -> case lookupTypeNameInitialType n (_typeReductionTypeCtx ctx) of
          Nothing
            -> Left $ ETypeNotDefined n (_typeReductionTypeCtx ctx)
 
-         Just (TypeInfo NonRec k ty)
-           -> Right ty
-
          -- Do not expose the definition of recursive types so that recursive
          -- reduction terminates!
-         Just (TypeInfo Rec k ty)
+         Just (TypeMuExt _ _ _)
            -> pure $ NamedExt ext n
+
+         Just ty
+           -> Right ty
+
 
   -- Reduce a single step under the arrow type.
   ArrowExt ext from to

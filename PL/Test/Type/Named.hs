@@ -82,7 +82,7 @@ recursiveType
      ,NamedExtension phase    ~ NoExt
      )
   => TypeFor phase
-recursiveType = SumT $ NE.fromList [EmptyProductT,Named "Recursive"]
+recursiveType = SumT $ NE.fromList [EmptyProductT,TypeSelfBinding]
 
 simpleNameTestCase
   :: Source
@@ -157,5 +157,4 @@ recursiveNameTestCase src
           }
       ]
   }
-
 

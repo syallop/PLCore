@@ -206,8 +206,8 @@ natSumType
      )
   => NonEmpty (TypeFor phase)
 natSumType = NE.fromList $
-  [EmptyProductT
-  ,Named "Nat"
+  [ EmptyProductT
+  , TypeSelfBinding
   ]
 
 zTerm
@@ -426,7 +426,7 @@ listSumType
   => NonEmpty (TypeFor phase)
 listSumType = NE.fromList $
  [ EmptyProductT -- : List a
- , ProductT $ [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]
+ , ProductT $ [TypeBinding $ TyVar VZ, TypeApp TypeSelfBinding (TypeBinding $ TyVar VZ)]
  ]
 
 emptyTerm

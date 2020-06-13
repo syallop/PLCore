@@ -127,13 +127,13 @@ typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductio
        (_, NamedExt _ _)
          -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
        (NamedExt _ n0, _)
-         -> let it0 = lookupTypeNameInitialInfo n0 typeNameCtx
+         -> let it0 = lookupTypeNameInitialType n0 typeNameCtx
              in case it0 of
                   Nothing
                     -> Left $ EMsg $ text "Failed to lookup named type"
 
                   Just type0
-                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (_typeInfoType type0) type1
+                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
 
        -- ContentBindings are equal if they have the same hash.
        -- TODO: Should we require the name exists in the context as well?
@@ -370,17 +370,13 @@ typeKind
   -> Either (ErrorFor phase) Kind
 typeKind typeBindCtx contentKinds mSelfKind typeCtx ty = case ty of
 
-  -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.
-  -- Either:
-  -- - Tag types with their kind when theyre added to the context, and trust that.
-  -- - ???
   NamedExt _ n
-    -> case lookupTypeNameInitialInfo n typeCtx of
+    -> case lookupTypeNameInitialType n typeCtx of
          Nothing
            -> Left $ EMsg $ text "No such type name in kind check"
 
-         Just (TypeInfo _ ky _)
-           -> Right ky
+         Just ty
+           -> typeKind typeBindCtx contentKinds mSelfKind typeCtx ty
 
   --
   --   from :: fromKy     to :: toKy

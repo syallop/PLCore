@@ -726,12 +726,12 @@ exprType ctx e =
             -- We only need to prove the first level of the definition is an
             -- Arrow.
             NamedExt _ n
-              -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+              -> case lookupTypeNameInitialType n (_typeCtx ctx) of
                    Nothing
                      -> Left . EContext (EMsg $ text "Reduction: function application") . ETypeNotDefined n . _typeCtx $ ctx
 
-                   Just typeInfo
-                     -> Right . _typeInfoType $ typeInfo
+                   Just ty
+                     -> Right ty
 
             TypeContentBindingExt _ c
               -> lookupTypeContentType c ctx
@@ -923,12 +923,12 @@ exprType ctx e =
             -- We only need to prove the first level of the definition is a
             -- Big-Arrow.
             NamedExt _ n
-              -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+              -> case lookupTypeNameInitialType n (_typeCtx ctx) of
                    Nothing
                      -> Left . EContext (EMsg $ text "Reduction: Big application") . ETypeNotDefined n . _typeCtx $ ctx
 
-                   Just typeInfo
-                     -> Right . _typeInfoType $ typeInfo
+                   Just ty
+                     -> Right ty
 
             TypeContentBindingExt _ c
               -> lookupTypeContentType c ctx

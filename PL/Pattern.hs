@@ -318,12 +318,12 @@ checkWithPattern pat expectTy ctx = do
   -- definition.
   rExpectTy <- case expectTy of
     NamedExt _ n
-      -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+      -> case lookupTypeNameInitialType n (_typeCtx ctx) of
            Nothing
              -> Left . EContext (EMsg $ text "Checking pattern") . ETypeNotDefined n . _typeCtx $ ctx
 
-           Just typeInfo
-             -> Right . _typeInfoType $ typeInfo
+           Just ty
+             -> Right ty
     _
       -> Right expectTy
 

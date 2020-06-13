@@ -23,6 +23,7 @@ module PL.Error
       ( EMsg
       , EContext
 
+      , ETypeChecking
       , ETypeNotDefined
       , EAppMismatch
       , EBigAppMismatch
@@ -30,6 +31,7 @@ module PL.Error
       , ETypeAppLambda
       , ESumMismatch
       , ECaseDefaultMismatch
+      , ECaseBranchMismatch
       , ETypeReductionLimitReached
       , EPatternMismatch
       , EMultipleMatchesInUnion
@@ -77,6 +79,12 @@ data ErrorFor phase
   -- | Generic error
   = EMsg Doc
 
+  -- | An error is a context for some deeper error.
+  | EContext (ErrorFor phase) (ErrorFor phase)
+
+  -- | An error occured type checking an expression.
+  | ETypeChecking (ErrorExpr phase)
+
   -- | No such type in context
   | ETypeNotDefined (ErrorTypeName phase) (ErrorTypeCtx phase)
 
@@ -100,6 +108,9 @@ data ErrorFor phase
   -- different types.
   | ECaseDefaultMismatch (ErrorType phase) (ErrorType phase)
 
+  -- | We expected a case branch to have a type but it had another.
+  | ECaseBranchMismatch (ErrorType phase) (ErrorType phase)
+
   -- | A given reduction limit has been exceeded when trying to reduce a type.
   | ETypeReductionLimitReached (ErrorType phase)
 
@@ -122,8 +133,6 @@ data ErrorFor phase
   -- | Failed to lookup a types kind
   | EBindCtxTypeLookupFailure Int (BindCtx (ErrorTypeBinding phase) (ErrorKind phase))
 
-  -- | An error is a context for some deeper error.
-  | EContext (ErrorFor phase) (ErrorFor phase)
 
 deriving instance
   ( Eq (ErrorExpr phase)
@@ -201,6 +210,23 @@ ppError pp = \case
   EMsg doc
     -> doc
 
+  EContext context err
+    -> mconcat [ text "Error:"
+               , lineBreak
+               , indent1 . ppError pp $ err
+               , lineBreak
+               , text "In context:"
+               , lineBreak
+               , indent1 . ppError pp $ context
+               ]
+
+  ETypeChecking expr
+    -> mconcat [ text "Checking type of expression:"
+               , lineBreak
+               , indent1 . _ppExpr pp $ expr
+               ]
+
+
   ETypeNotDefined name typeCtx
     -> mconcat [ text "Type named:"
                , lineBreak
@@ -273,6 +299,19 @@ ppError pp = \case
                , text "But branches must have the same type."
                ]
 
+
+  ECaseBranchMismatch expectedTy gotTy
+    -> mconcat
+        [ text "Case branch has unexpected type. Expected:"
+        , lineBreak
+        , indent1 . _ppType pp $ expectedTy
+        , lineBreak
+        , text "But got:"
+        , lineBreak
+        , indent1 . _ppType pp $ gotTy
+        ]
+
+
   EPatternMismatch expectedTy gotPattern
     -> mconcat [ text "In a case analysis the scrutinee expression had type: "
                , lineBreak
@@ -335,15 +374,6 @@ ppError pp = \case
                , ppBindCtx (_ppTypeBinding pp) (_ppKind pp) bindCtx
                ]
 
-  EContext context err
-    -> mconcat [ text "Error:"
-               , lineBreak
-               , indent1 . ppError pp $ err
-               , lineBreak
-               , text "In context:"
-               , lineBreak
-               , indent1 . ppError pp $ context
-               ]
 
 instance
   ( Document (ErrorExpr phase)

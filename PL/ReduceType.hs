@@ -20,6 +20,8 @@ module PL.ReduceType
 
   , reduceType
   , reduceTypeStep
+
+  , destructTypeMu
   )
   where
 
@@ -46,6 +48,7 @@ import qualified Data.Text as Text
 -- expression.
 data TypeReductionCtx phase = TypeReductionCtx
   { _typeReductionTypeBindings :: Bindings (TypeFor phase) -- ^ Types that are either Bound or Unbound by an outer type abstraction.
+  , _typeReductionSelfType     :: Maybe (TypeFor phase)    -- ^ Assertion of the current self-type
   , _typeReductionTypeCtx      :: TypeCtxFor phase         -- ^ Associated named types to their TypeInfo definitions.
   , _typeReductionGas          :: Maybe Int                -- ^ Proportional to the amount of reduction steps allowed before reduction is aborted. All reduction steps should terminate eventually however this parameter can be used to detect bugs, I.E. diverging reduction or inefficient reduction paths.
   }
@@ -57,6 +60,7 @@ topTypeReductionCtx
   -> TypeReductionCtx phase
 topTypeReductionCtx typeCtx = TypeReductionCtx
   { _typeReductionTypeBindings = emptyBindings
+  , _typeReductionSelfType     = Nothing
   , _typeReductionTypeCtx      = typeCtx
   , _typeReductionGas          = Just 100
   }
@@ -124,6 +128,12 @@ underTypeTypeAbstraction
   -> TypeReductionCtx phase
 underTypeTypeAbstraction ctx = ctx{_typeReductionTypeBindings = unbound . bury . _typeReductionTypeBindings $ ctx}
 
+-- | Context under the assertion that the self type is some type.
+underSelfType
+  :: TypeFor phase
+  -> TypeReductionCtx phase
+  -> TypeReductionCtx phase
+underSelfType itselfTy ctx = ctx{_typeReductionSelfType = Just itselfTy}
 
 -- | Reducing a Type means to walk down the AST that is presumed to be:
 -- - Type checked
@@ -210,6 +220,10 @@ reduceTypeStep ctx ty = case ty of
             Bound boundTy
               -> boundTy
 
+  -- TODO: Should we reduce here or should reduction of selves be explicit?
+  TypeSelfBindingExt ext
+    -> Right ty
+
   -- ContentBindings are not (currently) reduced - they're sticking points for
   -- evaluation.
   --
@@ -283,6 +297,9 @@ reduceTypeStep ctx ty = case ty of
   TypeLamExt ext takeKind tyBody
     -> (TypeLamExt ext takeKind) <$> reduceTypeStep (underTypeTypeAbstraction ctx) tyBody
 
+  TypeMuExt ext expectKind itselfTy
+    -> TypeMuExt ext expectKind <$> reduceTypeStep (underSelfType itselfTy ctx) itselfTy
+
   -- Reduce a single step under the big arrow types.
   BigArrowExt ext fromKind toTy
     -- TODO: Should bindings be wrapped with 'unbound'?
@@ -324,4 +341,67 @@ reduceTypeStep ctx ty = case ty of
     -> (UnionTExt ext . Set.fromList) <$> mapM (reduceTypeStep ctx) (Set.toList types)
 
   _ -> error "Non-exhaustive pattern in type reduction"
+
+-- | Remove a single layer of self-references within a type that it assumed to be
+-- a top-level Mu type.
+destructTypeMu
+  :: forall phase
+   . Ord (TypeFor phase)
+  => TypeReductionCtx phase
+  -> TypeFor phase
+  -> Either (ErrorFor phase) (TypeFor phase)
+destructTypeMu ctx ty = destructTypeMu' (ctx{_typeReductionSelfType = Just ty}) ty
+  where
+    destructTypeMu'
+      :: TypeReductionCtx phase
+      -> TypeFor phase
+      -> Either (ErrorFor phase) (TypeFor phase)
+    destructTypeMu' ctx ty = case ty of
+      TypeSelfBindingExt ext
+        -> case _typeReductionSelfType ctx of
+             Nothing
+               -> Left . EMsg . text $ "Cannot destruct a type as it is not contained within a Mu type"
+
+             Just ty
+               -> Right ty
+
+      -- Stop here because we only support one level of self-types.
+      TypeMuExt ext expectKind itselfTy
+        -> pure $ TypeMuExt ext expectKind itselfTy
+
+      TypeBindingExt ext b
+        -> pure $ TypeBindingExt ext b
+
+      TypeContentBindingExt ext c
+        -> pure $ TypeContentBindingExt ext c
+
+      TypeAppExt ext f x
+        -> TypeAppExt ext
+             <$> destructTypeMu' ctx f
+             <*> destructTypeMu' ctx x
+
+      TypeLamExt ext takeKind tyBody
+        -> TypeLamExt ext takeKind <$> destructTypeMu' ctx tyBody
+
+      BigArrowExt ext fromKind toTy
+        -> BigArrowExt ext fromKind <$> destructTypeMu' ctx toTy
+
+      -- TODO: Should we destruct under names?
+      NamedExt ext n
+        -> pure $ NamedExt ext n
+
+      ArrowExt ext from to
+        -> ArrowExt ext <$> destructTypeMu' ctx from
+                        <*> destructTypeMu' ctx to
+
+      SumTExt ext types
+        -> SumTExt ext <$> mapM (destructTypeMu' ctx) types
+
+      ProductTExt ext types
+        -> ProductTExt ext <$> mapM (destructTypeMu' ctx) types
+
+      UnionTExt ext types
+        -> (UnionTExt ext . Set.fromList) <$> mapM (destructTypeMu' ctx) (Set.toList types)
+
+      _ -> error "Non-exhaustive pattern in destruct type mu"
 

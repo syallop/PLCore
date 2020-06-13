@@ -380,11 +380,17 @@ stripTypeComments = \case
   TypeAppExt ext x y
     -> TypeAppExt ext (stripTypeComments x) (stripTypeComments y)
 
+  TypeMuExt ext kind itself
+    -> TypeMuExt ext kind (stripTypeComments itself)
+
   TypeBindingExt ext b
     -> TypeBindingExt ext b
 
   TypeContentBindingExt ext c
     -> TypeContentBindingExt ext c
+
+  TypeSelfBindingExt ext
+    -> TypeSelfBindingExt ext
 
   _ -> error "Non-exhaustive pattern in stripTypeComments"
 

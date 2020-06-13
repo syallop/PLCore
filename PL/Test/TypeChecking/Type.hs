@@ -64,6 +64,7 @@ typeChecksTypesSpec testCases pp =
                                  (_resolvesTo testCase)
                                  (_typeBindCtx    . _underTypeCheckCtx $ testCase)
                                  (_contentHasKind . _underTypeCheckCtx $ testCase)
+                                 (_selfKind       . _underTypeCheckCtx $ testCase)
                                  (_typeCtx        . _underTypeCheckCtx $ testCase)
                                  (_typeBindings   . _underTypeCheckCtx $ testCase)
                                  (_hasKind testCase)
@@ -78,12 +79,13 @@ typeCheckTypeSpec
   -> Type
   -> BindCtx TyVar Kind
   -> Map.Map ContentName Kind
+  -> Maybe Kind
   -> TypeCtx
   -> Bindings Type
   -> Kind
   -> PPError DefaultPhase
   -> Spec
-typeCheckTypeSpec name inputType bindCtx contentHasKind underTypeCtx bindings expectedKind pp = it (Text.unpack name) $ case typeKind bindCtx contentHasKind underTypeCtx inputType of
+typeCheckTypeSpec name inputType bindCtx contentHasKind mSelfKind underTypeCtx bindings expectedKind pp = it (Text.unpack name) $ case typeKind bindCtx contentHasKind mSelfKind underTypeCtx inputType of
   Left err
     -> expectationFailure . Text.unpack . render . ppError pp $ err
 

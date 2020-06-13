@@ -529,13 +529,20 @@ resolveTypeShortHashes = \case
          <$> resolveTypeShortHashes x
          <*> resolveTypeShortHashes y
 
+  TypeMuExt ext expectKind itself
+    -> TypeMuExt ext expectKind
+         <$> resolveTypeShortHashes itself
+
   TypeBindingExt ext b
     -> pure $ TypeBindingExt ext b
+
+  TypeSelfBindingExt ext
+    -> pure $ TypeSelfBindingExt ext
 
   TypeExtensionExt ext
     -> pure $ TypeExtensionExt ext
 
-  _ -> error "Non-exhaustive pattern in stripTypeComments"
+  _ -> error "Non-exhaustive pattern in resolveTypeShortHashes"
 
 -- | Attempt to shorten all Hashes contained within an expression (it's patterns
 -- and it's types) into the shortest unambiguous ShortHashes.

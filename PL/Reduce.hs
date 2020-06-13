@@ -66,6 +66,7 @@ import PLPrinter
 data ReductionCtx = ReductionCtx
   { _reductionExprBindings :: Bindings Expr -- ^ Expressions that are either Bound or Unbound by an outer abstraction.
   , _reductionTypeBindings :: Bindings Type -- ^ Types that are either Bound or Unbound by an outer type abstraction.
+  , _reductionSelfType     :: Maybe Type    -- ^ Possible containing self-type
   , _reductionTypeCtx      :: TypeCtx       -- ^ Associated named types to their TypeInfo definitions.
   , _reductionGas          :: Maybe Int     -- ^ Proportional to the amount of reduction steps allowed before reduction is aborted. All reduction steps should terminate eventually however this parameter can be used to detect bugs, I.E. diverging reduction or inefficient reduction paths.
   }
@@ -169,7 +170,7 @@ lookupVarBinding ctx b =
 toTypeReductionCtx
   :: ReductionCtx
   -> TypeReductionCtx DefaultPhase
-toTypeReductionCtx ctx = TypeReductionCtx (_reductionTypeBindings ctx) (_reductionTypeCtx ctx) (_reductionGas ctx)
+toTypeReductionCtx ctx = TypeReductionCtx (_reductionTypeBindings ctx) (_reductionSelfType ctx) (_reductionTypeCtx ctx) (_reductionGas ctx)
 
 -- | Reducing an 'Expr'ession means to walk down the AST that is presumed to be:
 -- - Type checked

@@ -63,6 +63,7 @@ library
                      , PL.Test.Expr.Product
                      , PL.Test.Expr.Sum
                      , PL.Test.Expr.Union
+                     , PL.Test.Expr.SelfTypes
 
                      , PL.Test.Type
                      , PL.Test.Type.Named

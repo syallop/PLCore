@@ -31,6 +31,10 @@ module PL.Type
   ( Type
   , pattern Named
   , pattern NamedExt
+  , pattern TypeSelfBinding
+  , pattern TypeSelfBindingExt
+  , pattern TypeMu
+  , pattern TypeMuExt
   , pattern Arrow
   , pattern ArrowExt
   , pattern SumT
@@ -139,6 +143,18 @@ data TypeF phase typ
   = NamedF
     { _namedExtension :: NamedExtension phase
     , _hasType        :: TypeName
+    }
+
+  -- | Abstract a type over itself
+  | TypeMuF
+    { _typeMuExtension :: NoExt -- TODO
+    , _expectKind      :: Kind -- TODO: Consider whether we'd prefer using a more intelligent kind-checking algorithm that could infer this.
+    , _itselfType      :: typ
+    }
+
+  -- | Bind outer defined 'self'
+  | TypeSelfBindingF
+    { _typeSelfBindingExtension :: NoExt -- TODO
     }
 
   -- | Arrow is the type of expression functions.
@@ -269,6 +285,7 @@ data TypeF phase typ
     , _name                 :: TypeContentBindingFor phase
     }
 
+
   | TypeExtensionF
     { _typeExtension :: !(TypeExtension phase)
     }
@@ -357,6 +374,12 @@ instance
       TypeContentBindingF ext name
         -> ["{TypeContentBinding ", show ext, " ", show name, "}"]
 
+      TypeMuF ext expectKy itself
+        -> ["{TypeMu ", show ext, " ", show expectKy, " ", show itself, "}"]
+
+      TypeSelfBindingF ext
+        -> ["{TypeSelfBinding ", show ext, "}"]
+
       TypeExtensionF ext
         -> ["{TypeExtension ", show ext, "}"]
 
@@ -408,6 +431,12 @@ instance
     TypeBindingF ext b
       -> HashTag "Type.Binding" [toHashToken ext, toHashToken b]
 
+    TypeMuF ext expectKy itselfTy
+      -> HashTag "Type.Mu" [toHashToken ext, toHashToken expectKy, toHashToken itselfTy]
+
+    TypeSelfBindingF ext
+      -> HashTag "Type.Self" [toHashToken ext]
+
     TypeContentBindingF _ext c
       -> toHashToken c
 
@@ -442,6 +471,24 @@ pattern Named name <- FixPhase (NamedF _ name)
 pattern NamedExt :: NamedExtension phase -> TypeName -> TypeFor phase
 pattern NamedExt ext name <- FixPhase (NamedF ext name)
   where NamedExt ext name =  FixPhase (NamedF ext name)
+
+-- TypeMuF for phases where there is no extension to the constructor.
+pattern TypeMu :: Kind -> TypeFor phase -> TypeFor phase
+pattern TypeMu ky typ <- FixPhase (TypeMuF _ ky typ)
+  where TypeMu ky typ =  FixPhase (TypeMuF noExt ky typ)
+
+pattern TypeMuExt :: NoExt -> Kind -> TypeFor phase -> TypeFor phase
+pattern TypeMuExt ext ky typ <- FixPhase (TypeMuF ext ky typ)
+  where TypeMuExt ext ky typ =  FixPhase (TypeMuF ext ky typ)
+
+-- TypeBindingSelf for phases where there is no extension to the constructor.
+pattern TypeSelfBinding :: TypeFor phase
+pattern TypeSelfBinding <- FixPhase (TypeSelfBindingF _)
+  where TypeSelfBinding =  FixPhase (TypeSelfBindingF noExt)
+
+pattern TypeSelfBindingExt :: NoExt -> TypeFor phase
+pattern TypeSelfBindingExt ext <- FixPhase (TypeSelfBindingF ext)
+  where TypeSelfBindingExt ext =  FixPhase (TypeSelfBindingF ext)
 
 -- ArrowF for phases where there is no extension to the constructor.
 pattern Arrow :: ArrowExtension phase ~ NoExt => TypeFor phase -> TypeFor phase -> TypeFor phase
@@ -598,6 +645,7 @@ instance HasAbs Type where
     TypeLam ky ty -> TypeLam ky (f ty)
 --  Nope(?)
 --  BigArrow ky ty -> BigArrow ky (f ty)
+    TypeMu ky itself -> TypeMu ky (f itself)
     ty            -> ty
 
 instance HasBinding Type TyVar where
@@ -668,6 +716,12 @@ instantiate = instantiate' 0
       TypeContentBinding n
         -> TypeContentBinding n
 
+      TypeMu ky itself
+        -> TypeMu ky (instantiate' i instType itself)
+
+      TypeSelfBinding
+        -> TypeSelfBinding
+
       Named n
         ->  Named n
 
@@ -711,6 +765,12 @@ forgetTypeExtensions = \case
 
   TypeContentBindingExt _ n
     -> TypeContentBinding n
+
+  TypeMuExt _ ky itself
+    -> TypeMu ky (forgetTypeExtensions itself)
+
+  TypeSelfBindingExt _
+    -> TypeSelfBinding
 
   TypeExtensionExt _
     -> TypeExtension
@@ -757,6 +817,12 @@ gatherTypeContentNames = gatherTypeContentNames' Set.empty
 
       TypeBindingExt _ext binding
         -> accNames
+
+      TypeSelfBindingExt _ext
+        -> accNames
+
+      TypeMuExt _ext _ky itself
+        -> gatherTypeContentNames' accNames itself
 
       TypeExtensionExt _
         -> accNames

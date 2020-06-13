@@ -62,12 +62,13 @@ typeEq
      )
   => BindCtx TyVar Kind   -- ^ Associate type variables to their kinds
   -> Bindings (TypeFor phase) -- ^ Type variables are either unbound or bound with some type
+  -> Maybe (TypeFor phase) -- ^ Possible self-type of a containing type
   -> TypeCtxFor phase              -- ^ Associate named types to their TypeInfo definition
   -> Map ContentName (TypeFor phase) -- ^ Cache a mapping of known type content names to their type definitions
   -> TypeFor phase
   -> TypeFor phase
   -> Either (ErrorFor phase) Bool
-typeEq typeBindCtx typeBindings typeNameCtx contentIsType type0 type1 = typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (Just 128) type0 type1
+typeEq typeBindCtx typeBindings mSelfType typeNameCtx contentIsType type0 type1 = typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (Just 128) type0 type1
 
 typeEqWith
   :: ( TyVar ~ TypeBindingFor   phase
@@ -87,13 +88,14 @@ typeEqWith
      )
   => BindCtx TyVar Kind
   -> Bindings (TypeFor phase)
+  -> Maybe (TypeFor phase)
   -> TypeCtxFor phase
   -> Map ContentName (TypeFor phase)
   -> Maybe Int
   -> TypeFor phase
   -> TypeFor phase
   -> Either (ErrorFor phase) Bool
-typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type0 type1
+typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type0 type1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
        [ text "Reduction limit reached when type-checking expression. Comparing two types:"
@@ -123,7 +125,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
        -- To compare a Named type to a non-named type, lookup the definition of the
        -- name and recurse.
        (_, NamedExt _ _)
-         -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 type0
+         -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
        (NamedExt _ n0, _)
          -> let it0 = lookupTypeNameInitialInfo n0 typeNameCtx
              in case it0 of
@@ -131,7 +133,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
                     -> Left $ EMsg $ text "Failed to lookup named type"
 
                   Just type0
-                    -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (_typeInfoType type0) type1
+                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (_typeInfoType type0) type1
 
        -- ContentBindings are equal if they have the same hash.
        -- TODO: Should we require the name exists in the context as well?
@@ -141,7 +143,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
        -- Compare a content-binding to a non-content binding.
        (type0, TypeContentBindingExt _ _)
-         -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 type0
+         -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
        (TypeContentBindingExt _ c0, type1)
          -> case Map.lookup c0 contentIsType of
               Nothing
@@ -151,7 +153,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
                      ]
 
               Just resolvedType0
-                -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) resolvedType0 type1
+                -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) resolvedType0 type1
 
        -- Type bindings are 'equal' when they unify.
        -- TODO: If we're unifying unbound types with types, should we be back
@@ -174,11 +176,11 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
 
                   -- Two bound types are equal if the bound types are equal
                   (Bound type0, Bound type1)
-                    -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
+                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
 
        -- To compare a binding to a non-binding
        (type0, TypeBindingExt _ _)
-         -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 type0
+         -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
        (TypeBindingExt _ b0, type1)
          -> let binding0 = index (Proxy :: Proxy TyVar) typeBindings (bindDepth b0)
                in case binding0 of
@@ -186,20 +188,37 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
                       -> Right True
 
                     Bound type0
-                      -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
+                      -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
+
+       -- TODO: HMM
+       (TypeSelfBindingExt _, TypeSelfBindingExt _)
+         -> Right True
+       (type0, TypeSelfBindingExt _)
+         -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
+       (TypeSelfBindingExt _, type1)
+         -> case mSelfType of
+              Nothing
+                -> Left . EMsg . mconcat $
+                     [ text "Cannot check equality of self type as there is no self-type in context. Checking against:"
+                     , lineBreak
+                     , indent1 . string . show $ type1
+                     ]
+
+              Just selfTy
+                -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) selfTy type1
 
        -- Two type applications are equal if both of their corresponding parts are
        -- equal
        (TypeAppExt _ f0 x0, TypeAppExt _ f1 x1)
-         -> (&&) <$> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) f0 f1
-                 <*> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) x0 x1
+         -> (&&) <$> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) f0 f1
+                 <*> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) x0 x1
 
        -- A TypeApp is equal to something else when, after reducing it, it is equal
        -- to that other thing.
        (ty0, TypeAppExt _ _ _)
-         -> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit type1 ty0
+         -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 ty0
        (TypeAppExt _ f0 x0, ty1)
-         -> case reduceTypeStep (TypeReductionCtx typeBindings typeNameCtx (Just 100)) f0 of
+         -> case reduceTypeStep (TypeReductionCtx typeBindings mSelfType typeNameCtx (Just 128)) f0 of
               Left e
                 -> Left e
 
@@ -209,7 +228,7 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
                      -- The resulting type is then the rhs of the typelam under the
                      -- context of what it was applied to
                      TypeLamExt _ aKy bTy
-                       -> typeEqWith (addBinding aKy typeBindCtx) (bind x0 typeBindings) typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) bTy ty1
+                       -> typeEqWith (addBinding aKy typeBindCtx) (bind x0 typeBindings) mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) bTy ty1
 
                      _ -> Left $ EMsg $ text "In typeEq: Cant type apply a non-lambda type to a type"
 
@@ -217,23 +236,23 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
        -- Arrow types are equal when their corresponding to and from types are the
        -- same
        (ArrowExt _ from0 to0, ArrowExt _ from1 to1)
-         -> (&&) <$> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) from0 from1
-                 <*> typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) to0   to1
+         -> (&&) <$> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) from0 from1
+                 <*> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) to0   to1
 
        (SumTExt _ ts0, SumTExt _ ts1)
-         -> typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (NE.toList ts0) (NE.toList ts1)
+         -> typeEqsWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (NE.toList ts0) (NE.toList ts1)
 
        (ProductTExt _ ts0, ProductTExt _ ts1)
-         -> typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) ts0 ts1
+         -> typeEqsWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) ts0 ts1
 
        (UnionTExt _ ts0, UnionTExt _ ts1)
-         -> typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (Set.toList ts0) (Set.toList ts1)
+         -> typeEqsWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) (Set.toList ts0) (Set.toList ts1)
 
        (BigArrowExt _ fromKy0 toTy0, BigArrowExt _ fromKy1 toTy1)
          -> let newTypeBindCtx  = addBinding fromKy1 typeBindCtx
                 newTypeBindings = unbound $ typeBindings
                in if kindEq fromKy0 fromKy1
-                    then typeEqWith newTypeBindCtx newTypeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) toTy0 toTy1
+                    then typeEqWith newTypeBindCtx newTypeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) toTy0 toTy1
                     else Right False
 
        -- Two type lambda are equivalent if their corresponding from and to are the
@@ -243,7 +262,21 @@ typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit typ
          -> let newTypeBindCtx  = addBinding k0 typeBindCtx
                 newTypeBindings = unbound $ typeBindings
                in (&&) <$> pure (k0 == k1)
-                       <*> typeEqWith newTypeBindCtx newTypeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) ty0 ty1
+                       <*> typeEqWith newTypeBindCtx newTypeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) ty0 ty1
+
+       -- TODO: Implement equality checking of Mu types
+       (TypeMuExt _ ky0 itself0, TypeMuExt _ ky1 itself1)
+         -> (&&) <$> pure (ky0 == ky1)
+                 <*> typeEqWith typeBindCtx typeBindings (Just type0) typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) itself0 itself1
+       (type0, TypeMuExt _ _  _)
+         -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
+
+       -- To check a Mu against a Non-Mu, attempt to Fold the non-Mu and
+       -- recurse. If it checks, it can be lifted.
+       (TypeMuExt noExt expectKy itselfType, type1)
+         -- --> Left . EMsg . text $ "Equality of Mu types to non-mu types is not implemented"
+         -> let foldedType = TypeMuExt noExt expectKy type1
+             in typeEqWith typeBindCtx typeBindings (Just type0) typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 foldedType
 
        -- A non-Named, non identical type
        _ -> Right False
@@ -267,12 +300,13 @@ typeEqs
      )
   => BindCtx TyVar Kind
   -> Bindings (TypeFor phase)
+  -> Maybe (TypeFor phase)
   -> TypeCtxFor phase
   -> Map ContentName (TypeFor phase)
   -> [TypeFor phase]
   -> [TypeFor phase]
   -> Either (ErrorFor phase) Bool
-typeEqs typeBindCtx typeBindings typeNameCtx contentIsType ts0 ts1 = typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType (Just 128) ts0 ts1
+typeEqs typeBindCtx typeBindings mSelfType typeNameCtx contentIsType ts0 ts1 = typeEqsWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (Just 128) ts0 ts1
 
 -- Are two lists of types pairwise equivalent under a typectx?
 typeEqsWith
@@ -292,13 +326,14 @@ typeEqsWith
      )
   => BindCtx TyVar Kind
   -> Bindings (TypeFor phase)
+  -> Maybe (TypeFor phase)
   -> TypeCtxFor phase
   -> Map ContentName (TypeFor phase)
   -> Maybe Int
   -> [TypeFor phase]
   -> [TypeFor phase]
   -> Either (ErrorFor phase) Bool
-typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts0 ts1
+typeEqsWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit ts0 ts1
   | reductionLimit == Just 0
    = Left . EMsg . mconcat $
        [ text "Reduction limit reached when type-checking two lists of expressions:"
@@ -310,7 +345,7 @@ typeEqsWith typeBindCtx typeBindings typeNameCtx contentIsType reductionLimit ts
        , indent1 . text . Text.pack . show $ ts1
        ]
 
-  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEqWith typeBindCtx typeBindings typeNameCtx contentIsType (fmap (subtract 1) reductionLimit)) ts0 ts1
+  | length ts0 == length ts1 = let mEq = and <$> zipWithM (typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit)) ts0 ts1
                                   in case mEq of
                                        Right True -> mEq
                                        _          -> mEq
@@ -329,10 +364,11 @@ typeKind
      )
   => BindCtx TyVar Kind
   -> Map ContentName Kind
+  -> Maybe Kind
   -> TypeCtxFor phase
   -> TypeFor phase
   -> Either (ErrorFor phase) Kind
-typeKind typeBindCtx contentKinds typeCtx ty = case ty of
+typeKind typeBindCtx contentKinds mSelfKind typeCtx ty = case ty of
 
   -- TODO: Probably wack. The definition can refer to itself if it is recursive, which will send the kind checker into an infinite loop.
   -- Either:
@@ -352,8 +388,14 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
   --       Arrow from to :: Kind
   ArrowExt _ from to
     -> do -- both from and to must kind-check
-          _ <- typeKind typeBindCtx contentKinds typeCtx from
-          _ <- typeKind typeBindCtx contentKinds typeCtx to
+          _ <- typeKind typeBindCtx contentKinds mSelfKind typeCtx from
+
+          -- If from contains a TypeMu, extract it's kind for use in the RHS
+          let mSelfKind' = case from of
+                             TypeMuExt _ext kind _itselfTy
+                               -> Just kind
+                             _ -> mSelfKind
+          _ <- typeKind typeBindCtx contentKinds mSelfKind' typeCtx to
 
           Right Kind
 
@@ -361,21 +403,21 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
   --
   SumTExt _ types
     -> do -- every type must kind-check
-          mapM_ (typeKind typeBindCtx contentKinds typeCtx) types
+          mapM_ (typeKind typeBindCtx contentKinds mSelfKind typeCtx) types
           Right Kind
 
   --
   --
   ProductTExt _ types
     -> do -- every type must kind-check
-          mapM_ (typeKind typeBindCtx contentKinds typeCtx) types
+          mapM_ (typeKind typeBindCtx contentKinds mSelfKind typeCtx) types
           Right Kind
 
   --
   --
   UnionTExt _ types
     -> do -- every type must kind-check
-          mapM_ (typeKind typeBindCtx contentKinds typeCtx) (Set.toList types)
+          mapM_ (typeKind typeBindCtx contentKinds mSelfKind typeCtx) (Set.toList types)
           Right Kind
 
   --
@@ -384,7 +426,7 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
     -> do let newTypeBindCtx = addBinding fromKy typeBindCtx
           -- TODO: should this be KindArrow?? like TypeLam.
           -- Is that what makes them different or should they be the same thing???
-          _ <- typeKind newTypeBindCtx contentKinds typeCtx toTy
+          _ <- typeKind newTypeBindCtx contentKinds mSelfKind typeCtx toTy
           Right Kind
   --
   --
@@ -392,6 +434,13 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
     -> case lookupBindingTy b typeBindCtx of
          Nothing
            -> Left $ EContext (EMsg $ text "Kind-checking type") $ EBindCtxTypeLookupFailure (fromEnum b) typeBindCtx
+         Just ky
+           -> Right ky
+
+  TypeSelfBindingExt _
+    -> case mSelfKind of
+         Nothing
+           -> Left . EContext (EMsg $ text "Kind-checking type") . EMsg . text $ "Self-type cannot be kind checked as it does not appear to have an outer Mu binding"
          Just ky
            -> Right ky
 
@@ -415,15 +464,15 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
   TypeLamExt _ absKy ty
     -> do -- type must kind-check under the introduction of a new abstraction to the typeBindCtx
           let newTypeBindCtx = addBinding absKy typeBindCtx
-          tyKy <- typeKind newTypeBindCtx contentKinds typeCtx ty
+          tyKy <- typeKind newTypeBindCtx contentKinds mSelfKind typeCtx ty
           Right $ KindArrow absKy tyKy
 
   --
   --
   TypeAppExt _ fTy xTy
     -> do -- both f and x must kind-check
-          fKy <- typeKind typeBindCtx contentKinds typeCtx fTy
-          xKy <- typeKind typeBindCtx contentKinds typeCtx xTy
+          fKy <- typeKind typeBindCtx contentKinds mSelfKind typeCtx fTy
+          xKy <- typeKind typeBindCtx contentKinds mSelfKind typeCtx xTy
 
           -- resolve the initial kind here if named kinds are added..
 
@@ -439,6 +488,20 @@ typeKind typeBindCtx contentKinds typeCtx ty = case ty of
               -- match => The kind is the right hand side of the kind arrow
               | kindEq aKy xKy -> Right bKy
               | otherwise      -> Left $ ETypeAppMismatch fKy xKy
+
+  TypeMuExt _ expectKy itselfTy
+    -> do itselfKy <- typeKind typeBindCtx contentKinds (Just expectKy) typeCtx itselfTy
+          if kindEq itselfKy expectKy
+            then Right $ expectKy
+            else Left . EMsg . mconcat $
+                   [ text "Mu abstraction claimed it had kind:"
+                   , lineBreak
+                   , indent1 . string . show $ expectKy
+                   , lineBreak
+                   , text "But the kind checked to:"
+                   , lineBreak
+                   , indent1 . string . show $ itselfKy
+                   ]
 
   _ -> error "Non-exhaustive pattern when checking types kind"
 

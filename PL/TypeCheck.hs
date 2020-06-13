@@ -55,6 +55,8 @@ module PL.TypeCheck
   , lookupTypeContentType
 
   , reduceTypeUnderCtx
+
+  , destructTypeMuUnderCtx
   )
   where
 
@@ -82,6 +84,10 @@ data TypeCheckCtx = TypeCheckCtx
   { _exprBindCtx    :: BindCtx Var Type     -- ^ Associate expression bindings to their types. E.G. Var 0 to Bool.
   , _typeBindCtx    :: BindCtx TyVar Kind   -- ^ Associate type bindings to their kinds. E.G. TyVar 0 to (Kind->Kind).
   , _typeBindings   :: Bindings Type        -- ^ When type-checking under a binder, types are either bound with some known type or are unbound
+
+  , _selfType       :: Maybe Type           -- ^ The asserted Type of an outer self-type.
+  , _selfKind       :: Maybe Kind           -- ^ The asserted Kind of an outer self-type.
+
   , _typeCtx        :: TypeCtx              -- ^ Associated named types to their TypeInfo definitions
   , _contentHasType :: Map ContentName Type -- ^ Cache a mapping of known expression content names to their checked Type. We have a cache here to avoid doing IO in type-checking which feels wrong. It implies we must resolve names in an earlier phase.
   , _contentHasKind :: Map ContentName Kind -- ^ Cache a mapping of known type content names to their checked Kind. We have a cache here to avoid doing IO in type-checking which feels wrong. It implies we must resolve names in an earlier phase.
@@ -97,6 +103,8 @@ topTypeCheckCtx typeCtx = TypeCheckCtx
   { _exprBindCtx    = emptyCtx
   , _typeBindCtx    = emptyCtx
   , _typeBindings   = emptyBindings
+  , _selfKind       = Nothing
+  , _selfType       = Nothing
   , _typeCtx        = typeCtx
   , _contentHasType = mempty
   , _contentHasKind = mempty
@@ -132,7 +140,7 @@ kindCheck
   :: Type
   -> TypeCheckCtx
   -> Either Error Kind
-kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_contentHasKind ctx) (_typeCtx ctx) ty
+kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_contentHasKind ctx) (_selfKind ctx) (_typeCtx ctx) ty
 
 -- | Context after a Type with Kind is applied.
 --
@@ -153,7 +161,7 @@ checkEqual
   -> Type
   -> TypeCheckCtx
   -> Either Error Bool
-checkEqual aTy bTy ctx = typeEq (_typeBindCtx ctx) (_typeBindings ctx) (_typeCtx ctx) (_contentIsType ctx) aTy bTy
+checkEqual aTy bTy ctx = typeEq (_typeBindCtx ctx) (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (_contentIsType ctx) aTy bTy
 
 -- | Lookup the Type associated with an expression variable.
 lookupVarType
@@ -240,6 +248,13 @@ reduceTypeUnderCtx
   :: Type
   -> TypeCheckCtx
   -> Either Error Type
-reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_typeCtx ctx) (Just 100)) ty
+reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (Just 128)) ty
 
+-- | Assume the given type is the 'itself' branch of a Mu type and ensure it has
+-- a single level of substitution.
+destructTypeMuUnderCtx
+  :: Type
+  -> TypeCheckCtx
+  -> Either Error Type
+destructTypeMuUnderCtx ty ctx = destructTypeMu (TypeReductionCtx (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (Just 128)) ty
 

@@ -80,6 +80,7 @@ topReductionCtx
 topReductionCtx typeCtx = ReductionCtx
   { _reductionExprBindings = emptyBindings
   , _reductionTypeBindings = emptyBindings
+  , _reductionSelfType     = Nothing
   , _reductionTypeCtx      = typeCtx
   , _reductionGas          = Just 100
   }

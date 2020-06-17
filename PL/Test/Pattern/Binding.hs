@@ -54,17 +54,24 @@ defaultBindingPatternTestCase
   -> PatternTestCase
 defaultBindingPatternTestCase src
   = PatternTestCase
-      {_underTypeCheckCtx    = TypeCheckCtx
+      {_underTypeCheckCtx = TypeCheckCtx
          {_typeCtx      = emptyTypeCtx
          ,_exprBindCtx  = addBinding EmptyProductT $ emptyCtx
          ,_typeBindCtx  = emptyCtx
          ,_typeBindings = emptyBindings
+         ,_selfType = Nothing
+         ,_selfKind = Nothing
+         ,_contentHasType = mempty
+         ,_contentHasKind = mempty
+         ,_contentIsType  = mempty
          }
-      ,_parsesFrom = parsesFrom
-      ,_parsesTo   = isPattern
-      ,_typed                = typed
-      ,_checkMatchWithResult = checkMatchWithResult
-      ,_resolvesTo = BindingPattern VZ
+      ,_parsesFrom   = parsesFrom
+      ,_parsesTo     = isPattern
+      ,_typed        = typed
+      ,_bindsOnMatch = checkMatchWithResult
+
+      ,_underResolveCtx = undefined
+      ,_resolvesTo      = BindingPattern VZ
       }
   where
     isPattern           = BindingPattern VZ

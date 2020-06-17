@@ -81,6 +81,7 @@ library
                      , PL.Test.Pattern.Product
                      , PL.Test.Pattern.Sum
                      , PL.Test.Pattern.Union
+                     , PL.Test.Pattern.SelfType
 
                      , PL.Test.Parsing.Expr
                      , PL.Test.Parsing.Type

@@ -55,8 +55,6 @@ module PL.TypeCheck
   , lookupTypeContentType
 
   , reduceTypeUnderCtx
-
-  , destructTypeMuUnderCtx
   )
   where
 
@@ -249,12 +247,4 @@ reduceTypeUnderCtx
   -> TypeCheckCtx
   -> Either Error Type
 reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (Just 128)) ty
-
--- | Assume the given type is the 'itself' branch of a Mu type and ensure it has
--- a single level of substitution.
-destructTypeMuUnderCtx
-  :: Type
-  -> TypeCheckCtx
-  -> Either Error Type
-destructTypeMuUnderCtx ty ctx = destructTypeMu (TypeReductionCtx (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (Just 128)) ty
 

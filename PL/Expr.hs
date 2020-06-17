@@ -856,8 +856,8 @@ exprType ctx e =
           scrutineeTy <- do initialTy <- exprType ctx (_caseScrutinee c)
                             reducedTy <- reduceTypeUnderCtx initialTy ctx
                             case reducedTy of
-                              TypeMuExt _ _ itselfTy
-                                -> do destructedTy <- destructTypeMuUnderCtx itselfTy ctx
+                              TypeMuExt ext kind itselfTy
+                                -> do destructedTy <- destruct (ext,kind,itselfTy)
                                       reduceTypeUnderCtx destructedTy ctx
                               ty
                                 -> pure ty

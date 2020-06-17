@@ -850,13 +850,7 @@ exprType ctx e =
           -- - Is destructed a single level if it is a Mu type (the top-level
           --   SELFS are substituted with the type itself)
           scrutineeTy <- do initialTy <- exprType ctx (_caseScrutinee c)
-                            reducedTy <- reduceTypeUnderCtx initialTy ctx
-                            case reducedTy of
-                              TypeMuExt ext kind itselfTy
-                                -> do destructedTy <- destruct (ext,kind,itselfTy)
-                                      reduceTypeUnderCtx destructedTy ctx
-                              ty
-                                -> pure ty
+                            reduceTypeUnderCtx initialTy ctx
 
           case _caseCaseBranches c of
 

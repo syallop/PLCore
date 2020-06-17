@@ -131,7 +131,7 @@ reduceTypeToSpec name inputType reductions contentIsType pp = describe (Text.unp
                  ]
 
           (Right redType, TypeEquals expectedType)
-            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) contentIsType redType expectedType of
+            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionSelfType underCtx) (_typeReductionTypeCtx underCtx) contentIsType redType expectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"
@@ -162,7 +162,7 @@ reduceTypeToSpec name inputType reductions contentIsType pp = describe (Text.unp
                    -> pure ()
 
           (Right redType, TypeDoesNotEqual notExpectedType)
-            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionTypeCtx underCtx) contentIsType redType notExpectedType of
+            -> case typeEq underTypeBindCtx (_typeReductionTypeBindings underCtx) (_typeReductionSelfType underCtx) (_typeReductionTypeCtx underCtx) contentIsType redType notExpectedType of
                  Left err
                    -> expectationFailure . Text.unpack . render $ mconcat
                         [ text "The type reduced to:"

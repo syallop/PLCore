@@ -693,7 +693,9 @@ exprType
   :: TypeCheckCtx
   -> Expr
   -> Either Error Type
-exprType ctx e = case e of
+exprType ctx e =
+   let withErrCtx = either (Left . EContext (ETypeChecking e)) Right
+   in withErrCtx $ case e of
 
   -- ODDITY/ TODO: Can abstract over types which dont exist..
   --                 They therefore can never be applied.
@@ -710,9 +712,8 @@ exprType ctx e = case e of
   -- -----------------------
   --       App f x : b
   AppExt _ext f x
-    -> do -- Both f and x must type-check individually
+    -> do -- F must type check
           fTy <- exprType ctx f
-          xTy <- exprType ctx x
 
           -- f can be a named type or content-binding as long as we can
           -- determine it's defined as an Arrow type.
@@ -721,12 +722,12 @@ exprType ctx e = case e of
             -- We only need to prove the first level of the definition is an
             -- Arrow.
             NamedExt _ n
-              -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+              -> case lookupTypeNameInitialType n (_typeCtx ctx) of
                    Nothing
                      -> Left . EContext (EMsg $ text "Reduction: function application") . ETypeNotDefined n . _typeCtx $ ctx
 
-                   Just typeInfo
-                     -> Right . _typeInfoType $ typeInfo
+                   Just ty
+                     -> Right ty
 
             TypeContentBindingExt _ c
               -> lookupTypeContentType c ctx
@@ -737,17 +738,18 @@ exprType ctx e = case e of
 
           case resolvedFTy of
             Arrow fromTy toTy
-              -> case checkEqual fromTy xTy ctx of
-                   Left err
-                     -> Left err
+              -> do -- If the expected from-type is a Mu type, we construct the supplied x-type
+                    (unconstructedXTy,constructedXTy) <- constructWhenTypeMu ctx fromTy x
+                    case checkEqual fromTy constructedXTy ctx of
+                          Left err
+                            -> Left err
 
-                   Right isSameType
-                     | isSameType
-                      -> Right toTy
+                          Right isSameType
+                            | isSameType
+                             -> Right toTy
 
-                     | otherwise
-                      -> Left $ EAppMismatch fTy xTy
-
+                            | otherwise
+                             -> Left $ EAppMismatch fTy unconstructedXTy
             _
               -> Left . EMsg . text $ "The first argument to an application did not have an arrow type"
 
@@ -763,7 +765,10 @@ exprType ctx e = case e of
                      else Right (inTypr NE.!! ix)
 
           _ <- case checkEqual exprTy sumTy ctx of
-                   Left err -> Left err
+                   Left err
+                     -> Left . EContext (ESumMismatch exprTy ix inTypr) $ err
+                     -- -> Left err
+
                    Right isSameType
                      | isSameType -> Right ()
                      | otherwise  -> Left $ ESumMismatch exprTy ix inTypr
@@ -839,8 +844,13 @@ exprType ctx e = case e of
   --                        branches
   --                        ?defExpr
   CaseAnalysisExt _ext c
-    -> do -- scrutinee should be well typed and reduce
-          scrutineeTy <- exprType ctx (_caseScrutinee c) >>= (`reduceTypeUnderCtx` ctx)
+    -> do -- The scrutinee expressions type:
+          -- - Should be well-typed
+          -- - Is reduced in the current current context
+          -- - Is destructed a single level if it is a Mu type (the top-level
+          --   SELFS are substituted with the type itself)
+          scrutineeTy <- do initialTy <- exprType ctx (_caseScrutinee c)
+                            reduceTypeUnderCtx initialTy ctx
 
           case _caseCaseBranches c of
 
@@ -871,7 +881,7 @@ exprType ctx e = case e of
                                                 Left err -> Left err
                                                 Right isSameType
                                                   | isSameType -> Right ()
-                                                  | otherwise  -> Left $ EMsg $ text "Branch and first branch have different result types"
+                                                  | otherwise  -> Left . ECaseBranchMismatch branch0Ty $ branchTy
                               )
                               branchTys
 
@@ -903,12 +913,12 @@ exprType ctx e = case e of
             -- We only need to prove the first level of the definition is a
             -- Big-Arrow.
             NamedExt _ n
-              -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
+              -> case lookupTypeNameInitialType n (_typeCtx ctx) of
                    Nothing
                      -> Left . EContext (EMsg $ text "Reduction: Big application") . ETypeNotDefined n . _typeCtx $ ctx
 
-                   Just typeInfo
-                     -> Right . _typeInfoType $ typeInfo
+                   Just ty
+                     -> Right ty
 
             TypeContentBindingExt _ c
               -> lookupTypeContentType c ctx
@@ -1049,14 +1059,35 @@ gatherExprsTypeContentNames = gather Set.empty
     gatherCaseBranch :: Set ContentName -> CaseBranch (ExprFor phase) (PatternFor phase) -> Set ContentName
     gatherCaseBranch accNames (CaseBranch _pattern exprResult) = gather accNames exprResult
 
+-- Chain a list of expressions to be applied, left to right.
 appise :: AppExtension phase ~ NoExt => [ExprFor phase] -> ExprFor phase
 appise []        = error "Cant appise empty list of expressions"
 appise [e]       = e
 appise (e:e':es) = appise (App e e' : es)
 
+-- Chain a list of abstractions, to be made left to right.
 lamise :: (LamExtension phase ~ NoExt, AbstractionFor phase ~ TypeFor phase) => [TypeFor phase] -> ExprFor phase -> ExprFor phase
 lamise []        _ = error "Cant lamise empty list of abstractions"
 lamise [t]       e = Lam t e
 lamise (t:t':ts) e = Lam t (lamise (t':ts) e)
 
+-- Type check an expression, potentially under the context of a Mu self-type.
+--
+-- The first result is the original checked type. This will have been checked
+-- under the self-type if present.
+--
+-- The second result is a potentially modified Mu type of the expression,
+-- compatible with the provided Mu self-type.
+constructWhenTypeMu
+  :: TypeCheckCtx
+  -> Type
+  -> Expr
+  -> Either Error (Type, Type)
+constructWhenTypeMu ctx againstTy x = case againstTy of
+  TypeMuExt _ext kind itselfTy
+    -> do xTy <- exprType (ctx{_selfType = Just itselfTy}) x
+          pure (xTy, TypeMuExt noExt kind xTy)
+
+  _ -> do xTy <- exprType ctx x
+          pure (xTy, xTy)
 

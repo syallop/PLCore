@@ -61,6 +61,7 @@ import PL.Test.Expr.Natural
 import PL.Test.Expr.Product
 import PL.Test.Expr.Sum
 import PL.Test.Expr.Union
+import PL.Test.Expr.SelfTypes
 
 import PL.Test.Shared
 
@@ -96,6 +97,7 @@ data TestExprSources = TestExprSources
   , _functionTestCases :: TestFunctionSources
   , _maybeTestCases    :: TestMaybeSources
   , _listTestCases     :: TestListSources
+  , _selfTypeTestCases :: TestSelfTypeSources
   }
 
 -- | Given a collection of test sources, we can produce a list mapping their names
@@ -115,5 +117,6 @@ mkTestCases t = Map.fromList . mconcat $
   , functionTestCases . _functionTestCases $ t
   , maybeTestCases    . _maybeTestCases    $ t
   , listTestCases     . _listTestCases     $ t
+  , selfTypeTestCases . _selfTypeTestCases $ t
   ]
 

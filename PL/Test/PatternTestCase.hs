@@ -65,6 +65,6 @@ data PatternTestCase = PatternTestCase
   , _typed                :: Type
 
     -- Matching tests
-  ,_checkMatchWithResult :: Either Error [Type] -- ^ Either produces an error or a list of bound types.
+  ,_bindsOnMatch :: Either Error [Type] -- ^ Either produces an error or a list of bound types.
   }
 

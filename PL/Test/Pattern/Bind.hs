@@ -58,11 +58,11 @@ defaultBindPatternTestCase
   -> PatternTestCase
 defaultBindPatternTestCase src
   = PatternTestCase
-      {_underTypeCheckCtx    = topTypeCheckCtx emptyTypeCtx
-      ,_typed                = typed
-      ,_checkMatchWithResult = checkMatchWithResult
-      ,_parsesFrom           = parsesFrom
-      ,_parsesTo = Bind
+      {_underTypeCheckCtx = topTypeCheckCtx emptyTypeCtx
+      ,_typed             = typed
+      ,_bindsOnMatch      = checkMatchWithResult
+      ,_parsesFrom        = parsesFrom
+      ,_parsesTo          = Bind
 
       ,_underResolveCtx = undefined
       ,_resolvesTo      = Bind
@@ -85,15 +85,15 @@ bindProdPatternTestCase
   -> PatternTestCase
 bindProdPatternTestCase src = (defaultBindPatternTestCase src)
   { _typed = EmptyProductT
-  , _checkMatchWithResult = Right [EmptyProductT]
+  , _bindsOnMatch = Right [EmptyProductT]
   }
 
 bindBoolPatternTestCase
   :: Source
   -> PatternTestCase
 bindBoolPatternTestCase src = (defaultBindPatternTestCase src)
-  { _underTypeCheckCtx    = topTypeCheckCtx boolTypeCtx
-  , _typed                = boolTypeName
-  , _checkMatchWithResult = Right [boolType]
+  { _underTypeCheckCtx = topTypeCheckCtx boolTypeCtx
+  , _typed             = boolTypeName
+  , _bindsOnMatch      = Right [boolType]
   }
 

@@ -48,6 +48,7 @@ module PL.Pattern
   , branchType
   , checkWithPattern
   , checkWithPatterns
+  , matchableType
 
   , SumPatternExtension
   , ProductPatternExtension
@@ -64,9 +65,10 @@ import PL.Kind
 import PL.Bindings
 import PL.TypeCtx
 import PL.TyVar
+import PL.Binds
 import PL.Var
 import PL.Hash
-import PL.Binds
+import PL.Binds.Ix
 import PL.TypeCheck
 import PL.Type.Eq
 import PL.Error
@@ -78,6 +80,7 @@ import PLPrinter.Doc
 
 import Control.Applicative
 import Data.List (intercalate)
+import Data.Proxy
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Monoid hiding (Sum,Product)
 import GHC.Types (Constraint)
@@ -313,31 +316,21 @@ checkWithPattern
   -> Type
   -> TypeCheckCtx
   -> Either Error [Type]
-checkWithPattern pat expectTy ctx = do
-  -- If we've been given a named type, substitute it with its initial
-  -- definition.
-  rExpectTy <- case expectTy of
-    NamedExt _ n
-      -> case lookupTypeNameInitialInfo n (_typeCtx ctx) of
-           Nothing
-             -> Left . EContext (EMsg $ text "Checking pattern") . ETypeNotDefined n . _typeCtx $ ctx
-
-           Just typeInfo
-             -> Right . _typeInfoType $ typeInfo
-    _
-      -> Right expectTy
-
-  case (pat,rExpectTy) of
+checkWithPattern pat expectTy ctx = either (Left . EContext (EPatternMismatch expectTy pat)) Right $ do
+  (ctx, matchTy) <- matchableType expectTy ctx
+  case (pat, matchTy) of
 
     -- Bindings always match and bind the value.
-    (Bind, expectTy)
-      -> Right [expectTy]
+    (Bind
+     ,matchTy)
+      -> Right [matchTy]
 
     -- BindingPatterns match when the binding is bound and has the same type.
-    (BindingPattern b, expectTy)
+    (BindingPattern b
+     , matchTy)
       -> do -- the type of the binding
             bTy <- lookupVarType b ctx
-            case checkEqual bTy expectTy ctx of
+            case checkEqual bTy matchTy ctx of
                 Left err
                   -> Left err
 
@@ -346,7 +339,8 @@ checkWithPattern pat expectTy ctx = do
                        then pure []
                        else Left $ EMsg $ text "pattern pattern on a binding from a different type"
 
-    (SumPattern sumIndex nestedPattern, SumT sumTypes)
+    (SumPattern sumIndex nestedPattern
+     , SumT sumTypes)
       -> do -- index must be within the number of alternative in the sum type
             patternedTy <- if NE.length sumTypes <= sumIndex
                            then Left $ EMsg $ text "patterning on a larger sum index than the sum type contains"
@@ -355,11 +349,13 @@ checkWithPattern pat expectTy ctx = do
             -- must have the expected index type
             checkWithPattern nestedPattern patternedTy ctx
 
-    (ProductPattern nestedPatterns, ProductT prodTypes)
+    (ProductPattern nestedPatterns
+     , ProductT prodTypes)
       -> checkWithPatterns nestedPatterns prodTypes ctx
 
     -- Type index must be equal to exactly one of the alternatives.
-    (UnionPattern unionIndexTy nestedPattern, UnionT unionTypes)
+    (UnionPattern unionIndexTy nestedPattern
+     , UnionT unionTypes)
       -> do -- Search through the set of possible types collecting:
             -- - Matching types
             -- - Or any errors when checking type equality
@@ -384,24 +380,25 @@ checkWithPattern pat expectTy ctx = do
             -- otherwise enforce that exactly one match was made.
             () <- case searchResult of
               Left err
-                -> Left . EContext (EPatternMismatch rExpectTy pat) $ err
+                -> Left err
 
               Right matches
                 -> case Set.toList matches of
                      []
-                       -> Left  . EContext (EPatternMismatch rExpectTy pat) . EMsg . text $ "Zero types matched"
+                       -> Left  . EMsg . text $ "Zero types matched"
 
                      [_]
                        -> Right ()
 
                      matches
-                       -> Left . EContext (EPatternMismatch rExpectTy pat) $ EMultipleMatchesInUnion matches
+                       -> Left $ EMultipleMatchesInUnion matches
 
             -- must actually pattern on the expected type
             checkWithPattern nestedPattern unionIndexTy ctx
 
-    (pat,expectTy)
-      -> Left . EPatternMismatch expectTy $ pat
+    (pat
+     , matchTy)
+      -> Left . EMsg . text $ "Pattern matches a different type"
 
 checkWithPatterns
   :: [Pattern]
@@ -409,10 +406,133 @@ checkWithPatterns
   -> TypeCheckCtx
   -> Either Error [Type]
 checkWithPatterns pat types ctx = case (pat,types) of
-  ([],[]) -> Right []
-  ([],_)  -> Left $ EMsg $ text "Expected more patterns in pattern"
-  (_,[])  -> Left $ EMsg $ text "Too many patterns in pattern"
-  (m:ms,t:ts)
-    -> checkWithPattern m t ctx >>= \boundTs -> checkWithPatterns ms ts ctx >>= Right . (boundTs ++)
+  ([]
+   ,[])
+    -> Right []
+
+  ([]
+   ,_)
+    -> Left $ EMsg $ text "Expected more patterns in pattern"
+
+  (_
+   ,[])
+    -> Left $ EMsg $ text "Too many patterns in pattern"
+
+  (p:ps
+   , t:ts)
+    -> do boundTs  <- checkWithPattern p t ctx
+          boundTs' <- checkWithPatterns ps ts ctx
+          Right (boundTs ++ boundTs')
+
+-- | Normalise a type to a form where a single layer of pattern matching can be
+-- performed upon it.
+--
+-- Mu types and Named types have no direct matching construct.
+--
+-- Instead we expand them so they can be matched by their definitions.
+-- I.E.:
+-- - Names are replaced with their initial definition
+-- - Mu types are deconstructed to their itself-type
+--
+-- Malformed types will diverge, E.G.
+-- - Mu types which refer to themselves without an additional constructor
+-- - Named types which refer to themselves
+--
+-- The types supplied to this function must be well-formed.
+matchableType
+  :: Type
+  -> TypeCheckCtx
+  -> Either Error (TypeCheckCtx, Type)
+matchableType expectTy ctx
+  | isMatchable expectTy = Right (ctx, expectTy)
+  | otherwise            = do (newSelf, reducedTy) <- do ty0 <- unBinding expectTy ctx
+                                                         ty1 <- unName ty0 ctx
+
+                                                         ty2 <- unSelf ty1 ctx
+                                                         unMu ty2 ctx
+                              matchableType reducedTy (ctx{_selfType = newSelf})
+
+  where
+    -- Is a type matchable, or does it need simplifying first?
+    isMatchable :: Type -> Bool
+    isMatchable ty = case ty of
+      NamedExt _ _
+        -> False
+      TypeSelfBindingExt _
+        -> False
+      TypeBindingExt _ _
+        -> False
+      TypeMuExt _ _ _
+        -> False
+
+      _ -> True
+
+    -- Resolve a name to it's initial definition
+    unName :: Type -> TypeCheckCtx -> Either Error Type
+    unName ty ctx = case ty of
+      NamedExt _ n
+        -> case lookupTypeNameInitialType n (_typeCtx ctx) of
+             Nothing
+               -> Left . EContext (EMsg $ text "Checking pattern") . ETypeNotDefined n . _typeCtx $ ctx
+
+             Just ty
+               -> case ty of
+                    TypeSelfBinding
+                      -> Left . EMsg . mconcat $
+                           [ text "Name resolved to a plain self type which shouldnt happen."
+                           , lineBreak
+                           , indent1 . string . show $ n
+                           , lineBreak
+                           , indent1 . string . show . _typeCtx $ ctx
+                           ]
+                    _ -> Right ty
+
+      ty
+        -> Right ty
+
+    -- Destruct a Mu type into its definition with a single layer of
+    -- self-references substituted.
+    unMu :: Type -> TypeCheckCtx -> Either Error (Maybe Type, Type)
+    unMu ty ctx = case ty of
+      TypeMuExt ext kind itselfTy
+        -> do destructedTy <- destruct (ext, kind, itselfTy)
+              pure $ (Just ty, destructedTy)
+      ty
+        -> Right (_selfType ctx, ty)
+
+    -- Replace a self-type with a value bound by a Mu and smuggled through the
+    -- context.
+    unSelf :: Type -> TypeCheckCtx -> Either Error Type
+    unSelf ty ctx = case ty of
+      TypeSelfBindingExt _
+        -> case _selfType ctx of
+             Nothing
+               -> Left . EMsg . text $ "No self-type in context"
+
+             Just selfTy
+               -> Right selfTy
+
+      ty
+        -> Right ty
+
+    -- Type bindings _should_ have been resolved by this point.
+    --
+    -- If not but we have a binding, proceed. Otherwise we cannot perform a
+    -- match.
+    unBinding :: Type -> TypeCheckCtx -> Either Error Type
+    unBinding ty ctx = case ty of
+      TypeBindingExt _ tyVar
+        -> case safeIndex (Proxy :: Proxy TyVar) (_typeBindings ctx) (bindDepth tyVar) of
+             Nothing
+               -> Left . EMsg . text $ "Cannot pattern match on an expression whose type is a type-binding because the bindings index does not exist"
+
+             Just Unbound
+               -> Left . EMsg . text $ "Cannot pattern match on an expression whose type is a type-binding because the binding is unbound"
+
+             Just (Bound ty)
+               -> Right ty
+
+      ty -> Right ty
 
 type instance ErrorPattern DefaultPhase = Pattern
+

@@ -66,7 +66,7 @@ defaultUnionPatternTestCase src
       , _underTypeCheckCtx = topTypeCheckCtx emptyTypeCtx
       , _typed             = UnionT $ Set.fromList $ [EmptyProductT]
 
-      , _checkMatchWithResult = Right []
+      , _bindsOnMatch = Right []
       }
   where
 

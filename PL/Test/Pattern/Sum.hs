@@ -65,7 +65,7 @@ defaultSumPatternTestCase src
       , _underTypeCheckCtx = topTypeCheckCtx typeCtx
       , _typed             = SumT $ NE.fromList [EmptyProductT]
 
-      , _checkMatchWithResult = Right []
+      , _bindsOnMatch = Right []
       }
   where
     typeCtx = emptyTypeCtx

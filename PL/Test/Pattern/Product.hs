@@ -65,7 +65,7 @@ defaultProductPatternTestCase src
       , _underTypeCheckCtx = topTypeCheckCtx typeCtx
       , _typed             = EmptyProductT
 
-      ,_checkMatchWithResult = Right []
+      , _bindsOnMatch = Right []
       }
   where
     typeCtx = emptyTypeCtx

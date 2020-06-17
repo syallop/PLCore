@@ -73,8 +73,12 @@ import Control.Monad
 -- expression.
 data EvaluationCtx = EvaluationCtx
   { _evaluationCodeStore    :: CodeStore
+
   , _evaluationExprBindings :: Bindings Expr
   , _evaluationTypeBindings :: Bindings Type
+
+  , _evaluationSelfType     :: Maybe Type
+
   , _evaluationTypeCtx      :: TypeCtx
   , _evaluationGas          :: Maybe Int
   }
@@ -88,8 +92,12 @@ topEvaluationCtx
   -> EvaluationCtx
 topEvaluationCtx typeCtx codeStore = EvaluationCtx
   { _evaluationCodeStore    = codeStore
+
   , _evaluationExprBindings = emptyBindings
   , _evaluationTypeBindings = emptyBindings
+
+  , _evaluationSelfType     = Nothing
+
   , _evaluationTypeCtx      = typeCtx
   , _evaluationGas          = Nothing
   }
@@ -193,7 +201,7 @@ reduceEvaluationLimit = Evaluate $ \ctx -> pure $ Right (ctx{_evaluationGas = fm
 -- This is what allows types at the expression level to be passed into types.
 toTypeReductionCtx
   :: Evaluate (TypeReductionCtx DefaultPhase)
-toTypeReductionCtx = Evaluate $ \ctx -> pure $ Right (ctx, TypeReductionCtx (_evaluationTypeBindings ctx) (_evaluationTypeCtx ctx) (_evaluationGas ctx))
+toTypeReductionCtx = Evaluate $ \ctx -> pure $ Right (ctx, TypeReductionCtx (_evaluationTypeBindings ctx) (_evaluationSelfType ctx) (_evaluationTypeCtx ctx) (_evaluationGas ctx))
 
 -- | Query for the Bound Expr associated with a variable binding.
 --

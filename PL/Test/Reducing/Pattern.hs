@@ -63,7 +63,7 @@ reducesPatternsToSpec testCases pp =
                                      (_underTypeCheckCtx testCase)
                                      (_resolvesTo testCase)
                                      (_typed testCase)
-                                     (_checkMatchWithResult testCase)
+                                     (_bindsOnMatch testCase)
                                      pp
             )
     . Map.toList

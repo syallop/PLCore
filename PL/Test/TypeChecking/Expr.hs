@@ -85,7 +85,7 @@ typeCheckSpec name inputExpr ctx expectedType pp = it (Text.unpack name) $
   Right resultType
     -> case checkEqual resultType expectedType ctx of
          Left err
-           -> expectationFailure . Text.unpack . render $ text "A given type name does not exist in the context"
+           -> expectationFailure . Text.unpack . render $ ppError pp err
 
          Right False
            -> expectationFailure . Text.unpack . render $ text "Expected: " <> _ppType pp expectedType <> text " got: " <> _ppType pp resultType

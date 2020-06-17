@@ -39,6 +39,7 @@ import PL.Test.Pattern.Binding
 import PL.Test.Pattern.Product
 import PL.Test.Pattern.Sum
 import PL.Test.Pattern.Union
+import PL.Test.Pattern.SelfType
 
 import PL.Test.Shared
 
@@ -76,11 +77,12 @@ import PL.Test.Source
 
 -- | A record of the sources required to run all of the Pattern tests.
 data TestPatternSources = TestPatternSources
-  { _bindTestCases    :: TestBindSources
-  , _sumTestCases     :: TestSumSources
-  , _productTestCases :: TestProductSources
-  , _unionTestCases   :: TestUnionSources
-  , _bindingTestCases :: TestBindingSources
+  { _bindTestCases     :: TestBindSources
+  , _sumTestCases      :: TestSumSources
+  , _productTestCases  :: TestProductSources
+  , _unionTestCases    :: TestUnionSources
+  , _bindingTestCases  :: TestBindingSources
+  , _selfTypeTestCases :: TestSelfTypeSources
   }
 
 -- | Given a collection of test sources, we can produce a list mapping their names
@@ -89,10 +91,11 @@ mkPatternTestCases
   :: TestPatternSources
   -> Map.Map Text.Text PatternTestCase
 mkPatternTestCases t = Map.fromList . mconcat $
-  [ bindTestCases    . _bindTestCases    $ t
-  , sumTestCases     . _sumTestCases     $ t
-  , productTestCases . _productTestCases $ t
-  , unionTestCases   . _unionTestCases   $ t
-  , bindingTestCases . _bindingTestCases $ t
+  [ bindTestCases     . _bindTestCases    $ t
+  , sumTestCases      . _sumTestCases     $ t
+  , productTestCases  . _productTestCases $ t
+  , unionTestCases    . _unionTestCases   $ t
+  , bindingTestCases  . _bindingTestCases $ t
+  , selfTypeTestCases . _selfTypeTestCases $ t
   ]
 

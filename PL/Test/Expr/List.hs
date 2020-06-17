@@ -14,7 +14,6 @@ module PL.Test.Expr.List
   ( listTypeCtx
   , listTypeName
   , listType
-  , listSumType
   , emptyTerm
   , consTerm
 
@@ -59,7 +58,7 @@ listTestCases
   :: TestListSources
   -> [(Text, ExprTestCase)]
 listTestCases t =
-  [ ("empty list"    , emptyListTestCase . _emptyListTestCase $ t)
+  [ ("empty list" , emptyListTestCase . _emptyListTestCase $ t)
   ]
 
 -- Empty lists can be instantiated with types.
@@ -76,22 +75,29 @@ emptyListTestCase src
       , _resolvesTo      = emptyTerm
 
       , _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _typed = BigArrow Kind $ (SumT $ NE.fromList [EmptyProductT, ProductT [TypeBinding $ TyVar VZ, TypeApp listTypeName (TypeBinding $ TyVar VZ)]])
+      , _typed = BigArrow Kind $ (SumT $ NE.fromList [ EmptyProductT
+                                                     , ProductT [ TypeBinding $ TyVar VZ
+                                                                , TypeApp listTypeName (TypeBinding $ TyVar VZ)
+                                                                ]
+                                                     ]
+                                 )
 
       , _underReductionCtx = topReductionCtx ctx
       , _reducesTo = emptyTerm
-      , _reducesToWhenApplied =
+      , _reducesToWhenApplied = []
+         {-
            [("[] : [Nat]"
              , [(`BigApp` natTypeName)
                ]
-             , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [natTypeName, TypeApp listTypeName natTypeName]]
+             , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT, ProductT [natTypeName, TypeApp listTypeName natTypeName]]
              )
 
             ,("[] : [[Bool]]"
             , [(`BigApp` (TypeApp listTypeName boolTypeName))]
-            , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT,ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
+            , Just $ Sum EmptyProduct 0 $ NE.fromList $ [EmptyProductT, ProductT [TypeApp listTypeName boolTypeName, TypeApp listTypeName (TypeApp listTypeName boolTypeName)]]
             )
             ]
+        -}
 
       , _underEvaluationCtx = undefined
       , _evaluatesTo = emptyTerm

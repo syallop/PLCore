@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
 {-|
 Module      : PL.Test.Shared
@@ -13,33 +14,13 @@ Shared expressions, types, contexts etc used in tests.
 module PL.Test.Shared
   ( sharedTypeCtx
 
-    -- Booleans
-  , boolTypeCtx
-  , boolTypeName
-  , boolType
-  , boolSumType
-  , falseTerm
-  , trueTerm
-  , falsePat
-  , truePat
-
-    -- Natural numbers
-  , natTypeCtx
-  , natTypeName
-  , natType
-  , natSumType
-  , zTerm
-  , sTerm
-  , zPat
-  , sPat
-  , suc
-  , zero
-  , one
-  , two
-  , three
-  , four
-
-    -- Unit
+    -- * Unit
+    --
+    -- Unit has a single value with no data.
+    --
+    -- The definition demonstrates:
+    -- - Using empty products as types with no data.
+    -- - Association of names to type definitions
   , unitTypeCtx
   , unitTypeName
   , unitType
@@ -47,21 +28,73 @@ module PL.Test.Shared
   , unitTerm
   , unitPat
 
-   -- Maybe
+    -- * Booleans
+    --
+    -- Booleans are alternatives of false or true.
+    --
+    -- Their definition demonstrates:
+    -- - Use of sum types as tags
+  , boolTypeCtx
+  , boolTypeName
+  , boolType
+
+  , falseTerm
+  , trueTerm
+
+  , falsePat
+  , truePat
+
+   -- * Maybe
+   --
+   -- Maybe is the optionality type. It's values are either Nothing or Just
+   -- something.
+   --
+   -- Their definition demonstrates:
+   -- - Types which encapsulate other types by using type variables
   , maybeTypeCtx
   , maybeTypeName
   , maybeType
-  , maybeSumType
   , nothingTerm
   , justTerm
   , nothingPat
   , justPat
 
-    -- List
+    -- * Natural numbers
+    --
+    -- Natural numbers are either zero or the successor of some other natural
+    -- number.
+    --
+    -- Their definition demonstrates:
+    -- - Types which refer to themselves
+  , natTypeCtx
+  , natTypeName
+  , natType
+  , natTypeDefinition
+
+  , zTerm
+  , sTerm
+
+  , zPat
+  , sPat
+
+  , suc
+  , zero
+  , one
+  , two
+  , three
+  , four
+
+    -- * List
+    --
+    -- Lists are either Empty or some value and a trailing list of the same type
+    -- of value.
+    --
+    -- Their definition demonstrates:
+    -- - Types which refer to themselves AND which have type variables
   , listTypeCtx
   , listTypeName
   , listType
-  , listSumType
+  , listTypeDefinition
   , emptyTerm
   , consTerm
   , emptyPat
@@ -92,6 +125,12 @@ import Data.Monoid ((<>))
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 
+-- | Associate some common type names to definitions. Includes:
+-- - The type of natural numbers 'Nat'
+-- - The type of booleans 'Bool'
+-- - The unit type 'Unit'
+-- - The optionality type 'Maybe'
+-- - The list type 'List'.
 sharedTypeCtx
   :: (SumTExtension     phase ~ NoExt
      ,ProductTExtension phase ~ NoExt
@@ -103,10 +142,10 @@ sharedTypeCtx
      )
   => TypeCtxFor phase
 sharedTypeCtx = mconcat
-  [ natTypeCtx
+  [ unitTypeCtx
   , boolTypeCtx
-  , unitTypeCtx
   , maybeTypeCtx
+  , natTypeCtx
   , listTypeCtx
   ]
 
@@ -114,8 +153,8 @@ sharedTypeCtx = mconcat
 
 -- | Type context containing the Bool type.
 boolTypeCtx
-  :: (SumTExtension     phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
+  :: ( SumTExtension     phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
      )
   => TypeCtxFor phase
 boolTypeCtx = fromJust $ insertType "Bool" boolType Kind emptyTypeCtx
@@ -179,66 +218,82 @@ truePat = SumPattern 1 EmptyProductPattern
 
 {- Naturals -}
 
+-- | Type context containing the Nat type.
 natTypeCtx
-  :: (SumTExtension phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,NamedExtension    phase ~ NoExt
+  :: ( SumTExtension phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
+     , NamedExtension    phase ~ NoExt
      )
   => TypeCtxFor phase
-natTypeCtx = fromJust $ insertRecType "Nat" natType Kind emptyTypeCtx
+natTypeCtx = fromJust $ insertRecType "Nat" natTypeDefinition Kind emptyTypeCtx
 
+-- | Name of the Nat type.
 natTypeName
   :: NamedExtension phase ~ NoExt
   => TypeFor phase
 natTypeName = Named "Nat"
 
+-- | Unnamed, recursive definition of the Nat type.
 natType
-  :: (SumTExtension     phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,NamedExtension    phase ~ NoExt
+  :: forall phase
+   . ( SumTExtension     phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
+     , NamedExtension    phase ~ NoExt
      )
   => TypeFor phase
-natType = SumT natSumType
+natType = TypeMu Kind $ natTypeDefinition -- data Nat
 
-natSumType
-  :: (ProductTExtension phase ~ NoExt
-     ,NamedExtension    phase ~ NoExt
+-- Bare recursive definition of the Nat type _without_ the enclosing Mu.
+natTypeDefinition
+  :: forall phase
+   . ( SumTExtension     phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
+     , NamedExtension    phase ~ NoExt
      )
-  => NonEmpty (TypeFor phase)
-natSumType = NE.fromList $
-  [ EmptyProductT
-  , TypeSelfBinding
+  => TypeFor phase
+natTypeDefinition = SumT $ NE.fromList $
+  [ EmptyProductT   --    = Zero
+  , TypeSelfBinding --    | Succ Nat
   ]
 
+-- | Zero has type Nat
+-- Z : Nat
 zTerm
-  :: (SumExtension      phase ~ NoExt
-     ,ProductExtension  phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,NamedExtension phase ~ NoExt
+  :: forall phase
+   . ( SumExtension      phase ~ NoExt
+     , SumTExtension     phase ~ NoExt
+     , ProductExtension  phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
+     , NamedExtension    phase ~ NoExt
      )
   => ExprFor phase
-zTerm = Sum EmptyProduct 0 natSumType
+zTerm = Sum EmptyProduct 0 (NE.fromList [EmptyProductT, natTypeName])
 
+-- | Successor has type Nat -> Nat
+-- S n : Nat
 sTerm
-  :: (SumExtension      phase ~ NoExt
-     ,ProductExtension  phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,LamExtension      phase ~ NoExt
-     ,BindingFor        phase ~ Var
-     ,AbstractionFor    phase ~ TypeFor phase
-     ,BindingExtension  phase ~ NoExt
-     ,NamedExtension    phase ~ NoExt
+  :: ( SumExtension      phase ~ NoExt
+     , SumTExtension     phase ~ NoExt
+     , ProductExtension  phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
+     , LamExtension      phase ~ NoExt
+     , BindingFor        phase ~ Var
+     , AbstractionFor    phase ~ TypeFor phase
+     , BindingExtension  phase ~ NoExt
+     , NamedExtension    phase ~ NoExt
      )
   => ExprFor phase
-sTerm = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 natSumType
+sTerm = Lam (Named "Nat") $ Sum (Binding (mkVar 0)) 1 (NE.fromList [EmptyProductT, natTypeName])
 
+-- | Pattern that matches the Zero value of Nat.
 zPat
-  :: (SumPatternExtension     phase ~ NoExt
-     ,ProductPatternExtension phase ~ NoExt
+  :: ( SumPatternExtension     phase ~ NoExt
+     , ProductPatternExtension phase ~ NoExt
      )
   => PatternFor phase
 zPat = SumPattern 0 EmptyProductPattern
 
+-- | Pattern that matches successor of a Nat pattern.
 sPat
   :: (SumPatternExtension phase ~ NoExt)
   => PatternFor phase
@@ -246,23 +301,26 @@ sPat
 sPat = SumPattern 1
 
 type SucConstraints phase =
-  (AppExtension      phase ~ NoExt
-  ,BindingExtension  phase ~ NoExt
-  ,AbstractionFor    phase ~ TypeFor phase
-  ,BindingFor        phase ~ Var
-  ,LamExtension      phase ~ NoExt
-  ,ProductExtension  phase ~ NoExt
-  ,ProductTExtension phase ~ NoExt
-  ,SumExtension      phase ~ NoExt
-  ,NamedExtension    phase ~ NoExt
+  ( AppExtension      phase ~ NoExt
+  , BindingExtension  phase ~ NoExt
+  , AbstractionFor    phase ~ TypeFor phase
+  , BindingFor        phase ~ Var
+  , LamExtension      phase ~ NoExt
+  , ProductExtension  phase ~ NoExt
+  , ProductTExtension phase ~ NoExt
+  , SumTExtension     phase ~ NoExt
+  , SumExtension      phase ~ NoExt
+  , NamedExtension    phase ~ NoExt
   )
 
+-- | Layer a Succ constructor around a Nat.
 suc
   :: SucConstraints phase
   => ExprFor phase
   -> ExprFor phase
 suc n = App sTerm (n)
 
+-- | Convenience for some natural numbers. Use suc to create more.
 zero, one, two, three, four :: SucConstraints phase => ExprFor phase
 zero  = zTerm
 one   = suc zero
@@ -272,6 +330,7 @@ four  = suc three
 
 {- Unit -}
 
+-- | Type context containing the Unit type.
 unitTypeCtx
   :: ProductTExtension phase ~ NoExt
   => TypeCtxFor phase
@@ -308,77 +367,86 @@ unitPat = EmptyProductPattern
 
 {- Maybe -}
 
+-- | Type context containing the Maybe type.
 maybeTypeCtx
-  :: (TypeLamExtension phase ~ NoExt
-     ,SumTExtension phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor phase ~ TyVar
+  :: ( TypeLamExtension phase ~ NoExt
+     , SumTExtension phase ~ NoExt
+     , ProductTExtension phase ~ NoExt
+     , TypeBindingExtension phase ~ NoExt
+     , TypeBindingFor phase ~ TyVar
      )
   => TypeCtxFor phase
 maybeTypeCtx = fromJust $ insertType "Maybe" maybeType (KindArrow Kind Kind) emptyTypeCtx
 
+-- | Name of the Maybe type.
 maybeTypeName
   :: NamedExtension phase ~ NoExt
   => TypeFor phase
 maybeTypeName = Named "Maybe"
 
+-- | Unnamed definition of the Maybe type.
 maybeType
-  :: (TypeLamExtension phase ~ NoExt
-     ,SumTExtension phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor phase ~ TyVar
+  :: ( TypeLamExtension     phase ~ NoExt
+     , SumTExtension        phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
+     , TypeBindingExtension phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
      )
   => TypeFor phase
-maybeType = TypeLam Kind $ SumT maybeSumType
+maybeType = TypeLam Kind $ SumT $ NE.fromList -- data Maybe a
+  [ EmptyProductT                             --    = Nothing
+  , TypeBinding $ TyVar VZ                    --    | Just a
+  ]
 
-maybeSumType
-  :: (ProductTExtension phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor phase ~ TyVar
+-- | Nothing accepts a type a to produce a value Maybe a
+-- nothing : forall a. Maybe a
+nothingTerm
+  :: ( BigLamExtension      phase ~ NoExt
+     , SumExtension         phase ~ NoExt
+     , TypeBindingExtension phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , ProductExtension     phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
      )
-  => NonEmpty (TypeFor phase)
-maybeSumType = NE.fromList
+  => ExprFor phase
+nothingTerm = BigLam Kind $ Sum EmptyProduct 0 $ NE.fromList
+  [ EmptyProductT
+  , (TypeBinding $ TyVar VZ)
+  ]
+
+-- | Just accepts a type and a value of that type in order to produce a value
+-- Maybe a.
+--
+-- Just : forall a. a -> Maybe a
+justTerm
+  :: ( BigLamExtension      phase ~ NoExt
+     , LamExtension         phase ~ NoExt
+     , TypeBindingExtension phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , SumExtension         phase ~ NoExt
+     , BindingExtension     phase ~ NoExt
+     , BindingFor           phase ~ Var
+     , AbstractionFor       phase ~ TypeFor phase
+     , ProductTExtension    phase ~ NoExt
+     )
+  => ExprFor phase
+justTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Sum (Binding $ VZ) 1 $ NE.fromList
   [ EmptyProductT
   , TypeBinding $ TyVar VZ
   ]
 
-nothingTerm
-  :: (BigLamExtension phase ~ NoExt
-     ,SumExtension phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor phase ~ TyVar
-     ,ProductExtension phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     )
-  => ExprFor phase
-nothingTerm = BigLam Kind $ Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, (TypeBinding $ TyVar VZ)]
-
-justTerm
-  :: (BigLamExtension phase ~ NoExt
-     ,LamExtension phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor phase ~ TyVar
-     ,SumExtension phase ~ NoExt
-     ,BindingExtension phase ~ NoExt
-     ,BindingFor phase ~ Var
-     ,AbstractionFor phase ~ TypeFor phase
-     ,ProductTExtension phase ~ NoExt
-     )
-  => ExprFor phase
-justTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Sum (Binding $ VZ) 1 $ NE.fromList [EmptyProductT, (TypeBinding $ TyVar VZ)]
-
+-- | Pattern that matches the Nothing value of Maybe.
 nothingPat
-  :: (SumPatternExtension phase     ~ NoExt
-     ,ProductPatternExtension phase ~ NoExt
+  :: ( SumPatternExtension     phase ~ NoExt
+     , ProductPatternExtension phase ~ NoExt
      )
   => PatternFor phase
 nothingPat = SumPattern 0 EmptyProductPattern
 
+-- | Pattern that binds the Just value of Maybe.
 justPat
-  :: (SumPatternExtension phase ~ NoExt
-     ,BindExtension phase ~ NoExt
+  :: ( SumPatternExtension phase ~ NoExt
+     , BindExtension phase ~ NoExt
      )
   => PatternFor phase
 justPat = SumPattern 1 Bind
@@ -387,90 +455,131 @@ justPat = SumPattern 1 Bind
 {- Lists -}
 -- TODO: Unfinished/ untested.
 
+-- | Type context containing the List type.
 listTypeCtx
-  :: (TypeLamExtension  phase ~ NoExt
-     ,SumTExtension     phase ~ NoExt
-     ,ProductTExtension phase ~ NoExt
-     ,TypeBindingFor       phase ~ TyVar
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeAppExtension     phase ~ NoExt
-     ,NamedExtension       phase ~ NoExt
+  :: ( TypeLamExtension     phase ~ NoExt
+     , SumTExtension        phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , TypeBindingExtension phase ~ NoExt
+     , TypeAppExtension     phase ~ NoExt
+     , NamedExtension       phase ~ NoExt
      )
   => TypeCtxFor phase
-listTypeCtx = fromJust $ insertRecType "List" listType (KindArrow Kind Kind) emptyTypeCtx
+listTypeCtx = fromJust $ insertRecType "List" listTypeDefinition (KindArrow Kind Kind) emptyTypeCtx
 
+-- | Name of the List type.
 listTypeName
   :: NamedExtension phase ~ NoExt
   => TypeFor phase
 listTypeName = Named "List"
 
+-- | Unnamed, recursive definition of the List type.
 listType
-  :: (TypeLamExtension     phase ~ NoExt
-     ,SumTExtension        phase ~ NoExt
-     ,ProductTExtension    phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor       phase ~ TyVar
-     ,TypeAppExtension     phase ~ NoExt
-     ,NamedExtension       phase ~ NoExt
+  :: ( TypeLamExtension     phase ~ NoExt
+     , SumTExtension        phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
+     , TypeBindingExtension phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , TypeAppExtension     phase ~ NoExt
+     , NamedExtension       phase ~ NoExt
      )
   => TypeFor phase
-listType = TypeLam Kind $ SumT listSumType
+listType = TypeMu (KindArrow Kind Kind) $ listTypeDefinition -- data List ...
 
-listSumType
-  :: (ProductTExtension    phase ~ NoExt
-     ,TypeBindingExtension phase ~ NoExt
-     ,TypeBindingFor       phase ~ TyVar
-     ,TypeAppExtension     phase ~ NoExt
-     ,NamedExtension       phase ~ NoExt
+-- | Bare recursive definition of the List type _without_ the enclosing Mu.
+listTypeDefinition
+  :: ( TypeLamExtension     phase ~ NoExt
+     , SumTExtension        phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
+     , TypeBindingExtension phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , TypeAppExtension     phase ~ NoExt
+     , NamedExtension       phase ~ NoExt
      )
-  => NonEmpty (TypeFor phase)
-listSumType = NE.fromList $
- [ EmptyProductT -- : List a
- , ProductT $ [TypeBinding $ TyVar VZ, TypeApp TypeSelfBinding (TypeBinding $ TyVar VZ)]
+  => TypeFor phase
+listTypeDefinition = TypeLam Kind $ SumT $ NE.fromList $       -- ... a
+ [ EmptyProductT                                               --    = Empty
+ , ProductT [ TypeBinding $ TyVar VZ                           --    | Cons a
+            , TypeApp TypeSelfBinding (TypeBinding $ TyVar VZ) --           List a
+            ]
  ]
 
+
+-- | The empty term takes a type to produce a List.
 emptyTerm
-  :: (BigLamExtension      phase ~ NoExt
-     ,SumExtension         phase ~ NoExt
-     ,ProductExtension     phase ~ NoExt
-     ,TypeAppExtension     phase ~ NoExt
-     ,TypeBindingFor       phase ~ TyVar
-     ,TypeBindingExtension phase ~ NoExt
-     ,ProductTExtension    phase ~ NoExt
-     ,NamedExtension       phase ~ NoExt
+  :: ( BigLamExtension      phase ~ NoExt
+     , SumExtension         phase ~ NoExt
+     , ProductExtension     phase ~ NoExt
+     , TypeAppExtension     phase ~ NoExt
+     , TypeLamExtension     phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , TypeBindingExtension phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
+     , SumTExtension        phase ~ NoExt
+     , NamedExtension       phase ~ NoExt
      )
   => ExprFor phase
-emptyTerm = BigLam Kind $ Sum EmptyProduct 0 listSumType
+emptyTerm = BigLam Kind $ Sum EmptyProduct 0 $ NE.fromList
+  [ EmptyProductT
+  , ProductT [ TypeBinding $ TyVar VZ
+             , TypeApp listTypeName (TypeBinding $ TyVar VZ)
+             ]
+  ]
 
+-- | The cons term takes a type of contained values, a value for the head, then
+-- a list of values for the tail.
+--
+-- Cons : forall a. a -> [a] -> [a]
 consTerm
   :: forall phase
-   . (BigLamExtension      phase ~ NoExt
-     ,SumExtension         phase ~ NoExt
-     ,ProductExtension     phase ~ NoExt
-     ,TypeAppExtension     phase ~ NoExt
-     ,TypeBindingFor       phase ~ TyVar
-     ,TypeBindingExtension phase ~ NoExt
-     ,ProductTExtension    phase ~ NoExt
-     ,NamedExtension       phase ~ NoExt
-     ,LamExtension         phase ~ NoExt
-     ,AbstractionFor       phase ~ TypeFor phase
-     ,BindingExtension     phase ~ NoExt
-     ,BindingFor           phase ~ Var
+   . ( BigLamExtension      phase ~ NoExt
+     , SumExtension         phase ~ NoExt
+     , ProductExtension     phase ~ NoExt
+     , SumTExtension        phase ~ NoExt
+     , TypeAppExtension     phase ~ NoExt
+     , TypeBindingFor       phase ~ TyVar
+     , TypeBindingExtension phase ~ NoExt
+     , ProductTExtension    phase ~ NoExt
+     , NamedExtension       phase ~ NoExt
+     , LamExtension         phase ~ NoExt
+     , TypeLamExtension     phase ~ NoExt
+     , AbstractionFor       phase ~ TypeFor phase
+     , BindingExtension     phase ~ NoExt
+     , BindingFor           phase ~ Var
      )
   => ExprFor phase
-consTerm = BigLam Kind $ Lam (TypeBinding $ TyVar VZ) $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) $ Sum (Product [Binding $ VS VZ, Binding VZ]) 1 listSumType
+consTerm = BigLam Kind                                         -- forall a.
+         $ Lam (TypeBinding $ TyVar VZ)                        -- \(x  : a)
+         $ Lam (TypeApp listTypeName (TypeBinding $ TyVar VZ)) -- \(xs : [a])
+          $ Sum                                                -- -> Cons
+                (Product [ Binding $ VS VZ                     --      x
+                         , Binding VZ                          --      xs
+                         ]
+                )
+                1
+                (NE.fromList                                   -- : ...
+                  [ EmptyProductT
+                  , ProductT [ TypeBinding $ TyVar VZ
+                             , TypeApp listType (TypeBinding $ TyVar VZ)
+                             ]
+                  ]
+                )
 
+-- | Pattern that matches the Empty value of a List.
 emptyPat
-  :: (SumPatternExtension phase     ~ NoExt
-     ,ProductPatternExtension phase ~ NoExt
+  :: ( SumPatternExtension phase     ~ NoExt
+     , ProductPatternExtension phase ~ NoExt
      )
   => PatternFor phase
 emptyPat = SumPattern 0 EmptyProductPattern
 
+-- | Pattern that matches the head and tail of a List.
 consPat
-  :: (SumPatternExtension phase     ~ NoExt
-     ,ProductPatternExtension phase ~ NoExt
-     ,BindExtension phase ~ NoExt
+  :: ( SumPatternExtension phase     ~ NoExt
+     , ProductPatternExtension phase ~ NoExt
+     , BindExtension phase ~ NoExt
      )
   => PatternFor phase
-consPat = SumPattern 1 (ProductPattern [Bind,Bind])
+consPat = SumPattern 1 (ProductPattern [Bind, Bind])
+

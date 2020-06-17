@@ -13,7 +13,6 @@ module PL.Test.Expr.Natural
   ( natTypeCtx
   , natTypeName
   , natType
-  , natSumType
   , zTerm
   , sTerm
   , zPat

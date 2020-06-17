@@ -704,11 +704,7 @@ exprType ctx e =
   -- ----------------------------------
   --   Lam absTy expr : absTy -> exprTy
   LamExt _ext absTy bodyExpr
-    -> do let ctx' = case absTy of
-                       TypeMuExt _ext _kind itselfType
-                         -> ctx{_selfType = Just itselfType}
-                       _ -> ctx
-          exprTy <- exprType (underExpressionAbstraction absTy ctx') bodyExpr
+    -> do exprTy <- exprType (underExpressionAbstraction absTy ctx) bodyExpr
           Right $ Arrow absTy exprTy
 
   --

@@ -49,8 +49,6 @@ data TestSelfTypeSources = TestSelfTypeSources
   , _nestedSelfTypesCanBeConstructedTestCase :: Source
 
   , _selfTypesCanBeDeconstructedTestCase :: Source
-
-  , _successorTestCase :: Source
   }
 
 selfTypeTestCases
@@ -62,7 +60,6 @@ selfTypeTestCases t =
   ,("Self types can be constructed", selfTypesCanBeConstructedTestCase . _selfTypesCanBeConstructedTestCase $ t)
   ,("Nested self types can be constructed", nestedSelfTypesCanBeConstructedTestCase . _nestedSelfTypesCanBeConstructedTestCase $ t)
   ,("Self types can be deconstructed", selfTypesCanBeDeconstructedTestCase . _selfTypesCanBeDeconstructedTestCase $ t)
-  ,("Successor function", successorTestCase . _successorTestCase $ t)
   ]
 
 -- Test that self types can be mentioned at all by including them as an unused
@@ -264,41 +261,6 @@ selfTypesCanBeDeconstructedTestCase src
               ]
             , Just $ Sum EmptyProduct 1 $ NE.fromList [EmptyProductT, EmptyProductT]
             )
-          ]
-
-      , _underEvaluationCtx = undefined
-      , _evaluatesTo = undefined
-      , _evaluatesToWhenApplied = undefined
-      }
-  where
-    ctx = unitTypeCtx
-
--- Tests that the outer lambda is peeking inside its type and binding the
--- self-type for use in the RHS. Otherwise the RHS would have to expand the % a
--- level.
---
--- \(μKIND (+ (*) %)) (+1 (0) (*) %)
-successorTestCase
-  :: Source
-  -> ExprTestCase
-successorTestCase src
-  = ExprTestCase
-      { _parsesFrom = src
-      , _parsesTo   = Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Sum (Binding VZ) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding])
-
-      , _underResolveCtx = undefined
-      , _resolvesTo      = Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Sum (Binding VZ) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding])
-
-      , _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _typed = let t = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding]) in Arrow t t
-
-      , _underReductionCtx = topReductionCtx ctx
-      , _reducesTo = Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Sum (Binding VZ) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding])
-      , _reducesToWhenApplied =
-          [("zero"
-           , [(`App` (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding]))]
-           , Just $ Sum ((Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding])) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding]
-           )
           ]
 
       , _underEvaluationCtx = undefined

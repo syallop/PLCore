@@ -147,18 +147,18 @@ selfTypesCanBeConstructedTestCase
 selfTypesCanBeConstructedTestCase src
   = ExprTestCase
       { _parsesFrom = src
-      , _parsesTo   = App (Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Binding VZ))
-                          (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding])
+      , _parsesTo   = App (Lam parseTy (Binding VZ))
+                          (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, parseTy])
 
       , _underResolveCtx = undefined
-      , _resolvesTo      = App (Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Binding VZ))
-                               (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding])
+      , _resolvesTo      = App (Lam ty (Binding VZ))
+                               (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, ty])
 
       , _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _typed = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])
+      , _typed = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, ty])
 
       , _underReductionCtx = topReductionCtx ctx
-      , _reducesTo = Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding]
+      , _reducesTo = Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, ty]
       , _reducesToWhenApplied =
           [
           ]
@@ -168,6 +168,8 @@ selfTypesCanBeConstructedTestCase src
       , _evaluatesToWhenApplied = undefined
       }
   where
+    parseTy = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])
+    ty = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])
     ctx = unitTypeCtx
 
 -- Test that expressions can be constructed that are accepted as a self type
@@ -183,18 +185,18 @@ nestedSelfTypesCanBeConstructedTestCase
 nestedSelfTypesCanBeConstructedTestCase src
   = ExprTestCase
       { _parsesFrom = src
-      , _parsesTo   = App (Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Binding VZ))
-                          (Sum (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding]) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding])
+      , _parsesTo   = App (Lam parsedTy (Binding VZ))
+                          (Sum (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, parsedTy]) 1 $ NE.fromList [EmptyProductT, parsedTy])
 
       , _underResolveCtx = undefined
-      , _resolvesTo      = App (Lam (TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])) (Binding VZ))
-                               (Sum (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding]) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding])
+      , _resolvesTo      = App (Lam ty (Binding VZ))
+                               (Sum (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, ty]) 1 $ NE.fromList [EmptyProductT, ty])
 
       , _underTypeCheckCtx = topTypeCheckCtx ctx
-      , _typed = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])
+      , _typed = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, ty])
 
       , _underReductionCtx = topReductionCtx ctx
-      , _reducesTo = Sum (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, TypeSelfBinding]) 1 $ NE.fromList [EmptyProductT, TypeSelfBinding]
+      , _reducesTo = Sum (Sum EmptyProduct 0 $ NE.fromList [EmptyProductT, ty]) 1 $ NE.fromList [EmptyProductT, ty]
       , _reducesToWhenApplied =
           [
           ]
@@ -204,6 +206,9 @@ nestedSelfTypesCanBeConstructedTestCase src
       , _evaluatesToWhenApplied = undefined
       }
   where
+    parsedTy = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])
+    ty = TypeMu Kind (SumT $ NE.fromList [EmptyProductT, TypeSelfBinding])
+
     ctx = unitTypeCtx
 
 -- Test that expressions with self-types can be deconstructed.

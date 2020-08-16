@@ -175,34 +175,43 @@ unBase58ShortHash (ShortHash alg bytes) =
    in (mAlg, txt)
 
 
+-- Hashes are shortened by their textual base58 encoding NOT their underlying
+-- bytes.
 instance Shortable Hash ShortHash where
   shortLength = shortLength . _unShortHash
 
   toShort h = ShortHash (hashAlgorithm h) (hashBytes h)
 
-  -- The smallest hash is an empty string if there are no bytes and a single
-  -- word otherwise.
+  -- The smallest hash is an empty string if there are no characters and a single
+  -- character otherwise.
   -- TODO: A larger minimum length would make printed output change less
   -- frequently which may be desirable.
-  -- TODO: Should empty bytes be allowed?
-  shortenAgainst sourceHash Nothing = ShortHash (hashAlgorithm sourceHash)
-                                                (case BS.uncons $ hashBytes sourceHash of
-                                                   Nothing
-                                                     -> ""
-                                                   Just (w,_)
-                                                     -> BS.singleton w
-                                                )
-  shortenAgainst sourceHash (Just againstHash)
-    -- If the hashes use a different algorithm the bytes arent needed to
-    -- identify them.
-    | hashAlgorithm sourceHash /= hashAlgorithm againstHash
-     = ShortHash (hashAlgorithm sourceHash) ""
+  -- TODO: Should empty text be allowed?
+  shortenAgainst sourceHash mAgainstHash = case mAgainstHash of
+    Nothing
+      -> let (sourceAlg, sourceText) = unBase58 sourceHash
+             shortenedText           = case Text.uncons sourceText of
+                                         Nothing
+                                           -> ""
+                                         Just (c,_)
+                                           -> Text.singleton c
+             Just shortenedHash = mkBase58ShortHash (Just sourceAlg) shortenedText
+          in shortenedHash
 
-    -- If the hashes use the same algorithm, find the shortest sequence of
-    -- unique bytes.
-    | otherwise
-     = let bs = shortenAgainst (hashBytes sourceHash) (Just $ hashBytes againstHash)
-        in ShortHash (hashAlgorithm sourceHash) bs
+    Just againstHash
+      -- If the hashes use a different algorithm the bytes arent needed to
+      -- identify them.
+      | hashAlgorithm sourceHash /= hashAlgorithm againstHash
+       -> ShortHash (hashAlgorithm sourceHash) ""
+
+      -- If the hashes use the same algorithm, find the shortest sequence of
+      -- unique base58 characters.
+      | otherwise
+       -> let (sourceAlg, sourceText)= unBase58 sourceHash
+              (_, againstText) = unBase58 againstHash
+              shortenedText = shortenAgainst sourceText (Just againstText)
+              Just shortenedHash = mkBase58ShortHash (Just sourceAlg) shortenedText
+           in shortenedHash
 
   isShortened shortHash longHash
     = let (shortAlg,shortText) = unBase58ShortHash shortHash

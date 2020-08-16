@@ -77,6 +77,7 @@ instance
   ,Ord v
   ,Show k
   ,Show v
+  ,Show shortK
   ,Shortable k shortK
   ,ShortStore s k shortK v
   ,ShortStore s' k shortK v
@@ -329,6 +330,8 @@ largerNestedKeys (NestedStore top nested) shortKey = do
 shortenNestedKeys
   :: ( ShortStore s  k shortK v
      , ShortStore s' k shortK v
+     , Show k
+     , Show shortK
      )
   => NestedStore s s' k v
   -> k
@@ -358,6 +361,11 @@ shortenNestedKeys (NestedStore top nested) key = do
                            [ text "In a nested Store the top-level shortened a key to a value which has no larger keys in the nested store."
                            , lineBreak
                            , text "This implies bad data in the top store or that the nested store has suffered data loss."
+                           , lineBreak
+                           , text "Key:\t", string . show $ key
+                           , lineBreak
+                           , text "Candidate short key:\t", string . show $ candidateShortKey
+                           , lineBreak
                            ]
 
                     -- Nested store agrees this is the shortest key

@@ -69,20 +69,23 @@ module PL.Resolve
   )
   where
 
-import qualified PL.CodeStore as C
+-- PL
+import PL.Case
 import PL.Error
 import PL.Expr
-import PL.Case
+import PL.FixPhase
+import PL.Name
 import PL.Pattern
 import PL.Type
 import PL.TypeCtx
-import PL.FixPhase
-import PL.Name
-import PL.Hash
-import PL.HashStore
+import qualified PL.Store.Code as C
 
+-- External PL
 import PLPrinter.Doc
+import PLHash
+import PLHash.Short
 
+-- Other
 import qualified Data.Set as Set
 
 -- | Contains information used when resolving names within expressions, types

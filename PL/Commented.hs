@@ -85,25 +85,27 @@ module PL.Commented
   )
   where
 
-import PL.Expr
-import PL.Type
-
-import PL.Var
+-- PL
 import PL.Case
-import PL.TyVar
-import PL.Name
-import PL.Hash
-import PL.Kind
+import PL.Expr
 import PL.FixPhase
-import PL.HashStore
+import PL.Kind
+import PL.Name
 import PL.Pattern
+import PL.TyVar
+import PL.Type
+import PL.Var
 
-import Data.Text
-import qualified Data.Text as Text
+-- External PL
+import PLHash
+import PLHash.Short
+
+-- Other
 import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.Set as Set
-
 import Data.String
+import Data.Text
+import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 -- | The phase where an expression is no more than a structurally sound AST with
 -- optional comments around nodes.

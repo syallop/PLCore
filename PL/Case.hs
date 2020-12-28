@@ -11,11 +11,15 @@ module PL.Case where
 
 import Prelude hiding (sequence,mapM,foldr)
 
-import PL.Hash
+-- PL
 import PL.ExprLike
+
+-- External PL
+import PLHash
 import PLPrinter hiding (parens,between)
 import PLPrinter.Doc
 
+-- Other
 import Control.Applicative
 import Data.Foldable
 import Data.List.NonEmpty

@@ -19,18 +19,10 @@ library
                      , PL.Case
                      , PL.Commented
                      , PL.Error
-                     , PL.Hash
                      , PL.Expr
                      , PL.Pattern
                      , PL.Serialize
-                     , PL.CodeStore
-                     , PL.HashStore
-                     , PL.Store
-                     , PL.ShortStore
-                     , PL.Store.Memory
-                     , PL.Store.Nested
-                     , PL.Store.File
-                     , PL.Store.File.Path
+                     , PL.Store.Code
                      , PL.FixPhase
                      , PL.Resolve
                      , PL.Evaluate
@@ -108,6 +100,9 @@ library
                      , PLGrammar  >= 0.4
                      , PLPrinter  >= 0.3
                      , Reversible >= 0.1
+                     , PLStore
+                     , PLStore-Hash
+                     , PLHash
 
                      , QuickCheck
                      , containers >=0.5
@@ -142,7 +137,6 @@ test-suite hspec
   other-modules:     PL.Test.ExprSpec
                    , PL.Test.PatternSpec
                    , PL.Test.TypeSpec
-                   , PL.Test.Store.File.PathSpec
 
   build-depends:     base >=4.7
                    , PL

@@ -46,9 +46,12 @@ module PL.FixPhase
   )
   where
 
-import PL.Hash
-import PLPrinter.Doc
+-- PL
 import PL.Error
+
+-- External PL
+import PLHash
+import PLPrinter.Doc
 
 -- | Fix a phase-indexed type with nested sub-types 'f'.
 newtype FixPhase phase f

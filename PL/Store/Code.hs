@@ -3,7 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-|
-Module      : PL.CodeStore
+Module      : PL.Store.Code
 Copyright   : (c) Samuel A. Yallop, 2020
 Maintainer  : syallop@gmail.com
 Stability   : experimental
@@ -31,7 +31,7 @@ Convenience functions are not yet provided for:
 The interface currently only supports looking up the 'one' side of 'one-many' relationships.
 E.G. You may lookup an expressions type but not all expressions with a type.
 -}
-module PL.CodeStore
+module PL.Store.Code
   ( CodeStore ()
   , newCodeStore
 
@@ -69,18 +69,20 @@ module PL.CodeStore
 
 import Prelude hiding (lookup)
 
+-- PL
 import PL.Error
-import PL.Store
-import PL.ShortStore
-import PL.Hash
-import PL.HashStore
-import PL.FixPhase
-import PL.Serialize
 import PL.Expr
-import PL.Type
+import PL.FixPhase
 import PL.Kind
+import PL.Serialize
+import PL.Type
 
+-- External PL
+import PLHash
 import PLPrinter.Doc
+import PLStore
+import PLStore.Short
+import PLStore.Hash
 
 -- | A CodeStore co-ordinates lookup and storage of:
 -- - Expressions
@@ -92,14 +94,19 @@ import PLPrinter.Doc
 -- - Types Kind
 --
 -- Construct by passing storage implementations to newCodeStore.
-data CodeStore = forall s. (Store s Hash Hash, Show (s Hash Hash)) => CodeStore
-  { _exprStore :: HashStore Expr
-  , _typeStore :: HashStore Type
-  , _kindStore :: HashStore Kind
+data CodeStore
+  = forall s
+  . ( Store s Hash Hash
+    , Show (s Hash Hash)
+    )
+  => CodeStore
+       { _exprStore :: HashStore Expr
+       , _typeStore :: HashStore Type
+       , _kindStore :: HashStore Kind
 
-  , _exprTypeStore :: s Hash Hash
-  , _typeKindStore :: s Hash Hash
-  }
+       , _exprTypeStore :: s Hash Hash
+       , _typeKindStore :: s Hash Hash
+       }
 
 -- | Construct a new CodeStore with the provided backing storage.
 --
@@ -271,14 +278,14 @@ codeHashStore
   :: ((HashStore v -> IO (Either Error (HashStore v, HashStoreResult v))) -> a)
   -> v
   -> a
-codeHashStore withHashStore value = withHashStore $ \s -> storeByHash s SHA512 value
+codeHashStore withHashStore value = withHashStore $ \s -> fmap liftEMsg $ storeByHash s SHA512 value
 
 -- Over some HashStore, lookup a value by its hash.
 codeHashLookup
   :: ((HashStore v -> IO (Either Error (HashStore v, Maybe v))) -> a)
   -> Hash
   -> a
-codeHashLookup withHashStore hash = withHashStore $ \s -> lookupByHash s hash
+codeHashLookup withHashStore hash = withHashStore $ \s -> fmap liftEMsg $ lookupByHash s hash
 
 -- Over some Store, store a value against a key.
 codeStore
@@ -286,28 +293,28 @@ codeStore
   -> k
   -> v
   -> a
-codeStore withStore key value = withStore $ \s -> store s key value
+codeStore withStore key value = withStore $ \s -> fmap liftEMsg $ store s key value
 
 -- Over some Store, lookup a value given it's key.
 codeLookup
   :: ((forall s. Store s k v => s k v -> IO (Either Error (s k v, Maybe v))) -> a)
   -> k
   -> a
-codeLookup withStore k = withStore $ \s -> lookup s k
+codeLookup withStore k = withStore $ \s -> fmap liftEMsg $ lookup s k
 
 -- Over some HashStore, shorten a hash.
 codeHashShorten
   :: ((HashStore v -> IO (Either Error (HashStore v, ShortHash))) -> a)
   -> Hash
   -> a
-codeHashShorten withHashStore hash = withHashStore $ \s -> shortenHash s hash
+codeHashShorten withHashStore hash = withHashStore $ \s -> fmap liftEMsg $ shortenHash s hash
 
 -- Over some HashStore, largen a hash.
 codeHashLargen
   :: ((HashStore v -> IO (Either Error (HashStore v, [Hash]))) -> a)
   -> ShortHash
   -> a
-codeHashLargen withHashStore shortHash = withHashStore $ \s -> largerHashes s shortHash
+codeHashLargen withHashStore shortHash = withHashStore $ \s -> fmap liftEMsg $ largerHashes s shortHash
 
 {- External api -}
 

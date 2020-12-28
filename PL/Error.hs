@@ -52,6 +52,8 @@ module PL.Error
 
   , PPError (..)
   , ppError
+
+  , liftEMsg
   )
   where
 
@@ -389,3 +391,11 @@ instance
   ) => Document (ErrorFor phase) where
   document = ppError (PPError document document document document document document document document)
 
+-- | Helper to lift errors that are provided as plain 'Doc's to 'Errors'.
+liftEMsg :: Either Doc a -> Either (ErrorFor phase) a
+liftEMsg e = case e of
+  Right a
+    -> Right a
+
+  Left doc
+    -> Left . EMsg $ doc

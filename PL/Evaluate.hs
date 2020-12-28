@@ -44,30 +44,33 @@ module PL.Evaluate
   )
   where
 
-import PL.Expr
-import PL.Type
-import PL.Var
-import PL.Pattern
-import PL.TypeCtx
-import PL.ReduceType
-import PL.Name
-import PL.Error
-import PL.FixPhase
-import PL.CodeStore
+-- PL
 import PL.Bindings
-import PL.Case
 import PL.Binds
 import PL.Binds.Ix
+import PL.Case
+import PL.Store.Code
+import PL.Error
+import PL.Expr
+import PL.FixPhase
+import PL.Name
+import PL.Pattern
+import PL.ReduceType
+import PL.Type
+import PL.TypeCtx
+import PL.Var
 
+-- External PL
 import PLPrinter
 
-import qualified Data.Text as Text
+-- Other
+import Control.Monad
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe
 import Data.Proxy
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe
-import Control.Monad
+import qualified Data.Text as Text
 
 -- | EvaluationCtx contains information used/ generated when evaluating an
 -- expression.

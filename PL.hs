@@ -17,9 +17,6 @@ import PL.Binds.Ix           as X
 -- Case analysis on... things
 import PL.Case               as X
 
--- Hash things to produce Content-Addressed names
-import PL.Hash               as X
-
 -- Expressions, Types, etc extended with comments.
 import PL.Commented          as X
 
@@ -65,9 +62,6 @@ import PL.Reduce             as X
 -- Duplication of Reduce but acting at the type level. Currently has the right
 -- to behave differently and terminate on types that could be otherwise reduced.
 import PL.ReduceType         as X
-
--- Interface for storing arbitrary key-values
-import PL.Store              as X
 
 -- Type-level variables which can be used with a binding context to Kinds.
 import PL.TyVar              as X

@@ -14,13 +14,17 @@ Variables which can be used within a binding context to Types.
 -}
 module PL.Var where
 
-import PL.Hash
+-- PL
 import PL.Error
 import PL.FixPhase
 import PL.Binds
 import PL.Binds.Ix
-import PLPrinter
 
+-- External PL
+import PLPrinter
+import PLHash
+
+-- Other
 import Data.Monoid
 
 -- | Debrujn index for referencing variables.

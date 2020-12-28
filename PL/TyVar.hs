@@ -14,13 +14,17 @@ Type-level variables which can be used with a binding context to Kinds.
 -}
 module PL.TyVar where
 
-import PL.Hash
+-- PL
 import PL.Binds
 import PL.Binds.Ix
 import PL.Kind
-import PLPrinter
 import PL.Var
 
+-- External PL
+import PLHash
+import PLPrinter
+
+-- Other
 import Data.Coerce
 import Data.Monoid
 

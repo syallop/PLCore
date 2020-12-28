@@ -22,23 +22,26 @@ module PL.Serialize
   )
   where
 
+-- PL
+import PL.Error
+
+-- External PL
+import PLPrinter.Doc
+import PLHash
+
+-- Other
 import Data.Text
 import Data.ByteString
 import Data.Text.Encoding
 
-import PL.Hash
-import PL.Error
-
-import PLPrinter.Doc
-
 class Serialize t where
   serialize   :: t -> ByteString
-  deserialize :: forall phase. ByteString -> Either (ErrorFor phase) t
+  deserialize :: forall phase. ByteString -> Either Doc t
 
 instance Serialize Text where
   serialize   = encodeUtf8
   deserialize = either (\unicodeErr
-                         -> Left . EMsg . mconcat $
+                         -> Left . mconcat $
                                  [ text "Failed to deserialize text with unicode error:"
                                  , lineBreak
                                  , string . show $ unicodeErr

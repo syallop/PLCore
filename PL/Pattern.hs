@@ -59,30 +59,33 @@ module PL.Pattern
   )
   where
 
-import PL.FixPhase
-import PL.Type
-import PL.Kind
+-- PL
 import PL.Bindings
-import PL.TypeCtx
-import PL.TyVar
 import PL.Binds
-import PL.Var
-import PL.Hash
 import PL.Binds.Ix
-import PL.TypeCheck
-import PL.Type.Eq
-import PL.Error
-import PL.ReduceType
 import PL.Case
+import PL.Error
+import PL.FixPhase
+import PL.Kind
+import PL.ReduceType
+import PL.TyVar
+import PL.Type
+import PL.Type.Eq
+import PL.TypeCheck
+import PL.TypeCtx
+import PL.Var
 
+-- External PL
+import PLHash
 import PLPrinter
 import PLPrinter.Doc
 
+-- Other
 import Control.Applicative
 import Data.List (intercalate)
-import Data.Proxy
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Monoid hiding (Sum,Product)
+import Data.Proxy
 import GHC.Types (Constraint)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map

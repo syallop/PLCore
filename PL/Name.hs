@@ -30,9 +30,12 @@ module PL.Name
   )
   where
 
-import PL.Hash
+-- PL
 import PL.Error
 import PL.FixPhase
+
+-- External PL
+import PLHash
 
 import Data.Monoid
 import Data.Text (Text)

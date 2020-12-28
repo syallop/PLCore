@@ -16,13 +16,16 @@ module PL.Kind
   )
   where
 
-import PL.Hash
+-- PL
 import PL.Error
 import PL.FixPhase
 
+-- External PL
 import PLPrinter
 import PLPrinter.Doc
+import PLHash
 
+-- Other
 import Data.Monoid
 
 -- Describe properties of types

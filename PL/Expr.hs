@@ -94,27 +94,30 @@ module PL.Expr
   )
   where
 
+-- PL
 import PL.Bindings
 import PL.Binds
 import PL.Case
 import PL.Error
-import PL.Hash
 import PL.ExprLike
 import PL.FixPhase
 import PL.Kind
 import PL.Name
-import PLPrinter
-import PLPrinter.Doc
-import PL.Type hiding (parens)
-import PL.Type.Eq
-import PL.TypeCtx
-
-import PL.Var
+import PL.Pattern
 import PL.ReduceType
 import PL.TyVar
-import PL.Pattern
+import PL.Type hiding (parens)
+import PL.Type.Eq
 import PL.TypeCheck
+import PL.TypeCtx
+import PL.Var
 
+-- External PL
+import PLHash
+import PLPrinter
+import PLPrinter.Doc
+
+-- Other
 import Control.Applicative
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))

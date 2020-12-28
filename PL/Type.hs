@@ -90,20 +90,22 @@ module PL.Type
   )
   where
 
+-- PL
 import PL.Binds.Ix
-import PL.Name
-import PL.Kind
 import PL.Error
-import PL.Hash
 import PL.ExprLike
 import PL.FixPhase
+import PL.Kind
+import PL.Name
 import PL.TyVar
 
+-- External PL
 import PLGrammar
-
+import PLHash
 import PLPrinter hiding (parens,between)
 import PLPrinter.Doc
 
+-- Other
 import Data.List
 import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid

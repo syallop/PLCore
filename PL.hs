@@ -8,7 +8,10 @@ Re-Exports components of this 'PL' Programming Language, a language that starts
 with anonymous functions, sums, products and unions types which will be extended
 whimsically.
 -}
-module PL where
+module PL
+  ( module X
+  )
+  where
 
 import PL.Bindings           as X
 import PL.Binds              as X
@@ -26,9 +29,6 @@ import PL.Error              as X
 -- Evaluate expressions fully.
 import PL.Evaluate           as X
 
--- Resolve ambiguous short-hashes to known, unambiguous hashes.
-import PL.Resolve            as X
-
 -- An AST containing anonymous functions, sums, products and union types.
 -- Indexed by de bruijn indexes and with some level of type functions.
 import PL.Expr               as X
@@ -37,6 +37,10 @@ import PL.Expr               as X
 -- structure.
 import PL.ExprLike           as X
 
+-- Machinery for representing ASTs as fix points over their recursive
+-- occurances, with a 'phase' parameter to accomodate a trees-that-grow pattern.
+import PL.FixPhase            as X
+
 -- The Type of Types.
 import PL.Kind               as X
 
@@ -44,16 +48,8 @@ import PL.Kind               as X
 -- Type and variable names for example.
 import PL.Name               as X
 
--- A description of a languages grammar. Can be translated to a Parser and
--- eventually to a corresponing printer.
-import PLGrammar             as X
-
--- A NIH Pretty-Printer
-import PLPrinter              as X
-
--- Machinery for representing ASTs as fix points over their recursive
--- occurances, with a 'phase' parameter to accomodate a trees-that-grow pattern.
-import PL.FixPhase            as X
+-- Patterns match expressions inside Cases
+import PL.Pattern            as X
 
 -- Reduce expressions by maintaining a binding ctx and performing substitution
 -- and recursive reduction when necessary.
@@ -63,6 +59,12 @@ import PL.Reduce             as X
 -- to behave differently and terminate on types that could be otherwise reduced.
 import PL.ReduceType         as X
 
+-- Resolve ambiguous short-hashes to known, unambiguous hashes.
+import PL.Resolve            as X
+
+-- Serialize things between machine readable bytes
+import PL.Serialize          as X
+
 -- Type-level variables which can be used with a binding context to Kinds.
 import PL.TyVar              as X
 
@@ -70,10 +72,15 @@ import PL.TyVar              as X
 -- and can abstract and be applied much like Expressions.
 import PL.Type               as X
 
+-- Test equality between types
+import PL.Type.Eq            as X
+
+-- Check the types of expressions to ensure they make sense.
+import PL.TypeCheck          as X
+
 -- Maps names to types allowing type resolution.
 import PL.TypeCtx            as X
 
 -- Variables which can be used within a binding context to Types.
-import PL.Var
-
+import PL.Var                as X
 

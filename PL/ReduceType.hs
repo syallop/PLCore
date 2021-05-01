@@ -2,6 +2,7 @@
     OverloadedStrings
   , ScopedTypeVariables
   , FlexibleContexts
+  , LambdaCase
   , GADTs
   , ConstraintKinds
   #-}
@@ -26,7 +27,6 @@ module PL.ReduceType
   where
 
 import PL.Bindings
-import PL.Binds
 import PL.Binds.Ix
 import PL.Error
 import PL.ExprLike
@@ -38,13 +38,9 @@ import PL.TypeCtx
 import PLPrinter
 import PL.FixPhase
 
-import Control.Applicative
-import Control.Arrow (second)
-import Data.Monoid
 import Data.List.NonEmpty (NonEmpty)
 import Data.Proxy
 import qualified Data.Set as Set
-import qualified Data.Text as Text
 
 -- | TypeReductionCtx contains information used/ generated when reducing an
 -- expression.
@@ -169,9 +165,9 @@ reduceType
   => TypeReductionCtx phase
   -> TypeFor phase
   -> Either (ErrorFor phase) (TypeFor phase)
-reduceType ctx ty
+reduceType ctx t
   | hitTypeReductionLimit ctx
-   = Left . ETypeReductionLimitReached $ ty
+   = Left . ETypeReductionLimitReached $ t
 
   | otherwise
    = do -- Apply the reduce step until the expression no longer changes.
@@ -180,10 +176,10 @@ reduceType ctx ty
         -- TODO: reduceTypeStep only reduces one level under types for each call. If
         -- we assume the type reduces, we should reduce faster by recursing with
         -- reduceTypeWith instead.
-        reducedTy <- reduceTypeStep ctx ty
-        if reducedTy == ty
-          then pure ty
-          else reduceType (reduceTypeReductionLimit ctx) reducedTy
+        reducedT <- reduceTypeStep ctx t
+        if reducedT == t
+          then pure t
+          else reduceType (reduceTypeReductionLimit ctx) reducedT
 
 -- | Constraints for functions which reduce types require that:
 -- - Types are used for abstraction
@@ -209,7 +205,7 @@ reduceTypeStep
   => TypeReductionCtx phase
   -> TypeFor phase
   -> Either (ErrorFor phase) (TypeFor phase)
-reduceTypeStep ctx ty = case ty of
+reduceTypeStep ctx = \case
   TypeBindingExt ext b
     -> reduceTypeBinding ctx (ext, b)
 
@@ -275,7 +271,7 @@ reduceTypeSelfBinding
   :: TypeReductionCtx phase
   -> NoExt
   -> Either (ErrorFor phase) (TypeFor phase)
-reduceTypeSelfBinding ctx ext = pure $ TypeSelfBindingExt ext
+reduceTypeSelfBinding _ctx ext = pure $ TypeSelfBindingExt ext
 
 -- ContentBindings are not (currently) reduced - they're sticking points for
 -- evaluation.
@@ -297,7 +293,7 @@ reduceTypeContentBinding
   :: TypeReductionCtx phase
   -> (TypeContentBindingExtension phase, TypeContentBindingFor phase)
   -> Either (ErrorFor phase) (TypeFor phase)
-reduceTypeContentBinding ctx (ext, c) = pure $ TypeContentBindingExt ext c
+reduceTypeContentBinding _ctx (ext, c) = pure $ TypeContentBindingExt ext c
 
 -- Reduce using strictish semantics:
 -- - First reduce a step under the applied type
@@ -313,7 +309,7 @@ reduceTypeApp
   => TypeReductionCtx phase
   -> (TypeAppExtension phase, TypeFor phase, TypeFor phase)
   -> Either (ErrorFor phase) (TypeFor phase)
-reduceTypeApp ctx (ext, f, x) = do
+reduceTypeApp ctx (_ext, f, x) = do
   case f of
     -- Type lambdas are reduced by binding applied values into the body
     -- and reducing.
@@ -324,7 +320,7 @@ reduceTypeApp ctx (ext, f, x) = do
     -- TODO: Should we peek a level under the Mu to determine whether its a
     -- TypeLam?
     TypeMuExt ext expectKind itselfTy
-      -> reduceTypeMu ctx (ext, expectKind, itselfTy)
+      -> reduceTypeMu (underSelfType itselfTy ctx) (ext, expectKind, itselfTy)
 
     -- The function we're applying is 'higher order' - it is sourced
     -- from a function itself.
@@ -343,7 +339,7 @@ reduceTypeApp ctx (ext, f, x) = do
       -> TypeApp <$> pure (TypeContentBindingExt ext c)
                  <*> reduceTypeStep ctx x
 
-    TypeSelfBindingExt ext
+    TypeSelfBindingExt _ext
       -> case _typeReductionSelfType ctx of
            Nothing
              -> Left . EMsg . text $ "Cant reduce type application with a self-type which does not exist"
@@ -385,7 +381,7 @@ reduceTypeMu
   => TypeReductionCtx phase
   -> (NoExt, Kind, TypeFor phase)
   -> Either (ErrorFor phase) (TypeFor phase)
-reduceTypeMu ctx (ext, expectKind, itselfTy) = pure $ TypeMuExt ext expectKind itselfTy
+reduceTypeMu _ctx (ext, expectKind, itselfTy) = pure $ TypeMuExt ext expectKind itselfTy
 -- TODO: If self-types had a bindctx they could be unbound, allowing us to
 -- reduce the definition.
 
@@ -421,8 +417,8 @@ reduceNamed ctx (ext, n) =
     Just (TypeMuExt _ _ _)
       -> pure $ NamedExt ext n
 
-    Just ty
-      -> Right ty
+    Just t
+      -> Right t
 
 -- Reduce a single step under the arrow type.
 reduceArrow
@@ -469,26 +465,26 @@ destruct
    . Ord (TypeFor phase)
   => (NoExt, Kind, TypeFor phase)
   -> Either (ErrorFor phase) (TypeFor phase)
-destruct (muExt, muKind, itselfTy) = destruct' itselfTy
+destruct (muExt, muKind, itselfT) = destruct' itselfT
   where
     destruct' :: TypeFor phase -> Either (ErrorFor phase) (TypeFor phase)
-    destruct' ty = case ty of
+    destruct' = \case
       -- Found a self-binding. Substitute.
       TypeSelfBindingExt _
-        -> Right $ TypeMuExt muExt muKind itselfTy
+        -> Right $ TypeMuExt muExt muKind itselfT
 
       -- Self bindings cannot reference further than their nearest Mu and so
       -- theres no need to recurse on the following constructors.
       -- If self bindings are extended, we should recurse here:
 
       TypeMuExt _ _ _
-        -> pure itselfTy
+        -> pure itselfT
       -- Bindings should not contain bare self-bindings.
       TypeBindingExt _ _
-        -> pure itselfTy
+        -> pure itselfT
       -- ContentBindings should not contain bare self-bindings.
       TypeContentBindingExt _ _
-        -> pure itselfTy
+        -> pure itselfT
       -- Names should not contain bare self-bindings.
       NamedExt ext n
         -> pure $ NamedExt ext n
@@ -500,9 +496,9 @@ destruct (muExt, muKind, itselfTy) = destruct' itselfTy
              <$> destruct' f
              <*> destruct' x
 
-      TypeLamExt ext takeKind tyBody
+      TypeLamExt ext takeKind tBody
         -> TypeLamExt ext takeKind
-             <$> destruct' tyBody
+             <$> destruct' tBody
 
       BigArrowExt ext fromKind toTy
         -> BigArrowExt ext fromKind

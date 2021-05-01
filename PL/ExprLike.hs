@@ -14,7 +14,21 @@ Stability   : experimental
 Classes of things which are like expressions. Types and kinds have a similar
 structure.
 -}
-module PL.ExprLike where
+module PL.ExprLike
+  ( HasAbs
+  , applyToAbs
+
+  , HasBinding
+  , applyToBinding
+
+  , HasNonAbs
+  , applyToNonAbs
+
+  , BuryDepth (BuryDepth)
+
+  , buryBy
+  )
+  where
 
 import PL.Binds.Ix
 
@@ -48,18 +62,18 @@ newtype BuryDepth = BuryDepth {_unBurryDepth :: Int} deriving (Num,Eq)
 -- \.\.0 1 2  ~> \.\. 0 1 (2+depth)
 buryBy :: forall e b. (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> e -> BuryDepth -> e
 buryBy _        e 0         = e
-buryBy bindType e buryDepth = applyToAbs     (\subE     -> buryBetween 0 subE buryDepth)
+buryBy bindType e buryDepth = applyToAbs     (\subE     -> buryBetween bindType 0 subE buryDepth)
                             . applyToBinding (\(b :: b) -> buryBinding b (_unBurryDepth buryDepth))
                             . applyToNonAbs  (\subE     -> buryBy bindType subE buryDepth)
                             $ e
-  where
-  buryBetween :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Int -> e -> BuryDepth -> e
-  buryBetween ourTop e buryDepth = applyToBinding (\(b :: b) -> if -- Binding is within our height.
-                                                                   | bindDepth b <= ourTop -> b 
-                                                                   -- Binding escapes our height, so compensate for the greater depth
-                                                                   | otherwise             -> buryBinding b (_unBurryDepth buryDepth)
-                                                  )
-                                 . applyToAbs     (\subE -> buryBetween (ourTop+1) subE buryDepth)
-                                 . applyToNonAbs  (\subE -> buryBetween ourTop subE buryDepth)
-                                 $ e
+
+buryBetween :: forall e b. (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Int -> e -> BuryDepth -> e
+buryBetween bindType ourTop e buryDepth = applyToBinding (\(b :: b) -> if -- Binding is within our height.
+                                                                         | bindDepth b <= ourTop -> b
+                                                                         -- Binding escapes our height, so compensate for the greater depth
+                                                                         | otherwise             -> buryBinding b (_unBurryDepth buryDepth)
+                                                        )
+                                       . applyToAbs     (\subE -> buryBetween bindType (ourTop+1) subE buryDepth)
+                                       . applyToNonAbs  (\subE -> buryBetween bindType ourTop subE buryDepth)
+                                       $ e
 

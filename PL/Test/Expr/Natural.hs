@@ -32,29 +32,16 @@ module PL.Test.Expr.Natural
   )
   where
 
-import PL.Bindings
-import PL.Binds
 import PL.Case
-import PL.Commented
-import PL.Error
 import PL.Expr
-import PL.Kind
 import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
 import PL.Pattern
-import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
 
 import Data.Text (Text)
-import Data.Maybe
 import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Text as Text
-
-import Data.Monoid ((<>))
 
 import PL.Test.ExprTestCase
 import PL.Test.Source

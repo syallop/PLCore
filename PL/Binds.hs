@@ -28,10 +28,8 @@ Whereas Bindings:
 module PL.Binds where
 
 import PL.Binds.Ix
-import PLPrinter hiding (parens,between)
+import PLPrinter hiding (between)
 import PLPrinter.Doc
-
-import Data.Monoid
 
 -- 'b' maps to and from an index describing where the variable was bound.
 -- The associated ''BindCtx b' associates 'b' to types'

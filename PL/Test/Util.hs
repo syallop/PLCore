@@ -21,27 +21,10 @@ module PL.Test.Util
   )
   where
 
-import PL.Binds
-import PL.Case
 import PL.Error
-import PL.Expr
-import PL.Kind
-import PL.Reduce
-import PL.TyVar
-import PL.Type
-import PL.Name
-import PL.Type.Eq
-import PL.TypeCtx
-import PL.Var
-import PL.Bindings
 
 import PL.Name
 import PLPrinter
-import PLPrinter.Doc
-
-import qualified Data.List.NonEmpty as NE
-import qualified Data.List as List
-import qualified Data.Text as Text
 
 -- Color a line of text
 putColor
@@ -54,6 +37,7 @@ putColor i s
  >> putStr "\x1b[0m"
 
 -- Color a line of text. Newline
+putGreen, putRed, putYellow, putBlue, putCyan :: String -> IO ()
 putGreen  = putColor 32
 putRed    = putColor 31
 putYellow = putColor 33
@@ -65,11 +49,4 @@ ppTypeName = PLPrinter.text . typeName
 
 ppTermName :: TermName -> Doc
 ppTermName = PLPrinter.text . termName
-
-ppKind :: Kind -> Doc
-ppKind k = case k of
-  Kind
-    -> PLPrinter.text "KIND"
-  KindArrow from to
-    -> PLPrinter.char '^' <> parens (ppKind from) <> parens (ppKind to)
 

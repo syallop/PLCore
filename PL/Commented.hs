@@ -89,8 +89,6 @@ module PL.Commented
 import PL.Case
 import PL.Expr
 import PL.FixPhase
-import PL.Kind
-import PL.Name
 import PL.Pattern
 import PL.TyVar
 import PL.Type
@@ -101,7 +99,6 @@ import PLHash
 import PLHash.Short
 
 -- Other
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.String
 import Data.Text
 import qualified Data.Set as Set
@@ -134,7 +131,7 @@ data Commented e = Commented
 
 -- Comments do not contribute to a Hash
 instance Hashable e => Hashable (Commented e) where
-  toHashToken (Commented c e) = toHashToken e
+  toHashToken (Commented _c e) = toHashToken e
 
 -- | A Type is in the commented phase when is has an additional constructor
 -- which may recursively contain types wrapped in comments.
@@ -317,8 +314,8 @@ stripComments e = case e of
   FixPhase (ExprExtensionF (Commented _comment commentedExpr))
     -> stripComments commentedExpr
 
-  LamExt ext ty expr
-    -> LamExt ext (stripTypeComments ty) (stripComments expr)
+  LamExt ext t expr
+    -> LamExt ext (stripTypeComments t) (stripComments expr)
 
   AppExt ext fExpr xExpr
     -> AppExt ext (stripComments fExpr) (stripComments xExpr)
@@ -326,14 +323,14 @@ stripComments e = case e of
   CaseAnalysisExt ext c
      -> CaseAnalysisExt ext $ stripCaseComments c
 
-  SumExt ext expr ix ty
-    -> SumExt ext (stripComments expr) ix (fmap stripTypeComments ty)
+  SumExt ext expr ix t
+    -> SumExt ext (stripComments expr) ix (fmap stripTypeComments t)
 
   ProductExt ext prodExprs
     -> ProductExt ext (fmap stripComments prodExprs)
 
-  UnionExt ext unionExpr tyIx ty
-    -> UnionExt ext (stripComments unionExpr) (stripTypeComments tyIx) (Set.map stripTypeComments ty)
+  UnionExt ext unionExpr tIx t
+    -> UnionExt ext (stripComments unionExpr) (stripTypeComments tIx) (Set.map stripTypeComments t)
 
   BindingExt ext b
     -> BindingExt ext b
@@ -454,8 +451,8 @@ addComments
   => ExprFor phaseIn
   -> ExprFor phaseOut
 addComments = \case
-  LamExt ext ty expr
-    -> LamExt ext (addTypeComments ty) (addComments expr)
+  LamExt ext t expr
+    -> LamExt ext (addTypeComments t) (addComments expr)
 
   AppExt ext fExpr xExpr
     -> AppExt ext (addComments fExpr) (addComments xExpr)
@@ -463,14 +460,14 @@ addComments = \case
   CaseAnalysisExt ext c
      -> CaseAnalysisExt ext $ addCaseComments c
 
-  SumExt ext expr ix ty
-    -> SumExt ext (addComments expr) ix (fmap addTypeComments ty)
+  SumExt ext expr ix t
+    -> SumExt ext (addComments expr) ix (fmap addTypeComments t)
 
   ProductExt ext prodExprs
     -> ProductExt ext (fmap addComments prodExprs)
 
-  UnionExt ext unionExpr tyIx ty
-    -> UnionExt ext (addComments unionExpr) (addTypeComments tyIx) (Set.map addTypeComments ty)
+  UnionExt ext unionExpr tIx t
+    -> UnionExt ext (addComments unionExpr) (addTypeComments tIx) (Set.map addTypeComments t)
 
   BindingExt ext b
     -> BindingExt ext b

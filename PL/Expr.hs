@@ -94,9 +94,9 @@ module PL.Expr
   )
   where
 
+import Prelude hiding (abs)
+
 -- PL
-import PL.Bindings
-import PL.Binds
 import PL.Case
 import PL.Error
 import PL.ExprLike
@@ -104,10 +104,7 @@ import PL.FixPhase
 import PL.Kind
 import PL.Name
 import PL.Pattern
-import PL.ReduceType
-import PL.TyVar
-import PL.Type hiding (parens)
-import PL.Type.Eq
+import PL.Type
 import PL.TypeCheck
 import PL.TypeCtx
 import PL.Var
@@ -115,18 +112,11 @@ import PL.Var
 -- External PL
 import PLHash
 import PLPrinter
-import PLPrinter.Doc
 
 -- Other
-import Control.Applicative
-import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Monoid hiding (Sum,Product)
-import GHC.Types (Constraint)
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Data.Text as Text
 import Data.Set (Set)
 
 -- | Expr is an 'ExprF' that:
@@ -383,9 +373,9 @@ instance
   ,Show expr
   )
   => Show (ExprF phase expr) where
-  show e = mconcat $ case e of
-    LamF ext take expr
-      -> ["{Lam ", show ext, " ", show take, " ", show expr, "}"]
+  show = mconcat . \case
+    LamF ext abstract expr
+      -> ["{Lam ", show ext, " ", show abstract, " ", show expr, "}"]
 
     AppF ext f x
       -> ["{App ", show ext, " ", show f, " ", show x, "}"]
@@ -399,20 +389,20 @@ instance
     CaseAnalysisF ext c
       -> ["{CaseAnalysis ", show ext, " ", show c, "}"]
 
-    SumF ext x ix ty
-      -> ["{Sum ", show ext, " ", show x, " ", show ix, " ", show ty, "}"]
+    SumF ext x ix t
+      -> ["{Sum ", show ext, " ", show x, " ", show ix, " ", show t, "}"]
 
     ProductF ext exprs
       -> ["{Product ", show ext, " ", show exprs, "}"]
 
-    UnionF ext e tyIx ty
-      -> ["{Union ", show ext, " ", show e, " ", show tyIx, " ", show ty , "}"]
+    UnionF ext e tIx t
+      -> ["{Union ", show ext, " ", show e, " ", show tIx, " ", show t , "}"]
 
-    BigLamF ext ty expr
-      -> ["{BigLam ", show ext, " ", show ty, " ", show expr, "}"]
+    BigLamF ext t expr
+      -> ["{BigLam ", show ext, " ", show t, " ", show expr, "}"]
 
-    BigAppF ext f xTy
-      -> ["{BigApp ", show ext, " ", show f, " ", show xTy, "}"]
+    BigAppF ext f xT
+      -> ["{BigApp ", show ext, " ", show f, " ", show xT, "}"]
 
     ExprExtensionF ext
       -> ["{ExprExtension ", show ext, "}"]
@@ -439,8 +429,8 @@ instance
   )
   => Hashable (ExprF phase expr) where
   toHashToken = \case
-    LamF ext take expr
-      -> HashTag "Expr.Lam" [toHashToken ext,toHashToken take,toHashToken expr]
+    LamF ext abstract expr
+      -> HashTag "Expr.Lam" [toHashToken ext,toHashToken abstract,toHashToken expr]
 
     AppF ext f x
       -> HashTag "Expr.App" [toHashToken ext,toHashToken f,toHashToken x]
@@ -454,20 +444,20 @@ instance
     CaseAnalysisF ext c
       -> HashTag "Expr.Case" [toHashToken ext,toHashToken c]
 
-    SumF ext x ix ty
-      -> HashTag "Expr.Sum" [toHashToken ext,toHashToken x,HashInt ix,toHashToken ty]
+    SumF ext x ix t
+      -> HashTag "Expr.Sum" [toHashToken ext,toHashToken x,HashInt ix,toHashToken t]
 
     ProductF ext exprs
       -> HashTag "Expr.Product" [toHashToken ext,toHashToken exprs]
 
-    UnionF ext e tyIx ty
-      -> HashTag "Expr.Union" [toHashToken ext,toHashToken e,toHashToken tyIx,toHashToken ty]
+    UnionF ext e tIx t
+      -> HashTag "Expr.Union" [toHashToken ext,toHashToken e,toHashToken tIx,toHashToken t]
 
-    BigLamF ext ty expr
-      -> HashTag "Expr.BigLam" [toHashToken ext,toHashToken ty,toHashToken expr]
+    BigLamF ext t expr
+      -> HashTag "Expr.BigLam" [toHashToken ext,toHashToken t,toHashToken expr]
 
-    BigAppF ext f xTy
-      -> HashTag "Expr.App" [toHashToken ext,toHashToken f,toHashToken xTy]
+    BigAppF ext f xT
+      -> HashTag "Expr.App" [toHashToken ext,toHashToken f,toHashToken xT]
 
     ExprExtensionF ext
       -> HashTag "Expr.Extension" [toHashToken ext]
@@ -644,14 +634,39 @@ instance HasBinding Expr ContentName where
 
 -- An Expr contains NON-abstracted sub-expressions
 instance HasNonAbs Expr where
-  applyToNonAbs f (App x y)                 = App (f x) (f y)
-  applyToNonAbs f (CaseAnalysis c)          = CaseAnalysis (mapCaseExpr (applyToNonAbs f) c)
-  applyToNonAbs f (Sum expr ix ty)          = Sum (f expr) ix ty
-  applyToNonAbs f (Product prodExprs)       = Product (map f prodExprs)
-  applyToNonAbs f (Union unionExpr tyIx ty) = Union (f unionExpr) tyIx ty
-  applyToNonAbs f (BigLam takeTy expr)      = BigLam takeTy (f expr)
-  applyToNonAbs f (BigApp fExpr xTy)        = BigApp (f fExpr) xTy
-  applyToNonAbs f e                         = e
+  applyToNonAbs f = \case
+    -- Do _not_ recurse
+    Lam abs body
+      -> Lam abs body
+
+    App x y
+      -> App (f x) (f y)
+
+    Binding b
+      -> Binding b
+
+    ContentBinding n
+      -> ContentBinding n
+
+    CaseAnalysis c
+      -> CaseAnalysis (mapCaseExpr (applyToNonAbs f) c)
+
+    Sum expr ix ts
+      -> Sum (f expr) ix ts
+
+    Product exprs
+      -> Product (fmap f exprs)
+
+    Union expr tIx ts
+      -> Union (f expr) tIx ts
+
+    BigLam absT expr
+      -> BigLam absT (f expr)
+
+    BigApp x yT
+      -> BigApp (f x) yT
+
+    _ -> undefined
 
 -- Map a function over all contained subexpressions.
 -- The function should preserve the type of the expression.
@@ -659,9 +674,9 @@ mapSubExpressions
   :: (Expr -> Expr)
   -> Expr
   -> Expr
-mapSubExpressions f e = case e of
-  Lam ty expr
-    -> Lam ty (f expr)
+mapSubExpressions f = \case
+  Lam t expr
+    -> Lam t (f expr)
 
   App fExpr xExpr
     -> App (f fExpr) (f xExpr)
@@ -669,23 +684,23 @@ mapSubExpressions f e = case e of
   CaseAnalysis c
     -> CaseAnalysis $ mapCaseExpr f c
 
-  Sum expr ix ty
-    -> Sum (f expr) ix ty
+  Sum expr ix t
+    -> Sum (f expr) ix t
 
   Product prodExprs
     -> Product (map f prodExprs)
 
-  Union unionExpr tyIx ty
-    -> Union (f unionExpr) tyIx ty
+  Union unionExpr tIx t
+    -> Union (f unionExpr) tIx t
 
   Binding b
     -> Binding b
 
-  BigLam takeTy expr
-    -> BigLam takeTy (f expr)
+  BigLam takeT expr
+    -> BigLam takeT (f expr)
 
-  BigApp fExpr xTy
-    -> BigApp (f fExpr) xTy
+  BigApp fExpr xT
+    -> BigApp (f fExpr) xT
   e -> e
 
 type instance ErrorExpr DefaultPhase = Expr
@@ -729,15 +744,15 @@ exprType ctx e =
                    Nothing
                      -> Left . EContext (EMsg $ text "Reduction: function application") . ETypeNotDefined n . _typeCtx $ ctx
 
-                   Just ty
-                     -> Right ty
+                   Just t
+                     -> Right t
 
             TypeContentBindingExt _ c
               -> lookupTypeContentType c ctx
 
             -- There is no need to check for bindings as they will have been
             -- evaluated by exprType.
-            fTy -> Right fTy
+            fT -> Right fT
 
           case resolvedFTy of
             Arrow fromTy toTy
@@ -920,8 +935,8 @@ exprType ctx e =
                    Nothing
                      -> Left . EContext (EMsg $ text "Reduction: Big application") . ETypeNotDefined n . _typeCtx $ ctx
 
-                   Just ty
-                     -> Right ty
+                   Just t
+                     -> Right t
 
             TypeContentBindingExt _ c
               -> lookupTypeContentType c ctx
@@ -942,7 +957,7 @@ exprType ctx e =
             _
               -> Left $ EMsg $ text "The first argument to a big application did not have a big arrow type"
 
-  e -> error "Non-exhaustive pattern in type check"
+  _ -> error "Non-exhaustive pattern in type check"
 
 -- | Gather the Set of all ContentBinding names used within an Expression
 -- _without_ looking under any of the returned names themselves.
@@ -958,13 +973,13 @@ gatherContentNames = gatherContentNames' Set.empty
       ContentBindingExt _ext c
         -> Set.insert c accNames
 
-      LamExt _ext abs expr
+      LamExt _ext _abs expr
         -> gatherContentNames' accNames expr
 
       AppExt _ext f x
         -> gatherContentNames' (gatherContentNames' accNames x) f
 
-      BindingExt _ext b
+      BindingExt _ext _b
         -> Set.empty
 
       CaseAnalysisExt _ext c
@@ -1015,7 +1030,7 @@ gatherExprsTypeContentNames = gather Set.empty
   where
     gather :: Set ContentName -> ExprFor phase -> Set ContentName
     gather accNames = \case
-      ContentBindingExt _ext c
+      ContentBindingExt _ext _c
         -> accNames
 
       LamExt _ext abs _expr

@@ -35,22 +35,17 @@ module PL.Reduce
   where
 
 import PL.Bindings
-import PL.Binds
 import PL.Binds.Ix
 import PL.Case
 import PL.Error
 import PL.Expr
-import PL.Name
 import PL.FixPhase
 import PL.Type
 import PL.Var
-import PL.TyVar
 import PL.TypeCtx
 import PL.ReduceType
 import PL.Pattern
 
-import Control.Applicative
-import Control.Arrow (second)
 import Control.Monad
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
@@ -336,18 +331,18 @@ reduceStep ctx initialExpr = case initialExpr of
   -- Type/ kind checking _should_ have ensured the function is a BigArrow type
   -- that matches the type. It should therefore only be a BigLambda or a
   -- typebinding to a (possibly) unknown function.
-  BigApp f ty
+  BigApp f t
     -> do -- TODO:
           -- - Should we reduce the type before applying it?
           -- - Should we be reducing types everywhere else inside expression
           --   reduction?
-          ty' <- reduceType (toTypeReductionCtx ctx) ty
+          t' <- reduceType (toTypeReductionCtx ctx) t
           f'  <- reduceStep ctx f
           case f' of
             -- Big Lambdas are reduced by binding applied types into the body
             -- and reducing.
             BigLam _absKind fBodyExpr
-              -> reduceStep (underAppliedType ty' ctx) fBodyExpr
+              -> reduceStep (underAppliedType t' ctx) fBodyExpr
 
             -- The function we're applying is 'higher order' - it is sourced
             -- from a function itself.
@@ -358,11 +353,11 @@ reduceStep ctx initialExpr = case initialExpr of
             -- If we're wrong an additional reduceStep on the
             -- application should make progress.
             Binding var
-              -> pure $ BigApp (Binding var) ty'
+              -> pure $ BigApp (Binding var) t'
 
             -- We don't reduce under ContentBindings
             ContentBinding c
-              -> pure $ BigApp (ContentBinding c) ty'
+              -> pure $ BigApp (ContentBinding c) t'
 
             -- An error here indicates type/ kind checking has not been performed/ has
             -- been performed incorrectly as the expression in function
@@ -466,8 +461,8 @@ tryBranches ctx caseScrutinee branches = firstMatch $ tryBranch ctx caseScrutine
     firstMatch :: NonEmpty (Maybe a) -> Maybe a
     firstMatch (h :| t) = safeHead . catMaybes $ h:t
 
-    safeHead (x:xs) = Just x
-    safeHead []     = Nothing
+    safeHead (x:_) = Just x
+    safeHead []    = Nothing
 
 -- | Try and match a (non-binding) expression against a case branch.
 --
@@ -532,10 +527,10 @@ patternBinding ctx caseScrutinee pattern = case (caseScrutinee,pattern) of
 
   -- Sum patterns begin matching when paired with a sum expression with the same
   -- index.
-  (Sum sumExpr sumIx sumTys, SumPattern ix pattern)
+  (Sum sumExpr sumIx _sumTys, SumPattern ix sumPattern)
     -- This index matches. Attempt to match further.
     | sumIx == ix
-     -> patternBinding ctx sumExpr pattern
+     -> patternBinding ctx sumExpr sumPattern
 
     -- Indexes are different.
     | otherwise
@@ -547,12 +542,12 @@ patternBinding ctx caseScrutinee pattern = case (caseScrutinee,pattern) of
 
   -- Union patterns begin matching when paired with a union expression with the
   -- same type index.
-  (Union unionExpr unionTyIx unionTy, UnionPattern ty pattern)
+  (Union unionExpr unionTIx _unionT, UnionPattern t unionPattern)
     -- If the type matches attempt to match further.
     -- TODO: Consider using typeEq to determine matches. Currently types which
     -- would reduce to the same type do not match.
-    | unionTyIx == ty
-      -> patternBinding ctx unionExpr pattern
+    | unionTIx == t
+      -> patternBinding ctx unionExpr unionPattern
 
     -- Type indexes are different.
     | otherwise

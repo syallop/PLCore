@@ -3,6 +3,7 @@
   , MultiWayIf
   , OverloadedStrings
   , ScopedTypeVariables
+  , LambdaCase
   #-}
 {-|
 Module      : PL.Bindings
@@ -56,19 +57,16 @@ module PL.Bindings
   )
   where
 
-import Control.Applicative
 import Data.Maybe
 import Data.Proxy
-import Data.Text (Text,unpack,pack)
-import Data.Monoid
+import Data.Text (unpack,pack)
 
 import Data.Tree
 import Data.Tree.Pretty
 
-import PL.Binds
 import PL.Binds.Ix
 import PL.ExprLike
-import PLPrinter hiding (parens,between)
+import PLPrinter hiding (between)
 import PLPrinter.Doc
 
 
@@ -109,7 +107,7 @@ ppBindings
   :: (e -> Doc)
   -> Bindings e
   -> Doc
-ppBindings ppExpr bs  = between (char '[') (char ']') $ case bs of
+ppBindings ppExpr bindings = between (char '[') (char ']') $ case bindings of
   EmptyBindings
     -> emptyDoc
 
@@ -150,34 +148,34 @@ bindFromList = (`bindAll` emptyBindings)
 
 -- | If the index exists then extract the bound 'e', adjusting it for its depth in the bindings
 safeIndex :: forall e b. (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Maybe (Binding e)
-safeIndex bindType EmptyBindings _  = Nothing
+safeIndex _ EmptyBindings _  = Nothing
 safeIndex bindType bs ix
   | ix < 0    = Nothing
-  | otherwise = safeIndex' 0 bs ix
-  where
-  safeIndex' :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => BuryDepth -> Bindings e -> Int -> Maybe (Binding e)
-  safeIndex' buryDepth bs ix = case (bs,ix) of
-    -- We don't have any more bindings and so we've failed to lookup.
-    (EmptyBindings, _)
-      -> Nothing
+  | otherwise = safeIndex' bindType 0 bs ix
 
-    -- We've found the binding.
-    (ConsBinding b _, 0)
-      -> case b of
-           -- But it hasn't been bound.
-           Unbound
-             -> Just Unbound
+safeIndex' :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> BuryDepth -> Bindings e -> Int -> Maybe (Binding e)
+safeIndex' bindType buryDepth bs ix = case (bs,ix) of
+  -- We don't have any more bindings and so we've failed to lookup.
+  (EmptyBindings, _)
+    -> Nothing
 
-           -- It's been bound. Adjust.
-           Bound e
-             -> Just $ Bound $ buryBy bindType e buryDepth
+  -- We've found the binding.
+  (ConsBinding b _, 0)
+    -> case b of
+         -- But it hasn't been bound.
+         Unbound
+           -> Just Unbound
 
-    -- At least one more away
-    (ConsBinding _ bs', _)
-      -> safeIndex' buryDepth bs' (ix-1)
+         -- It's been bound. Adjust.
+         Bound e
+           -> Just $ Bound $ buryBy bindType e buryDepth
 
-    (Buried bs', _)
-      -> safeIndex' (buryDepth + 1) bs' ix
+  -- At least one more away
+  (ConsBinding _ bs', _)
+    -> safeIndex' bindType buryDepth bs' (ix-1)
+
+  (Buried bs', _)
+    -> safeIndex' bindType (buryDepth + 1) bs' ix
 
 -- | A 'safeIndex' assuming the index is contained in the bindings.
 index :: (HasAbs e,HasBinding e b,HasNonAbs e,BindingIx b) => Proxy b -> Bindings e -> Int -> Binding e
@@ -188,20 +186,20 @@ ppBindingsTree
   -> Bindings e
   -> Doc
 ppBindingsTree ppExpr bs = rawText $ pack $ drawVerticalTree $ ppBindingsTree' ppExpr bs
- where
-   ppBindingsTree'
-     :: (e -> Doc)
-     -> Bindings e
-     -> Tree String
-   ppBindingsTree' ppExpr bs = case bs of
-     EmptyBindings
-       -> Node "Empty" []
 
-     ConsBinding b bs
-       -> Node "Cons" [ (Node "Binding" [Node (unpack . render . ppBinding ppExpr $ b) []])
-                      , ppBindingsTree' ppExpr bs
-                      ]
+ppBindingsTree'
+ :: (e -> Doc)
+ -> Bindings e
+ -> Tree String
+ppBindingsTree' ppExpr = \case
+ EmptyBindings
+   -> Node "Empty" []
 
-     Buried bs
-       -> Node "Buried" [ppBindingsTree' ppExpr bs]
+ ConsBinding b bs
+   -> Node "Cons" [ (Node "Binding" [Node (unpack . render . ppBinding ppExpr $ b) []])
+                  , ppBindingsTree' ppExpr bs
+                  ]
+
+ Buried bs
+   -> Node "Buried" [ppBindingsTree' ppExpr bs]
 

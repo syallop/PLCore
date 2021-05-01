@@ -41,39 +41,12 @@ import PL.Test.Pattern.Sum
 import PL.Test.Pattern.Union
 import PL.Test.Pattern.SelfType
 
-import PL.Test.Shared
-
 import PL.Test.Parsing.Pattern
 import PL.Test.TypeChecking.Pattern
 import PL.Test.Reducing.Pattern
 
-import PL.Bindings
-import PL.Binds
-import PL.Case
-import PL.Error
-import PL.Expr
-import PL.Kind
-import PL.Reduce
-import PL.TyVar
-import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
-import PL.Var
-
-import PLPrinter
-
-import Control.Applicative
-import Control.Monad
-import Data.List
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe
-import Data.Monoid hiding (Product,Sum)
-import qualified Data.Set as Set
 import qualified Data.Text as Text
 import qualified Data.Map as Map
-
-import Test.Hspec
-import PL.Test.Source
 
 -- | A record of the sources required to run all of the Pattern tests.
 data TestPatternSources = TestPatternSources

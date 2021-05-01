@@ -15,31 +15,19 @@ module PL.Test.Expr.Sum
   )
   where
 
-import PL.Bindings
-import PL.Binds
 import PL.Case
-import PL.Commented
-import PL.Error
 import PL.Expr
-import PL.Kind
 import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
 import PL.TypeCheck
 import PL.Pattern
 import PL.Var
 
 import Data.Text (Text)
-import Data.Maybe
-import Data.Monoid hiding (Sum)
-import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 
 import PL.Test.Expr.Natural
-import PL.Test.Expr.Boolean
 
 import PL.Test.ExprTestCase
 import PL.Test.Source
@@ -123,8 +111,8 @@ sumThreeExprTestCase src =
           )
         ]
 
-    , _underEvaluationCtx = undefined
-    , _evaluatesTo = undefined
+    , _underEvaluationCtx     = undefined
+    , _evaluatesTo            = undefined
     , _evaluatesToWhenApplied = undefined
     }
   where

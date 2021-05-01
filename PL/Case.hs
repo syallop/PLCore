@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, LambdaCase #-}
 {-|
 Module      : PL.Case
 Copyright   : (c) Samuel A. Yallop, 2016
@@ -12,20 +12,16 @@ module PL.Case where
 import Prelude hiding (sequence,mapM,foldr)
 
 -- PL
-import PL.ExprLike
 
 -- External PL
 import PLHash
-import PLPrinter hiding (parens,between)
+import PLPrinter hiding (between)
 import PLPrinter.Doc
 
 -- Other
-import Control.Applicative
 import Data.Foldable
 import Data.List.NonEmpty
-import Data.Monoid
 import Data.Traversable (sequence,mapM)
-import qualified Data.List.NonEmpty as NonEmpty
 
 -- | Case analysis on a scrutinee 'e' which either:
 -- - Is just a default match 'e'
@@ -129,7 +125,7 @@ instance (Document e
          ,Document m
          )
       => Document (CaseBranches e m) where
-  document bs = case bs of
+  document = \case
     DefaultOnly def
       -> parens (document def)
 

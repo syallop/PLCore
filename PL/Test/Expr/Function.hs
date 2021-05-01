@@ -17,17 +17,11 @@ module PL.Test.Expr.Function
   )
   where
 
-import PL.Bindings
-import PL.Binds
-import PL.Case
-import PL.Commented
-import PL.Error
 import PL.Expr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.Type.Eq
 import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
@@ -117,6 +111,10 @@ constExprTestCase src
           $ Lam (TypeBinding . TyVar $ VZ)      -- b :: k1
           $ Binding $ VS VZ                               -- a
       , _reducesToWhenApplied = []
+
+      , _underEvaluationCtx     = undefined
+      , _evaluatesTo            = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = emptyTypeCtx
@@ -150,6 +148,10 @@ applyExprTestCase src
           $ Lam (TypeBinding . TyVar . VS $ VZ)
           $ App (Binding . VS $ VZ) (Binding VZ)
       , _reducesToWhenApplied = []
+
+      , _underEvaluationCtx     = undefined
+      , _evaluatesTo            = undefined
+      , _evaluatesToWhenApplied = undefined
       }
   where
     ctx = emptyTypeCtx

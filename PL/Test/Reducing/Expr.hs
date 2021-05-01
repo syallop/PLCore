@@ -10,46 +10,19 @@ module PL.Test.Reducing.Expr
   )
   where
 
-import PL.Binds
-import PL.Case
-import PL.Commented
 import PL.Error
 import PL.Expr
-import PL.Kind
 import PL.Reduce
-import PL.TyVar
-import PL.Type
 import PL.FixPhase
-import PL.Name
-import PL.Type.Eq
-import PL.TypeCtx
-import PL.TypeCheck
-import PL.Var
-import PL.Bindings
-import PL.Pattern
 
 import PL.Test.ExprTestCase
 
-import PLGrammar
 import PLPrinter
-import PLPrinter.Doc
 
-import Control.Applicative
-import Control.Monad
-import Data.Maybe
-import Data.Monoid hiding (Product,Sum)
-import qualified Data.Set as Set
 import qualified Data.Text as Text
-import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
-import qualified Data.List as List
-import Data.List
-import Data.Text (Text)
 
 import Test.Hspec
-import PL.Test.Source
-import PL.Test.Util
 
 -- | Test each testcase reduces to expected results.
 reducesToSpec
@@ -80,75 +53,77 @@ reduceToSpec
   -> PPError DefaultPhase
   -> Spec
 reduceToSpec name ctx inputExpr reductions pp = describe (Text.unpack name) $
-  mapM_ (\(name,args,expectReduction)
-          -> reduceSpec name (apply inputExpr args) expectReduction
+  mapM_ (\(n,args,expectReduction)
+          -> reduceSpec n ctx (apply inputExpr args) expectReduction pp
         )
         reductions
-  where
-    reduceSpec
-      :: Text.Text
-      -> Expr
-      -> Maybe Expr
-      -> Spec
-    reduceSpec name expr eqExpr = it (Text.unpack name) $ case (reduce ctx expr, eqExpr) of
-      (Left exprErr, Just expectedExpr)
-        -> expectationFailure . Text.unpack . render $ mconcat
-             [ text "Could not reduce:"
-             , lineBreak
-             , indent1 . _ppExpr pp $ expr
-             , lineBreak
-             , text "With error:"
-             , lineBreak
-             , indent1 . ppError pp $ exprErr
-             , lineBreak
-             , text "Expected:"
-             , indent1 . _ppExpr pp $ expectedExpr
-             ]
 
-      -- We expected _some_ error and got _some_.
-      (Left _exprErr, Nothing)
-        -> pure ()
+reduceSpec
+  :: Text.Text
+  -> ReductionCtx
+  -> Expr
+  -> Maybe Expr
+  -> PPError DefaultPhase
+  -> Spec
+reduceSpec name ctx expr eqExpr pp = it (Text.unpack name) $ case (reduce ctx expr, eqExpr) of
+  (Left exprErr, Just expectedExpr)
+    -> expectationFailure . Text.unpack . render $ mconcat
+         [ text "Could not reduce:"
+         , lineBreak
+         , indent1 . _ppExpr pp $ expr
+         , lineBreak
+         , text "With error:"
+         , lineBreak
+         , indent1 . ppError pp $ exprErr
+         , lineBreak
+         , text "Expected:"
+         , indent1 . _ppExpr pp $ expectedExpr
+         ]
 
-      (Right redExpr, Nothing)
-        -> expectationFailure . Text.unpack . render $ mconcat
-             [ text "Expression reduced to:"
-             , lineBreak
-             , indent1 . _ppExpr pp $ redExpr
-             , lineBreak
-             , text "But we expected the reducation to fail."
-             ]
+  -- We expected _some_ error and got _some_.
+  (Left _exprErr, Nothing)
+    -> pure ()
 
-      (Right redExpr, Just expectedExpr)
-        -> case exprEq ctx redExpr expectedExpr of
-             Left err
-               -> expectationFailure . Text.unpack . render $ mconcat
-                    [ text "The expression reduced to:"
-                    , lineBreak
-                    , indent1 . _ppExpr pp $ redExpr
-                    , lineBreak
-                    , text "But failed to compare to the expected expression:"
-                    , lineBreak
-                    , indent1 . _ppExpr pp $ expectedExpr
-                    , lineBreak
-                    , text "Due to error:"
-                    , lineBreak
-                    , indent1 . ppError pp $ err
-                    ]
+  (Right redExpr, Nothing)
+    -> expectationFailure . Text.unpack . render $ mconcat
+         [ text "Expression reduced to:"
+         , lineBreak
+         , indent1 . _ppExpr pp $ redExpr
+         , lineBreak
+         , text "But we expected the reducation to fail."
+         ]
 
-             Right False
-               -> expectationFailure . Text.unpack . render . mconcat $
-                    [ text "The expression reduced to:"
-                    , lineBreak
-                    , indent1 . _ppExpr pp $ redExpr
-                    , lineBreak
-                    , text "But does not equal the expected expression:"
-                    , lineBreak
-                    , indent1 . _ppExpr pp $ expectedExpr
-                    ]
+  (Right redExpr, Just expectedExpr)
+    -> case exprEq ctx redExpr expectedExpr of
+         Left err
+           -> expectationFailure . Text.unpack . render $ mconcat
+                [ text "The expression reduced to:"
+                , lineBreak
+                , indent1 . _ppExpr pp $ redExpr
+                , lineBreak
+                , text "But failed to compare to the expected expression:"
+                , lineBreak
+                , indent1 . _ppExpr pp $ expectedExpr
+                , lineBreak
+                , text "Due to error:"
+                , lineBreak
+                , indent1 . ppError pp $ err
+                ]
 
-             Right True
-               -> pure ()
+         Right False
+           -> expectationFailure . Text.unpack . render . mconcat $
+                [ text "The expression reduced to:"
+                , lineBreak
+                , indent1 . _ppExpr pp $ redExpr
+                , lineBreak
+                , text "But does not equal the expected expression:"
+                , lineBreak
+                , indent1 . _ppExpr pp $ expectedExpr
+                ]
+
+         Right True
+           -> pure ()
 
 apply :: ExprFor phase -> [ExprFor phase -> ExprFor phase] -> ExprFor phase
-apply e fs = foldl (\e f -> f e) e fs
+apply baseExpr fs = foldl (\e f -> f e) baseExpr fs
 

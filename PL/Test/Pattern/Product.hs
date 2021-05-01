@@ -13,27 +13,15 @@ module PL.Test.Pattern.Product
   )
   where
 
-import PL.Bindings
-import PL.Binds
-import PL.Case
-import PL.Error
-import PL.Expr
-import PL.Kind
-import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
 import PL.Pattern
 import PL.TypeCtx
 import PL.TypeCheck
-import PL.Var
 
 import Data.Text (Text)
-import Data.Maybe (fromJust)
 
 import PL.Test.PatternTestCase
 
-import PL.Test.Expr.Boolean
 import PL.Test.Source
 
 data TestProductSources = TestProductSources

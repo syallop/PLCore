@@ -26,7 +26,6 @@ import PLPrinter.Doc
 import PLHash
 
 -- Other
-import Data.Monoid
 
 -- Describe properties of types
 data Kind
@@ -36,8 +35,8 @@ data Kind
 
   -- | Kind of type lambdas
   | KindArrow
-    {_from :: Kind
-    ,_to   :: Kind
+    {_fromKind :: Kind
+    ,_toKind   :: Kind
     }
   deriving (Eq,Ord,Show)
 

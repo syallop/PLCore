@@ -9,44 +9,20 @@ module PL.Test.Parsing.Type
   )
   where
 
-import PL.Binds
-import PL.Case
 import PL.Commented
-import PL.Expr
 import PL.Error
-import PL.Kind
-import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Name
-import PL.Type.Eq
-import PL.TypeCtx
-import PL.Var
 import PL.FixPhase
-import PL.Bindings
-import PL.Pattern
 
 import PL.Test.TypeTestCase
 
-import PLGrammar
 import PLPrinter
-import PLPrinter.Doc
 
-import Control.Applicative
-import Control.Monad
-import Data.Maybe
-import Data.Monoid hiding (Product,Sum)
-import qualified Data.Set as Set
 import qualified Data.Text as Text
-import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
-import qualified Data.List as List
-import Data.List
-import Data.Text (Text)
 
 import Test.Hspec
 import PL.Test.Source
-import PL.Test.Util
 
 -- | Test that for each test case, a parser consumes all of some source input in
 -- order to produce the intended type.

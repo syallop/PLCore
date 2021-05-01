@@ -74,14 +74,12 @@ import PL.Error
 import PL.Expr
 import PL.FixPhase
 import PL.Kind
-import PL.Serialize
 import PL.Type
 
 -- External PL
 import PLHash
 import PLPrinter.Doc
 import PLStore
-import PLStore.Short
 import PLStore.Hash
 
 -- | A CodeStore co-ordinates lookup and storage of:
@@ -114,20 +112,20 @@ data CodeStore
 -- other, which could be possible E.G. if a FileStore is used for each and care
 -- is not taken when generating subdirectories/ file names.
 newCodeStore
-  :: ( HashBackingStorage s Expr
-     , HashBackingStorage s Type
-     , HashBackingStorage s Kind
-     , HashBackingStorage s Hash
-     , Show (s Hash Expr)
-     , Show (s Hash Type)
-     , Show (s Hash Kind)
-     , Show (s Hash Hash)
+  :: ( HashBackingStorage exprStore Expr
+     , HashBackingStorage typeStore Type
+     , HashBackingStorage kindStore Kind
+     , HashBackingStorage hashAssociationStore Hash
+     , Show (exprStore Hash Expr)
+     , Show (typeStore Hash Type)
+     , Show (kindStore Hash Kind)
+     , Show (hashAssociationStore Hash Hash)
      )
-  => s Hash Expr
-  -> s Hash Type
-  -> s Hash Kind
-  -> s Hash Hash
-  -> s Hash Hash
+  => exprStore Hash Expr
+  -> typeStore Hash Type
+  -> kindStore Hash Kind
+  -> hashAssociationStore Hash Hash
+  -> hashAssociationStore Hash Hash
   -> CodeStore
 newCodeStore exprStore typeStore kindStore exprTypeStore typeKindStore = CodeStore
   { _exprStore = newHashStore exprStore
@@ -153,49 +151,49 @@ runCodeStoreFunction
   :: CodeStore
   -> CodeStoreFunction a
   -> IO (Either Error (CodeStore, a))
-runCodeStoreFunction codeStore f = _runCodeStoreFunction f codeStore
+runCodeStoreFunction s f = _runCodeStoreFunction f s
 
 instance Functor CodeStoreFunction where
-  fmap f (CodeStoreFunction codeStoreF) = CodeStoreFunction $ \codeStore -> do
-    eRes <- codeStoreF codeStore
+  fmap f (CodeStoreFunction codeStoreF) = CodeStoreFunction $ \s -> do
+    eRes <- codeStoreF s
     case eRes of
       Left err
         -> pure . Left $ err
 
-      Right (codeStore', a)
-        -> pure . Right $ (codeStore', f a)
+      Right (s', a)
+        -> pure . Right $ (s', f a)
 
 instance Applicative CodeStoreFunction where
-  pure a = CodeStoreFunction $ \codeStore -> pure $ Right (codeStore, a)
+  pure a = CodeStoreFunction $ \s -> pure $ Right (s, a)
 
   -- Perhaps this should be parallel on the initial context
-  (CodeStoreFunction fab) <*> (CodeStoreFunction a) = CodeStoreFunction $ \codeStore -> do
-    r  <- fab codeStore
+  (CodeStoreFunction fab) <*> (CodeStoreFunction a) = CodeStoreFunction $ \s -> do
+    r  <- fab s
     case r of
       Left err
         -> pure . Left $ err
 
-      Right (codeStore', f)
-        -> do a' <- a codeStore'
+      Right (s', f)
+        -> do a' <- a s'
               case a' of
                 Left err
                   -> pure . Left $ err
 
-                Right (codeStore'', a'')
-                  -> pure . Right $ (codeStore'', f a'')
+                Right (s'', a'')
+                  -> pure . Right $ (s'', f a'')
 
 instance Monad CodeStoreFunction where
   return = pure
 
-  (CodeStoreFunction fa) >>= g = CodeStoreFunction $ \codeStore -> do
-    r <- fa codeStore
+  (CodeStoreFunction fa) >>= g = CodeStoreFunction $ \s -> do
+    r <- fa s
     case r of
       Left err
         -> pure . Left $ err
 
-      Right (codeStore',a)
+      Right (s',a)
         -> let CodeStoreFunction fb = g a
-            in fb codeStore'
+            in fb s'
 
 {- Internal helper functions to reduce chance of mistake modifying
    stores incorrectly.
@@ -215,43 +213,43 @@ codeStoreFunctionFail err = CodeStoreFunction $ \_ -> pure . Left $ err
 withExprStore
   :: (HashStore Expr -> IO (Either Error (HashStore Expr, a)))
   -> CodeStoreFunction a
-withExprStore f = CodeStoreFunction $ \codeStore -> do
-  eRes <- f (_exprStore codeStore)
+withExprStore f = CodeStoreFunction $ \s -> do
+  eRes <- f (_exprStore s)
   case eRes of
     Left err
       -> pure . Left $ err
     Right (exprStore',a)
-      -> pure . Right $ (codeStore{_exprStore = exprStore'}, a)
+      -> pure . Right $ (s{_exprStore = exprStore'}, a)
 
 -- Modify the contained type store, returning a single result.
 withTypeStore
   :: (HashStore Type -> IO (Either Error (HashStore Type, a)))
   -> CodeStoreFunction a
-withTypeStore f = CodeStoreFunction $ \codeStore -> do
-  eRes <- f (_typeStore codeStore)
+withTypeStore f = CodeStoreFunction $ \s -> do
+  eRes <- f (_typeStore s)
   case eRes of
     Left err
       -> pure . Left $ err
     Right (typeStore',a)
-      -> pure . Right $ (codeStore{_typeStore = typeStore'}, a)
+      -> pure . Right $ (s{_typeStore = typeStore'}, a)
 
 -- Modify the contained kind store, returning a single result.
 withKindStore
   :: (HashStore Kind -> IO (Either Error (HashStore Kind, a)))
   -> CodeStoreFunction a
-withKindStore f = CodeStoreFunction $ \codeStore -> do
-  eRes <- f (_kindStore codeStore)
+withKindStore f = CodeStoreFunction $ \s -> do
+  eRes <- f (_kindStore s)
   case eRes of
     Left err
       -> pure . Left $ err
     Right (kindStore',a)
-      -> pure . Right $ (codeStore{_kindStore = kindStore'}, a)
+      -> pure . Right $ (s{_kindStore = kindStore'}, a)
 
 -- Modify the contained expr-has-type store, returning a single result
 withExprTypeStore
   :: (forall s. Store s Hash Hash => s Hash Hash -> IO (Either Error (s Hash Hash, a)))
   -> CodeStoreFunction a
-withExprTypeStore f = CodeStoreFunction $ \codeStore -> case codeStore of
+withExprTypeStore f = CodeStoreFunction $ \s -> case s of
   CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore
     -> do eRes <- f exprTypeStore
           case eRes of
@@ -264,7 +262,7 @@ withExprTypeStore f = CodeStoreFunction $ \codeStore -> case codeStore of
 withTypeKindStore
   :: (forall s. Store s Hash Hash => s Hash Hash -> IO (Either Error (s Hash Hash, a)))
   -> CodeStoreFunction a
-withTypeKindStore f = CodeStoreFunction $ \codeStore -> case codeStore of
+withTypeKindStore f = CodeStoreFunction $ \s -> case s of
   CodeStore exprStore typeStore kindStore exprTypeStore typeKindStore
     -> do eRes <- f typeKindStore
           case eRes of
@@ -285,7 +283,7 @@ codeHashLookup
   :: ((HashStore v -> IO (Either Error (HashStore v, Maybe v))) -> a)
   -> Hash
   -> a
-codeHashLookup withHashStore hash = withHashStore $ \s -> fmap liftEMsg $ lookupByHash s hash
+codeHashLookup withHashStore h = withHashStore $ \s -> fmap liftEMsg $ lookupByHash s h
 
 -- Over some Store, store a value against a key.
 codeStore
@@ -307,7 +305,7 @@ codeHashShorten
   :: ((HashStore v -> IO (Either Error (HashStore v, ShortHash))) -> a)
   -> Hash
   -> a
-codeHashShorten withHashStore hash = withHashStore $ \s -> fmap liftEMsg $ shortenHash s hash
+codeHashShorten withHashStore h = withHashStore $ \s -> fmap liftEMsg $ shortenHash s h
 
 -- Over some HashStore, largen a hash.
 codeHashLargen

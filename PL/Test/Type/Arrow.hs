@@ -14,28 +14,13 @@ module PL.Test.Type.Arrow
   )
   where
 
-import PL.Bindings
 import PL.Binds
-import PL.Case
-import PL.Commented
-import PL.Error
-import PL.Expr
 import PL.Kind
-import PL.Reduce
 import PL.ReduceType
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
 import PL.TypeCheck
-import PL.Var
 
-import Data.Maybe
 import Data.Text (Text)
-import qualified Data.Text as Text
-import Data.Monoid ((<>))
-import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NE
 
 import PL.Test.TypeTestCase
 import PL.Test.Source

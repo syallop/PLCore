@@ -25,7 +25,6 @@ import PLPrinter
 import PLHash
 
 -- Other
-import Data.Monoid
 
 -- | Debrujn index for referencing variables.
 -- A positive integer describing how many abstractions deep the var is found.
@@ -48,6 +47,8 @@ instance Enum Var where
 mkVar :: Int -> Var
 mkVar 0 = VZ
 mkVar n = VS (mkVar (n-1))
+
+vzero, vone, vtwo, vthree, vfour :: Var
 
 vzero  = VZ
 vone   = VS vzero

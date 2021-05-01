@@ -62,8 +62,6 @@ import PL.Binds
 
 import PLPrinter
 
-import Data.Monoid
-import Data.Text
 import Data.List.NonEmpty
 import qualified Data.List.NonEmpty as NE
 
@@ -275,7 +273,7 @@ ppError pp = \case
                , indent1 . _ppType pp $ fTy
                ]
 
-  ESumMismatch actualType index sumTys
+  ESumMismatch actualType sumIndex sumTys
     -> mconcat [ text "Expression had type: "
                , lineBreak
                , indent1 . _ppType pp $ actualType
@@ -286,7 +284,7 @@ ppError pp = \case
                , lineBreak
                , text "at index:"
                , lineBreak
-               , indent1 $ document index
+               , indent1 $ document sumIndex
                ]
 
   ECaseDefaultMismatch defaultTy firstBranchTy

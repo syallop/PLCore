@@ -13,24 +13,12 @@ module PL.Test.Pattern.Bind
   )
   where
 
-import PL.Bindings
-import PL.Binds
-import PL.Case
-import PL.Error
-import PL.Expr
-import PL.Kind
 import PL.Pattern
-import PL.Reduce
-import PL.TyVar
 import PL.TypeCtx
 import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
 import PL.TypeCheck
-import PL.Var
 
 import Data.Text (Text)
-import Data.Maybe (fromJust)
 import qualified Data.List.NonEmpty as NE
 
 import PL.Test.PatternTestCase
@@ -68,7 +56,6 @@ defaultBindPatternTestCase src
       ,_resolvesTo      = Bind
       }
   where
-    typeCtx              = emptyTypeCtx
     typed                = SumT $ NE.fromList [EmptyProductT]
     checkMatchWithResult = Right [SumT $ NE.fromList [EmptyProductT]]
     parsesFrom           = src

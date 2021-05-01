@@ -60,7 +60,6 @@ module PL.TypeCtx
   )
   where
 
-import PL.Binds
 import PL.Kind
 import PL.Name
 import PL.Type
@@ -69,10 +68,7 @@ import PL.Error
 
 import PLPrinter
 
-import Control.Applicative
 import Data.Maybe
-import Data.Monoid
-import Data.Semigroup
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -113,10 +109,10 @@ ppTypeCtx
   -> Doc
 ppTypeCtx ppTypeName ppType (TypeCtx m) =
   Map.foldrWithKey
-    (\typeName typeInfo acc
-      -> mconcat [ ppTypeName typeName
+    (\name info acc
+      -> mconcat [ ppTypeName name
                  , lineBreak
-                 , indent 2 $ ppType typeInfo
+                 , indent 2 $ ppType info
                  , lineBreak
                  , lineBreak
                  , acc
@@ -171,7 +167,8 @@ insertType
   -> Kind
   -> TypeCtxFor phase
   -> Maybe (TypeCtxFor phase)
-insertType n t k ctx = case lookupTypeNameType n ctx of
+insertType n t _k ctx = case lookupTypeNameType n ctx of
+  -- TODO: The supplied kind is ignored
 
   -- Name is already associated with something
   Just _ -> Nothing

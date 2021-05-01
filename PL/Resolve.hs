@@ -69,6 +69,8 @@ module PL.Resolve
   )
   where
 
+import Prelude hiding (abs)
+
 -- PL
 import PL.Case
 import PL.Error
@@ -77,7 +79,6 @@ import PL.FixPhase
 import PL.Name
 import PL.Pattern
 import PL.Type
-import PL.TypeCtx
 import qualified PL.Store.Code as C
 
 -- External PL
@@ -192,14 +193,14 @@ resolveExprHash shortHash = do
     []
       -> resolveFail . EMsg . text $ "No known matching hashes"
 
-    [hash]
-      -> pure hash
+    [h]
+      -> pure h
 
-    hashes
+    hs
       -> resolveFail . EMsg . mconcat $
           [ text "More than one hash with the given prefix was found. did you mean one of these?"
           , lineBreak
-          , bulleted . fmap (string . show) $ hashes
+          , bulleted . fmap (string . show) $ hs
           ]
 
 -- | Attempt to resolve a ShortHash for a type to an unambiguous Hash.
@@ -216,14 +217,14 @@ resolveTypeHash shortHash = do
     []
       -> resolveFail . EMsg . text $ "No known matching hashes"
 
-    [hash]
-      -> pure hash
+    [h]
+      -> pure h
 
-    hashes
+    hs
       -> resolveFail . EMsg . mconcat $
           [ text "More than one hash with the given prefix was found. did you mean one of these?"
           , lineBreak
-          , bulleted . fmap (string . show) $ hashes
+          , bulleted . fmap (string . show) $ hs
           ]
 
 -- | Attempt to resolve a ShortHash for a kind to an unambiguous Hash.
@@ -240,13 +241,13 @@ resolveKindHash shortHash = do
     []
       -> resolveFail . EMsg . text $ "No known matching hashes"
 
-    [hash]
-      -> pure hash
+    [h]
+      -> pure h
 
-    hashes
+    hs
       -> resolveFail . EMsg . mconcat $
           [ text "More than one hash with the given prefix was found. did you mean one of these?"
-          , string . show $ hashes
+          , string . show $ hs
           ]
 
 -- | Given an Expr Hash, shorten it to the shortest unambiguous ShortHash.
@@ -389,21 +390,21 @@ resolveShortHashes e = case e of
     -> CaseAnalysisExt ext
          <$> resolveCaseShortHashes c
 
-  SumExt ext expr ix ty
+  SumExt ext expr ix t
     -> SumExt ext
          <$> resolveShortHashes expr
          <*> pure ix
-         <*> mapM resolveTypeShortHashes ty
+         <*> mapM resolveTypeShortHashes t
 
   ProductExt ext prodExprs
     -> ProductExt ext
          <$> mapM resolveShortHashes prodExprs
 
-  UnionExt ext unionExpr tyIx ty
+  UnionExt ext unionExpr tyIx t
     -> UnionExt ext
          <$> resolveShortHashes unionExpr
          <*> resolveTypeShortHashes tyIx
-         <*> (fmap Set.fromList $ mapM resolveTypeShortHashes $ Set.toList ty)
+         <*> (fmap Set.fromList $ mapM resolveTypeShortHashes $ Set.toList t)
 
   BindingExt ext b
     -> pure $ BindingExt ext b
@@ -569,16 +570,16 @@ shortenHashes e = case e of
   CaseAnalysisExt ext c
     -> CaseAnalysisExt ext <$> shortenCaseHashes c
 
-  SumExt ext expr ix ty
-    -> SumExt ext <$> shortenHashes expr <*> pure ix <*> mapM shortenTypeHashes ty
+  SumExt ext expr ix t
+    -> SumExt ext <$> shortenHashes expr <*> pure ix <*> mapM shortenTypeHashes t
 
   ProductExt ext prodExprs
     -> ProductExt ext <$> mapM shortenHashes prodExprs
 
-  UnionExt ext unionExpr tyIx ty
+  UnionExt ext unionExpr tyIx t
     -> UnionExt ext <$> shortenHashes unionExpr
                     <*> shortenTypeHashes tyIx
-                    <*> (fmap Set.fromList $ mapM shortenTypeHashes $ Set.toList ty)
+                    <*> (fmap Set.fromList $ mapM shortenTypeHashes $ Set.toList t)
 
   BindingExt ext b
     -> pure $ BindingExt ext b

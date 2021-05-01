@@ -15,30 +15,18 @@ module PL.Test.Expr.Union
   )
   where
 
-import PL.Bindings
-import PL.Binds
 import PL.Case
-import PL.Commented
-import PL.Error
 import PL.Expr
-import PL.Kind
 import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
 import PL.Pattern
 
-import Data.Maybe
-import Data.Monoid
-import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.Text as Text
 import qualified Data.Set as Set
+import Data.Text (Text)
 
-import PL.Test.Expr.Boolean
 import PL.Test.Expr.Natural
 
 import PL.Test.ExprTestCase
@@ -119,6 +107,10 @@ unionTwoExprTestCase src =
            ,Just falseTerm
            )
           ]
+
+    , _underEvaluationCtx     = undefined
+    , _evaluatesTo            = undefined
+    , _evaluatesToWhenApplied = undefined
     }
   where
     ctx = boolTypeCtx <> natTypeCtx

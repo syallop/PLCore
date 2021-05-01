@@ -23,7 +23,6 @@ module PL.Serialize
   where
 
 -- PL
-import PL.Error
 
 -- External PL
 import PLPrinter.Doc
@@ -36,7 +35,7 @@ import Data.Text.Encoding
 
 class Serialize t where
   serialize   :: t -> ByteString
-  deserialize :: forall phase. ByteString -> Either Doc t
+  deserialize :: ByteString -> Either Doc t
 
 instance Serialize Text where
   serialize   = encodeUtf8

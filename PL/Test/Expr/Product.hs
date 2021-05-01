@@ -15,30 +15,18 @@ module PL.Test.Expr.Product
   )
   where
 
-import PL.Bindings
-import PL.Binds
 import PL.Case
-import PL.Commented
-import PL.Error
 import PL.Expr
-import PL.Kind
 import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
 import PL.Pattern
 
 import Data.Text (Text)
-import Data.Maybe
-import Data.Monoid ((<>))
-import qualified Data.Text as Text
 import Data.List.NonEmpty (NonEmpty(..))
 
 import PL.Test.Expr.Natural
-import PL.Test.Expr.Boolean
 
 import PL.Test.ExprTestCase
 import PL.Test.Source

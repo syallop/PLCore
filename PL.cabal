@@ -19,22 +19,22 @@ library
                      , PL.Case
                      , PL.Commented
                      , PL.Error
-                     , PL.Expr
-                     , PL.Pattern
-                     , PL.Serialize
-                     , PL.Store.Code
-                     , PL.FixPhase
-                     , PL.Resolve
                      , PL.Evaluate
+                     , PL.Expr
                      , PL.ExprLike
+                     , PL.FixPhase
                      , PL.Kind
-                     , PL.TypeCheck
                      , PL.Name
+                     , PL.Pattern
                      , PL.Reduce
                      , PL.ReduceType
+                     , PL.Resolve
+                     , PL.Serialize
+                     , PL.Store.Code
                      , PL.TyVar
                      , PL.Type
                      , PL.Type.Eq
+                     , PL.TypeCheck
                      , PL.TypeCtx
                      , PL.Var
 
@@ -127,7 +127,7 @@ library
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
-  ghc-options: -fwarn-incomplete-patterns -Werror=incomplete-patterns
+  ghc-options: -Wall -fwarn-incomplete-patterns -Werror=incomplete-patterns
 
 test-suite hspec
   type:              exitcode-stdio-1.0
@@ -158,4 +158,6 @@ test-suite hspec
   other-extensions:  OverloadedStrings
                    , GeneralizedNewtypeDeriving
                    , LambdaCase
+
+  ghc-options: -Wall -Werror=incomplete-patterns
 

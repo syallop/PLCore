@@ -24,28 +24,16 @@ module PL.Test.Expr.List
   )
   where
 
-import PL.Bindings
-import PL.Binds
-import PL.Case
-import PL.Commented
-import PL.Error
-import PL.Expr
 import PL.Kind
 import PL.Reduce
 import PL.TyVar
 import PL.Type
-import PL.Type.Eq
-import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
 
 import Data.Text (Text)
-import Data.Monoid ((<>))
-import Data.Maybe
-import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NE
 
-import PL.Test.Expr.Natural
 import PL.Test.ExprTestCase
 import PL.Test.Source
 import PL.Test.Shared

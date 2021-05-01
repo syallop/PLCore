@@ -2,8 +2,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 module PL.Test.PatternSpec where
 
-import PL
-import PL.Case
 import PL.Error
 import PL.Expr
 import PL.Kind
@@ -15,23 +13,13 @@ import PL.Pattern
 import PL.TypeCtx
 
 import PL.Test.PatternTestCase
-import PL.Test.Parsing.Pattern
 import PL.Test.Pattern
-import PL.Test.Source
 
-import PLGrammar
 import PLPrinter
-import PLPrinter.Doc
 
-import Control.Monad
 import Data.Text
 import qualified Data.Text as Text
-import Data.Monoid hiding (Product, Sum)
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Maybe
-import qualified Data.List as List
 
 import Test.Hspec
 
@@ -42,8 +30,18 @@ spec = do
     describe "Type check" $ typeChecksPatternsSpec patternTestCases ppDefaultError
     describe "Reduce"     $ reducesPatternsToSpec  patternTestCases ppDefaultError
   where
+    -- We don't test parsing here so we don't actually need any syntax..
     patternTestCases :: Map.Map Text PatternTestCase
-    patternTestCases = mkPatternTestCases $ TestPatternSources {}
+    patternTestCases = mkPatternTestCases $ TestPatternSources
+      { _bindTestCases     = errNoSource
+      , _sumTestCases      = errNoSource
+      , _productTestCases  = errNoSource
+      , _unionTestCases    = errNoSource
+      , _bindingTestCases  = errNoSource
+      , _selfTypeTestCases = errNoSource
+      }
+
+    errNoSource = error "Core tests do not define syntax and so do not test parsing"
 
     ppDefaultError = PPError
       { _ppExpr        = ppExpr

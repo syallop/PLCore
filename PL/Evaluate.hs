@@ -46,7 +46,6 @@ module PL.Evaluate
 
 -- PL
 import PL.Bindings
-import PL.Binds
 import PL.Binds.Ix
 import PL.Case
 import PL.Store.Code
@@ -68,7 +67,6 @@ import Control.Monad
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe
 import Data.Proxy
-import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
@@ -123,11 +121,6 @@ runEvaluate
   -> IO (Either Error (EvaluationCtx, a))
 runEvaluate ctx e = _evaluate e ctx
 
-evaluateFail
-  :: Error
-  -> Evaluate a
-evaluateFail err = Evaluate $ \_ -> pure . Left $ err
-
 -- Execute a function on the underlying CodeStore.
 withCodeStore
   :: CodeStoreFunction a
@@ -140,7 +133,6 @@ withCodeStore f = Evaluate $ \ctx -> do
 
     Right (codeStore, res)
       -> pure . Right $ (ctx{_evaluationCodeStore = codeStore}, res)
-  undefined
 
 instance Functor Evaluate where
   fmap f (Evaluate e) = Evaluate $ \ctx -> do
@@ -409,14 +401,14 @@ evaluateStep initialExpr = case initialExpr of
   -- Type/ kind checking _should_ have ensured the function is a BigArrow type
   -- that matches the type. It should therefore only be a BigLambda or a
   -- typebinding to a (possibly) unknown function.
-  BigApp f ty
-    -> do ty' <- evaluateType ty
-          f'  <- evaluate f
+  BigApp f t
+    -> do t' <- evaluateType t
+          f' <- evaluate f
           case f' of
             -- Big Lambdas are reduced by binding applied types into the body
             -- and reducing.
             BigLam _absKind fBodyExpr
-              -> underAppliedType ty' >> evaluateStep fBodyExpr
+              -> underAppliedType t' >> evaluateStep fBodyExpr
 
             -- The function we're applying is 'higher order' - it is sourced
             -- from a function itself.
@@ -427,7 +419,7 @@ evaluateStep initialExpr = case initialExpr of
             -- If we're wrong an additional evaluateStep on the
             -- application should make progress.
             Binding var
-              -> pure $ BigApp (Binding var) ty'
+              -> pure $ BigApp (Binding var) t'
 
             -- An error here indicates type/ kind checking has not been performed/ has
             -- been performed incorrectly as the expression in function
@@ -462,13 +454,14 @@ evaluateStep initialExpr = case initialExpr of
 evaluateType
   :: Type
   -> Evaluate Type
-evaluateType ty = do
+evaluateType t = do
   ctx <- toTypeReductionCtx
-  case reduceType ctx ty of
+  case reduceType ctx t of
     Left err
       -> evaluationFail err
-    Right ty'
-      -> pure ty'
+
+    Right t'
+      -> pure t'
 
 -- | Given a case scrutinee that should _not_ be a Binding, find the matching
 -- branch, substitute the expression and evaluate a step.
@@ -529,8 +522,8 @@ tryBranches caseScrutinee branches = do
     firstMatch :: NonEmpty (Maybe a) -> Maybe a
     firstMatch (h :| t) = safeHead . catMaybes $ h:t
 
-    safeHead (x:xs) = Just x
-    safeHead []     = Nothing
+    safeHead (x:_) = Just x
+    safeHead []    = Nothing
 
 -- | Try and match a (non-binding) expression against a case branch.
 --
@@ -568,10 +561,10 @@ patternBinding caseScrutinee pattern = case (caseScrutinee,pattern) of
 
   -- Sum patterns begin matching when paired with a sum expression with the same
   -- index.
-  (Sum sumExpr sumIx sumTys, SumPattern ix pattern)
+  (Sum sumExpr sumIx _sumTys, SumPattern ix sumPattern)
     -- This index matches. Attempt to match further.
     | sumIx == ix
-     -> patternBinding sumExpr pattern
+     -> patternBinding sumExpr sumPattern
 
     -- Indexes are different.
     | otherwise
@@ -583,12 +576,12 @@ patternBinding caseScrutinee pattern = case (caseScrutinee,pattern) of
 
   -- Union patterns begin matching when paired with a union expression with the
   -- same type index.
-  (Union unionExpr unionTyIx unionTy, UnionPattern ty pattern)
+  (Union unionExpr unionTyIx _unionTy, UnionPattern t unionPattern)
     -- If the type matches attempt to match further.
     -- TODO: Consider using typeEq to determine matches. Currently types which
     -- would reduce to the same type do not match.
-    | unionTyIx == ty
-      -> patternBinding unionExpr pattern
+    | unionTyIx == t
+      -> patternBinding unionExpr unionPattern
 
     -- Type indexes are different.
     | otherwise
@@ -627,9 +620,9 @@ patternBindings exprs patterns
   | otherwise
    = do toBind <- zipWithM patternBinding exprs patterns
         pure $ foldr (\mBind mAcc
-                        -> do acc  <- mAcc
-                              bind <- mBind
-                              Just (bind <> acc)
+                        -> do a <- mAcc
+                              b <- mBind
+                              Just (b <> a)
                       ) (Just []) toBind
 
 -- | Test whether two expressions are equal under the same bindings.

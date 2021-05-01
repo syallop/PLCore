@@ -37,7 +37,6 @@ import PL.FixPhase
 -- External PL
 import PLHash
 
-import Data.Monoid
 import Data.Text (Text)
 import Data.Char
 import Data.Maybe
@@ -68,18 +67,18 @@ instance Hashable TypeName where
 mkTypeName
   :: Text
   -> Maybe TypeName
-mkTypeName txt = case Text.uncons txt of
+mkTypeName name = case Text.uncons name of
   Nothing
     -> Nothing
-  Just (c,cs)
-    | or [ (c == 'U' && cs == "")
-         , isLower c
-         , Text.any (\c -> not . elem c $ alpha) txt
+  Just (firstChar,remainingName)
+    | or [ (firstChar == 'U' && remainingName == "")
+         , isLower firstChar
+         , Text.any (\c -> not . elem c $ alpha) name
          ]
       -> Nothing
 
     | otherwise
-      -> Just $ TypeName txt
+      -> Just . TypeName $ name
   where
     alpha = ['a'..'z'] <> ['A'..'Z']
 
@@ -99,18 +98,18 @@ instance Hashable TermName where
 mkTermName
   :: Text
   -> Maybe TermName
-mkTermName txt = case Text.uncons txt of
+mkTermName name = case Text.uncons name of
   Nothing
     -> Nothing
-  Just (c,cs)
-    | or [ (c == 'U' && cs == "")
-         , isLower c
-         , Text.any (\c -> not . elem c $ alpha) txt
+  Just (firstChar,remainingName)
+    | or [ (firstChar == 'U' && remainingName == "")
+         , isLower firstChar
+         , Text.any (\c -> not . elem c $ alpha) name
          ]
       -> Nothing
 
     | otherwise
-      -> Just $ TermName txt
+      -> Just . TermName $ name
   where
     alpha = ['a'..'z'] <> ['A'..'Z']
 

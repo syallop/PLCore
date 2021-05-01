@@ -26,7 +26,6 @@ import PLPrinter
 
 -- Other
 import Data.Coerce
-import Data.Monoid
 
 newtype TyVar = TyVar {_unTyVar :: Var}
   deriving (Eq,Ord,Enum,Document)

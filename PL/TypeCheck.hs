@@ -138,7 +138,7 @@ kindCheck
   :: Type
   -> TypeCheckCtx
   -> Either Error Kind
-kindCheck ty ctx = typeKind (_typeBindCtx ctx) (_contentHasKind ctx) (_selfKind ctx) (_typeCtx ctx) ty
+kindCheck t ctx = typeKind (_typeBindCtx ctx) (_contentHasKind ctx) (_selfKind ctx) (_typeCtx ctx) t
 
 -- | Context after a Type with Kind is applied.
 --
@@ -148,9 +148,9 @@ underAppliedType
   :: (Type, Kind)
   -> TypeCheckCtx
   -> TypeCheckCtx
-underAppliedType (ty,hasKind) ctx = ctx
+underAppliedType (t,hasKind) ctx = ctx
   {_typeBindCtx  = addBinding hasKind $ _typeBindCtx ctx
-  ,_typeBindings = bind ty $ _typeBindings ctx
+  ,_typeBindings = bind t $ _typeBindings ctx
   }
 
 -- | Check that two types are equal under a context.
@@ -173,8 +173,8 @@ lookupVarType
 lookupVarType v ctx = case lookupBindingTy v (_exprBindCtx ctx) of
   Nothing
     -> Left $ EBindCtxExprLookupFailure (fromEnum v) (_exprBindCtx ctx)
-  Just ty
-    -> Right ty
+  Just t
+    -> Right t
 
 -- | Lookup the Type associated with a named expression.
 lookupExprContentType
@@ -184,12 +184,12 @@ lookupExprContentType
   => ContentName
   -> TypeCheckCtx
   -> Either (ErrorFor phase) Type
-lookupExprContentType contentName ctx = case Map.lookup contentName . _contentHasType $ ctx of
+lookupExprContentType name ctx = case Map.lookup name . _contentHasType $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
          [ text "Could not find a type association for content named: "
          , lineBreak
-         , indent1 . string . show $ contentName
+         , indent1 . string . show $ name
          , lineBreak
          ]
 
@@ -204,12 +204,12 @@ lookupTypeContentKind
   => ContentName
   -> TypeCheckCtx
   -> Either (ErrorFor phase) Kind
-lookupTypeContentKind contentName ctx = case Map.lookup contentName . _contentHasKind $ ctx of
+lookupTypeContentKind name ctx = case Map.lookup name . _contentHasKind $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
          [ text "Could not find a kind association for content named: "
          , lineBreak
-         , indent1 . string . show $ contentName
+         , indent1 . string . show $ name
          , lineBreak
          ]
 
@@ -224,12 +224,12 @@ lookupTypeContentType
   => ContentName
   -> TypeCheckCtx
   -> Either (ErrorFor phase) Type
-lookupTypeContentType contentName ctx = case Map.lookup contentName . _contentIsType $ ctx of
+lookupTypeContentType name ctx = case Map.lookup name . _contentIsType $ ctx of
   Nothing
     -> Left . EMsg . mconcat $
          [ text "Could not find the type definition for content named:"
          , lineBreak
-         , indent1 . string . show $ contentName
+         , indent1 . string . show $ name
          , lineBreak
          ]
 
@@ -246,5 +246,5 @@ reduceTypeUnderCtx
   :: Type
   -> TypeCheckCtx
   -> Either Error Type
-reduceTypeUnderCtx ty ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (Just 128)) ty
+reduceTypeUnderCtx t ctx = reduceType (TypeReductionCtx (_typeBindings ctx) (_selfType ctx) (_typeCtx ctx) (Just 128)) t
 

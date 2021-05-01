@@ -14,25 +14,16 @@ module PL.Test.Pattern.Binding
 
 import PL.Bindings
 import PL.Binds
-import PL.Case
-import PL.Error
-import PL.Expr
-import PL.Kind
-import PL.Reduce
-import PL.TyVar
 import PL.Type
-import PL.Type.Eq
 import PL.TypeCtx
 import PL.TypeCheck
 import PL.Var
 import PL.Pattern
 
 import Data.Text (Text)
-import Data.Maybe (fromJust)
 
 import PL.Test.PatternTestCase
 
-import PL.Test.Expr.Boolean
 import PL.Test.Source
 
 data TestBindingSources = TestBindingSources

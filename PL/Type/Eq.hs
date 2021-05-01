@@ -2,6 +2,7 @@
     FlexibleContexts
   , OverloadedStrings
   , ScopedTypeVariables
+  , LambdaCase
   , GADTs
   , ConstraintKinds
   #-}
@@ -26,18 +27,13 @@ import PL.Type
 import PL.TypeCtx
 import PL.FixPhase
 
-import Control.Applicative
 import Control.Monad
 import Data.Map (Map)
-import Data.Maybe
-import Data.Monoid
 import Data.Proxy
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-
-import Debug.Trace
 
 -- TODO: Consider adding/ sharing a Ctx type to thread through these functions.
 
@@ -132,8 +128,8 @@ typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductio
                   Nothing
                     -> Left $ EMsg $ text "Failed to lookup named type"
 
-                  Just type0
-                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
+                  Just name0
+                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) name0 type1
 
        -- ContentBindings are equal if they have the same hash.
        -- TODO: Should we require the name exists in the context as well?
@@ -142,9 +138,9 @@ typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductio
          | otherwise -> Right False
 
        -- Compare a content-binding to a non-content binding.
-       (type0, TypeContentBindingExt _ _)
+       (_type0, TypeContentBindingExt _ _)
          -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
-       (TypeContentBindingExt _ c0, type1)
+       (TypeContentBindingExt _ c0, _type1)
          -> case Map.lookup c0 contentIsType of
               Nothing
                 -> Left . EMsg . mconcat $
@@ -168,34 +164,34 @@ typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductio
                     -> Right True
 
                   -- An unbound unifies with a bound
-                  (Unbound, Bound ty1)
+                  (Unbound, Bound _ty1)
                     -> Right True
 
-                  (Bound ty1, Unbound)
+                  (Bound _ty1, Unbound)
                     -> Right True
 
                   -- Two bound types are equal if the bound types are equal
-                  (Bound type0, Bound type1)
-                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
+                  (Bound bound0, Bound bound1)
+                    -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) bound0 bound1
 
        -- To compare a binding to a non-binding
-       (type0, TypeBindingExt _ _)
+       (_type0, TypeBindingExt _ _)
          -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
-       (TypeBindingExt _ b0, type1)
+       (TypeBindingExt _ b0, _type1)
          -> let binding0 = index (Proxy :: Proxy TyVar) typeBindings (bindDepth b0)
                in case binding0 of
                     Unbound
                       -> Right True
 
-                    Bound type0
-                      -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 type1
+                    Bound bound0
+                      -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) bound0 type1
 
        -- TODO: HMM
        (TypeSelfBindingExt _, TypeSelfBindingExt _)
          -> Right True
-       (type0, TypeSelfBindingExt _)
+       (_type0, TypeSelfBindingExt _)
          -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
-       (TypeSelfBindingExt _, type1)
+       (TypeSelfBindingExt _, _type1)
          -> case mSelfType of
               Nothing
                 -> Left . EMsg . mconcat $
@@ -268,14 +264,14 @@ typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductio
        (TypeMuExt _ ky0 itself0, TypeMuExt _ ky1 itself1)
          -> (&&) <$> pure (ky0 == ky1)
                  <*> typeEqWith typeBindCtx typeBindings (Just type0) typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) itself0 itself1
-       (type0, TypeMuExt _ _  _)
+       (_type0, TypeMuExt _ _  _)
          -> typeEqWith typeBindCtx typeBindings mSelfType typeNameCtx contentIsType reductionLimit type1 type0
 
        -- To check a Mu against a Non-Mu, attempt to Fold the non-Mu and
        -- recurse. If it checks, it can be lifted.
-       (TypeMuExt noExt expectKy itselfType, type1)
+       (TypeMuExt muExt expectKy _itselfType, _type1)
          -- --> Left . EMsg . text $ "Equality of Mu types to non-mu types is not implemented"
-         -> let foldedType = TypeMuExt noExt expectKy type1
+         -> let foldedType = TypeMuExt muExt expectKy type1
              in typeEqWith typeBindCtx typeBindings (Just type0) typeNameCtx contentIsType (fmap (subtract 1) reductionLimit) type0 foldedType
 
        -- A non-Named, non identical type
@@ -368,15 +364,15 @@ typeKind
   -> TypeCtxFor phase
   -> TypeFor phase
   -> Either (ErrorFor phase) Kind
-typeKind typeBindCtx contentKinds mSelfKind typeCtx ty = case ty of
+typeKind typeBindCtx contentKinds mSelfKind typeCtx = \case
 
   NamedExt _ n
     -> case lookupTypeNameInitialType n typeCtx of
          Nothing
            -> Left $ EMsg $ text "No such type name in kind check"
 
-         Just ty
-           -> typeKind typeBindCtx contentKinds mSelfKind typeCtx ty
+         Just t
+           -> typeKind typeBindCtx contentKinds mSelfKind typeCtx t
 
   --
   --   from :: fromKy     to :: toKy
@@ -442,13 +438,13 @@ typeKind typeBindCtx contentKinds mSelfKind typeCtx ty = case ty of
 
   --
   --
-  TypeContentBindingExt _ contentName
-    -> case Map.lookup contentName contentKinds of
+  TypeContentBindingExt _ name
+    -> case Map.lookup name contentKinds of
          Nothing
            -> Left . EMsg . mconcat $
                 [ text "Could not find a kind association for content named: "
                 , lineBreak
-                , indent1 . string . show $ contentName
+                , indent1 . string . show $ name
                 , lineBreak
                 ]
 
@@ -457,11 +453,11 @@ typeKind typeBindCtx contentKinds mSelfKind typeCtx ty = case ty of
 
   --
   --
-  TypeLamExt _ absKy ty
+  TypeLamExt _ absK t
     -> do -- type must kind-check under the introduction of a new abstraction to the typeBindCtx
-          let newTypeBindCtx = addBinding absKy typeBindCtx
-          tyKy <- typeKind newTypeBindCtx contentKinds mSelfKind typeCtx ty
-          Right $ KindArrow absKy tyKy
+          let newTypeBindCtx = addBinding absK typeBindCtx
+          tyK <- typeKind newTypeBindCtx contentKinds mSelfKind typeCtx t
+          Right $ KindArrow absK tyK
 
   --
   --

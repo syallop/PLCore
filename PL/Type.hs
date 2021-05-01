@@ -90,6 +90,8 @@ module PL.Type
   )
   where
 
+import Prelude hiding (abs)
+
 -- PL
 import PL.Binds.Ix
 import PL.Error
@@ -100,20 +102,13 @@ import PL.Name
 import PL.TyVar
 
 -- External PL
-import PLGrammar
 import PLHash
-import PLPrinter hiding (parens,between)
-import PLPrinter.Doc
 
 -- Other
-import Data.List
 import Data.List.NonEmpty (NonEmpty)
-import Data.Monoid
 import Data.Proxy
 import Data.Set (Set)
 import qualified Data.Set as Set
-import qualified Data.Set as Set
-import qualified Data.Text as Text
 
 type Type = TypeFor DefaultPhase
 
@@ -185,8 +180,8 @@ data TypeF phase typ
   --
   -- `SumT [Bool,Int,Char]`
   | SumTF
-    { _sumExtension :: SumTExtension phase
-    , _sumTypes     :: NonEmpty typ
+    { _sumTExtension :: SumTExtension phase
+    , _sumTypes      :: NonEmpty typ
     }
 
   -- | ProductT is the type of expressions which are an ordered product of each
@@ -200,8 +195,8 @@ data TypeF phase typ
   --
   -- `ProductT [Bool,Int,Char]`
   | ProductTF
-    { _productExtension :: ProductTExtension phase
-    , _productTypes     :: [typ]
+    { _productTExtension :: ProductTExtension phase
+    , _productTypes      :: [typ]
     }
 
   -- | UnionT is the type of expressions which are part of a set types.
@@ -214,8 +209,8 @@ data TypeF phase typ
   --
   -- `UnionT $ set.FromList [Int,Char,Bool]`
   | UnionTF
-    { _unionExtension :: UnionTExtension phase
-    , _unionTypes     :: Set.Set typ
+    { _unionTExtension :: UnionTExtension phase
+    , _unionTypes      :: Set.Set typ
     }
 
   -- | BigArrow is the type of expressions which abstract a _Type_ into an
@@ -258,8 +253,8 @@ data TypeF phase typ
   -- (\t::Kind -> t) Bool
   | TypeAppF
     { _typeAppExtension :: TypeAppExtension phase
-    , _f                :: typ
-    , _x                :: typ
+    , _typeF            :: typ
+    , _typeX            :: typ
     }
 
   -- | Type bindings.
@@ -272,8 +267,8 @@ data TypeF phase typ
   --
   -- where 0 counts the number of `TypeLam`s away a type was abstracted.
   | TypeBindingF
-    { _bindingExtension :: TypeBindingExtension phase
-    , _binding          :: TypeBindingFor phase
+    { _typeBindingExtension :: TypeBindingExtension phase
+    , _typeBinding          :: TypeBindingFor phase
     }
 
   -- | Bind a type uniquely named by its content.
@@ -283,8 +278,8 @@ data TypeF phase typ
   -- These hashes are currently non-cyclic and there is no way for a type to
   -- refer to itself meaning this does not introduce recursion.
   | TypeContentBindingF
-    { _nameBindingExtension :: TypeContentBindingExtension phase
-    , _name                 :: TypeContentBindingFor phase
+    { _typeContentBindingExtension :: TypeContentBindingExtension phase
+    , _typeContentBindingName      :: TypeContentBindingFor phase
     }
 
 
@@ -345,30 +340,30 @@ instance
   ,Show typ
   )
   => Show (TypeF phase typ) where
-    show t = mconcat $ case t of
+    show = mconcat . \case
       NamedF ext t
         -> ["{Named ", show ext, " ", show t, "}"]
 
       ArrowF ext from to
         -> ["{Arrow ", show ext, " ", show from, " ", show to, "}"]
 
-      SumTF ext tys
-        -> ["{SumT ", show ext, " ", show tys, "}"]
+      SumTF ext ts
+        -> ["{SumT ", show ext, " ", show ts, "}"]
 
-      ProductTF ext tys
-        -> ["{ProductT ", show ext, " ", show tys, "}"]
+      ProductTF ext ts
+        -> ["{ProductT ", show ext, " ", show ts, "}"]
 
-      UnionTF ext tys
-        -> ["{UnionT ", show ext, " ", show tys, "}"]
+      UnionTF ext ts
+        -> ["{UnionT ", show ext, " ", show ts, "}"]
 
-      BigArrowF ext absKind ty
-        -> ["{ArrowT ", show ext, " ", show absKind, " ", show ty, "}"]
+      BigArrowF ext absKind t
+        -> ["{ArrowT ", show ext, " ", show absKind, " ", show t, "}"]
 
-      TypeLamF ext absKind ty
-        -> ["{TypeLam ", show ext, " ", show absKind, " ", show ty, "}"]
+      TypeLamF ext absKind t
+        -> ["{TypeLam ", show ext, " ", show absKind, " ", show t, "}"]
 
-      TypeAppF ext fTy xTy
-        -> ["{TypeApp ", show ext, " ", show fTy, " ", show xTy, "}"]
+      TypeAppF ext fT xT
+        -> ["{TypeApp ", show ext, " ", show fT, " ", show xT, "}"]
 
       TypeBindingF ext b
         -> ["{TypeBinding ", show ext, " ", show b, "}"]
@@ -421,14 +416,14 @@ instance
     UnionTF ext tys
       -> HashTag "Type.Union" [toHashToken ext, toHashToken tys]
 
-    BigArrowF ext absKind ty
-      -> HashTag "Type.Arrow" [toHashToken ext, toHashToken absKind, toHashToken ty]
+    BigArrowF ext absKind t
+      -> HashTag "Type.Arrow" [toHashToken ext, toHashToken absKind, toHashToken t]
 
-    TypeLamF ext absKind ty
-      -> HashTag "Type.TypeLam" [toHashToken ext, toHashToken absKind, toHashToken ty]
+    TypeLamF ext absKind t
+      -> HashTag "Type.TypeLam" [toHashToken ext, toHashToken absKind, toHashToken t]
 
-    TypeAppF ext fTy xTy
-      -> HashTag "Type.TypeApp" [toHashToken ext, toHashToken fTy, toHashToken xTy]
+    TypeAppF ext fT xT
+      -> HashTag "Type.TypeApp" [toHashToken ext, toHashToken fT, toHashToken xT]
 
     TypeBindingF ext b
       -> HashTag "Type.Binding" [toHashToken ext, toHashToken b]
@@ -539,39 +534,39 @@ pattern UnionTExt ext types <- FixPhase (UnionTF ext types)
 
 -- BigArrow for phases where there is no extension to the constructor.
 pattern BigArrow :: BigArrowExtension phase ~ NoExt => Kind -> TypeFor phase -> TypeFor phase
-pattern BigArrow kind ty <- FixPhase (BigArrowF _ kind ty)
-  where BigArrow kind ty =  FixPhase (BigArrowF noExt kind ty)
+pattern BigArrow kind t <- FixPhase (BigArrowF _ kind t)
+  where BigArrow kind t =  FixPhase (BigArrowF noExt kind t)
 
 pattern BigArrowExt :: BigArrowExtension phase -> Kind -> TypeFor phase -> TypeFor phase
-pattern BigArrowExt ext kind ty <- FixPhase (BigArrowF ext kind ty)
-  where BigArrowExt ext kind ty =  FixPhase (BigArrowF ext kind ty)
+pattern BigArrowExt ext kind t <- FixPhase (BigArrowF ext kind t)
+  where BigArrowExt ext kind t =  FixPhase (BigArrowF ext kind t)
 
 -- TypeLam for phases where there is no extension to the constructor.
 pattern TypeLam :: TypeLamExtension phase ~ NoExt => Kind -> TypeFor phase -> TypeFor phase
-pattern TypeLam absTy ty <- FixPhase (TypeLamF _ absTy ty)
-  where TypeLam absTy ty =  FixPhase (TypeLamF noExt absTy ty)
+pattern TypeLam absT t <- FixPhase (TypeLamF _ absT t)
+  where TypeLam absT t =  FixPhase (TypeLamF noExt absT t)
 
 pattern TypeLamExt :: TypeLamExtension phase -> Kind -> TypeFor phase -> TypeFor phase
-pattern TypeLamExt ext absTy ty <- FixPhase (TypeLamF ext absTy ty)
-  where TypeLamExt ext absTy ty =  FixPhase (TypeLamF ext absTy ty)
+pattern TypeLamExt ext absT t <- FixPhase (TypeLamF ext absT t)
+  where TypeLamExt ext absT t =  FixPhase (TypeLamF ext absT t)
 
 -- TypeApp for phases where there is no extension to the constructor.
 pattern TypeApp :: TypeAppExtension phase ~ NoExt => TypeFor phase -> TypeFor phase -> TypeFor phase
-pattern TypeApp fTy xTy <- FixPhase (TypeAppF _ fTy xTy)
-  where TypeApp fTy xTy =  FixPhase (TypeAppF noExt fTy xTy)
+pattern TypeApp fT xT <- FixPhase (TypeAppF _ fT xT)
+  where TypeApp fT xT =  FixPhase (TypeAppF noExt fT xT)
 
 pattern TypeAppExt :: TypeAppExtension phase -> TypeFor phase -> TypeFor phase -> TypeFor phase
-pattern TypeAppExt ext fTy xTy <- FixPhase (TypeAppF ext fTy xTy)
-  where TypeAppExt ext fTy xTy =  FixPhase (TypeAppF ext fTy xTy)
+pattern TypeAppExt ext fT xT <- FixPhase (TypeAppF ext fT xT)
+  where TypeAppExt ext fT xT =  FixPhase (TypeAppF ext fT xT)
 
 -- TypeBinding for phases where there is no extension to the constructor.
 pattern TypeBinding :: TypeBindingExtension phase ~ NoExt => TypeBindingFor phase -> TypeFor phase
-pattern TypeBinding tyVar <- FixPhase (TypeBindingF _ tyVar)
-  where TypeBinding tyVar =  FixPhase (TypeBindingF noExt tyVar)
+pattern TypeBinding tVar <- FixPhase (TypeBindingF _ tVar)
+  where TypeBinding tVar =  FixPhase (TypeBindingF noExt tVar)
 
 pattern TypeBindingExt :: TypeBindingExtension phase -> TypeBindingFor phase -> TypeFor phase
-pattern TypeBindingExt ext tyVar <- FixPhase (TypeBindingF ext tyVar)
-  where TypeBindingExt ext tyVar =  FixPhase (TypeBindingF ext tyVar)
+pattern TypeBindingExt ext tVar <- FixPhase (TypeBindingF ext tVar)
+  where TypeBindingExt ext tVar =  FixPhase (TypeBindingF ext tVar)
 
 -- TypeContentBinding for phases where there is no extension to the constructor.
 pattern TypeContentBinding :: TypeContentBindingExtension phase ~ NoExt => TypeContentBindingFor phase -> TypeFor phase
@@ -635,7 +630,7 @@ arrowise (t:t':ts) = t --> arrowise (t':ts)
 -- a -> b -> c ~> [a,b,c]
 -- etc
 unarrowise :: Type -> [Type]
-unarrowise t = case t of
+unarrowise = \case
   Arrow a b
     -> a : unarrowise b
   t -> [t]
@@ -643,24 +638,34 @@ unarrowise t = case t of
 -- TODO: Can likely use recursion schemes.
 
 instance HasAbs Type where
-  applyToAbs f ty = case ty of
-    TypeLam ky ty -> TypeLam ky (f ty)
---  Nope(?)
---  BigArrow ky ty -> BigArrow ky (f ty)
-    TypeMu ky itself -> TypeMu ky (f itself)
-    ty            -> ty
+  applyToAbs f = \case
+    TypeLam k t
+      -> TypeLam k (f t)
+
+    TypeMu k itself
+      -> TypeMu k (f itself)
+
+    -- TODO:
+    --  Nope(?)
+    --  BigArrow ky ty -> BigArrow ky (f ty)
+
+    t
+      -> t
 
 instance HasBinding Type TyVar where
-  applyToBinding f ty = case ty of
-    TypeBinding tb -> TypeBinding (f tb)
-    ty             -> ty
+  applyToBinding f = \case
+    TypeBinding tb
+      -> TypeBinding (f tb)
+
+    t
+      -> t
 
 instance HasBinding Type ContentName where
   applyToBinding f (TypeContentBindingExt typ c) = TypeContentBindingExt typ (f c)
   applyToBinding _ e           = e
 
 instance HasNonAbs Type where
-  applyToNonAbs f ty = case ty of
+  applyToNonAbs f = \case
     Arrow from to
       -> Arrow (f from) (f to)
 
@@ -679,7 +684,7 @@ instance HasNonAbs Type where
     TypeApp x y
       -> TypeApp (f x) (f y)
 
-    ty -> ty
+    t -> t
 
 -- instantiate a type within some other.
 instantiate
@@ -793,7 +798,7 @@ gatherTypeContentNames = gatherTypeContentNames' Set.empty
       TypeContentBindingExt _ext c
         -> Set.insert c accNames
 
-      NamedExt _ext n
+      NamedExt _ext _n
         -> accNames
 
       ArrowExt _ext from to
@@ -817,7 +822,7 @@ gatherTypeContentNames = gatherTypeContentNames' Set.empty
       TypeAppExt _ext fType xType
         -> gatherTypeContentNames' (gatherTypeContentNames' accNames fType) xType
 
-      TypeBindingExt _ext binding
+      TypeBindingExt _ext _binding
         -> accNames
 
       TypeSelfBindingExt _ext

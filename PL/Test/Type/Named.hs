@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeOperators #-}
 {-|
 Module      : PL.Test.Type.Named
 Copyright   : (c) Samuel A. Yallop, 2020

@@ -1,10 +1,11 @@
 {-# LANGUAGE
     OverloadedStrings
-  , ScopedTypeVariables
-  , FlexibleContexts
-  , LambdaCase
-  , GADTs
   , ConstraintKinds
+  , FlexibleContexts
+  , GADTs
+  , LambdaCase
+  , ScopedTypeVariables
+  , TypeOperators
   #-}
 {-|
 Module      : PL.ReduceType

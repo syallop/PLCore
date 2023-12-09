@@ -99,6 +99,3 @@ parseToPatternSpec parsePattern name inputSource expectedPattern ppPattern pp = 
                      , indent1 . ppPattern $ expectedWithoutComments
                      ]
 
-    | otherwise
-     -> pure ()
-

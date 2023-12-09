@@ -100,6 +100,3 @@ parseToSpec parseExpression name inputSource expectedExpr ppExpr pp = it (Text.u
                      , indent1 . ppExpr $ expectedWithoutComments
                      ]
 
-    | otherwise
-     -> pure ()
-

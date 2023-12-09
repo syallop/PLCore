@@ -1,10 +1,11 @@
 {-# LANGUAGE
     FlexibleContexts
+  , ConstraintKinds
+  , GADTs
+  , LambdaCase
   , OverloadedStrings
   , ScopedTypeVariables
-  , LambdaCase
-  , GADTs
-  , ConstraintKinds
+  , TypeOperators
   #-}
 module PL.Type.Eq
   ( typeEq

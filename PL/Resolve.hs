@@ -1,10 +1,11 @@
 {-# LANGUAGE
     GADTs
   , ConstraintKinds
-  , LambdaCase
-  , RankNTypes
   , FlexibleContexts
+  , LambdaCase
   , OverloadedStrings
+  , RankNTypes
+  , TypeOperators
   #-}
 {-|
 Module      : PL.Resolve

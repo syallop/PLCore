@@ -106,7 +106,7 @@ sumThreeExprTestCase src =
           )
 
         , ("+2 0"
-          ,[(`App` (Sum zero 2 $ NE.fromList $[natTypeName,boolTypeName,natTypeName]))]
+          ,[(`App` (Sum zero 2 $ NE.fromList $ [natTypeName,boolTypeName,natTypeName]))]
           ,Just one
           )
         ]

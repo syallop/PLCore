@@ -119,7 +119,7 @@ data Comment = Comment
 
 instance IsString Comment where
   fromString str
-    | elem '"' str = error $ "Cannot construct Comment from string as it contains a double quote character: " <> str
+    | Prelude.elem '"' str = error $ "Cannot construct Comment from string as it contains a double quote character: " <> str
     | otherwise    = Comment . Text.pack $ str
 
 -- | A thing is commented when it is associated with a comment.

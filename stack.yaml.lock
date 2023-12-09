@@ -5,150 +5,150 @@
 
 packages:
 - completed:
+    commit: 120db653534f7b28c6cfa5afd18a1bf0d4ff4ca3
+    git: https://github.com/syallop/PLParser
     name: PLParser
-    version: 0.1.0.0
-    git: https://github.com/syallop/PLParser
     pantry-tree:
-      size: 634
-      sha256: 1d34dd5cabee1ae739077dad24454831a3b95fe25daf25de42d366c397b4852c
-    commit: 7adea4ba5ec67f7fee80f9903595e1ab825e313b
-  original:
-    git: https://github.com/syallop/PLParser
-    commit: 7adea4ba5ec67f7fee80f9903595e1ab825e313b
-- completed:
-    name: PLGrammar
-    version: 0.4.0.0
-    git: https://github.com/syallop/PLGrammar
-    pantry-tree:
-      size: 344
-      sha256: 262a5bf04a0e3e377696e4dc936a36fd7f7b3f583ecbd47ecdd3c6a18169f913
-    commit: 4a56e0cb09cd2bc5044625bfee2f7ff5393f749b
-  original:
-    git: https://github.com/syallop/PLGrammar
-    commit: 4a56e0cb09cd2bc5044625bfee2f7ff5393f749b
-- completed:
-    name: PLPrinter
-    version: 0.3.0.0
-    git: https://github.com/syallop/PLPrinter
-    pantry-tree:
-      size: 420
-      sha256: 04580b924299a5df533a38161311e5d78b40cbff825d9702313a71ac9aad3887
-    commit: 65f4d3805c06fbbe0e4313f17a2129e5fe2187f9
-  original:
-    git: https://github.com/syallop/PLPrinter
-    commit: 65f4d3805c06fbbe0e4313f17a2129e5fe2187f9
-- completed:
-    name: PLLabel
-    version: 0.1.0.0
-    git: https://github.com/syallop/PLLabel
-    pantry-tree:
-      size: 252
-      sha256: 2599d0272d86ef4b50affcbd9fc4dd0c707c7b74d0befcc6e1af61ce35cb67a3
-    commit: 9433cf7963e43b4df06f57939218956c3d2dacc4
-  original:
-    git: https://github.com/syallop/PLLabel
-    commit: 9433cf7963e43b4df06f57939218956c3d2dacc4
-- completed:
-    name: PLHash
+      sha256: dda639cf2f9ecac23d869c1ddcaff168ffd0a5c43c8847390fa6957d722bc8fb
+      size: 1968
     version: 0.2.0.0
-    git: https://github.com/syallop/PLHash
-    pantry-tree:
-      size: 306
-      sha256: 5192278fb1c8a4dc1796ed39aa588dcc83968602201fca8fd6be36ab23864815
-    commit: 8b2c8d586f55813851740dc64e24677db42eef77
   original:
-    git: https://github.com/syallop/PLHash
-    commit: 8b2c8d586f55813851740dc64e24677db42eef77
+    commit: 120db653534f7b28c6cfa5afd18a1bf0d4ff4ca3
+    git: https://github.com/syallop/PLParser
 - completed:
-    subdir: Store
+    commit: d761d31bd2e332bae639ba2c2c73f873524c0e3e
+    git: https://github.com/syallop/PLGrammar
+    name: PLGrammar
+    pantry-tree:
+      sha256: 3890626c6dfbc48352332f1c43ca5da05aa67f773759ea04e3e67ad27dcee98a
+      size: 521
+    version: 0.4.0.0
+  original:
+    commit: d761d31bd2e332bae639ba2c2c73f873524c0e3e
+    git: https://github.com/syallop/PLGrammar
+- completed:
+    commit: 74fd1a684542f9f876753e2d7b3b0d5609bf385e
+    git: https://github.com/syallop/PLPrinter
+    name: PLPrinter
+    pantry-tree:
+      sha256: a0cf031336490091fbaace9e3b555158818f0f6429c1a9ca339ed34e482c14d9
+      size: 474
+    version: 0.3.0.0
+  original:
+    commit: 74fd1a684542f9f876753e2d7b3b0d5609bf385e
+    git: https://github.com/syallop/PLPrinter
+- completed:
+    commit: d0f17cf627c28e005d02e13a69a74ccd615cc9d1
+    git: https://github.com/syallop/PLLabel
+    name: PLLabel
+    pantry-tree:
+      sha256: 02dd55ecf2ab2b8a16565391191c680c7f6b7cf52eb72225bd026f28b1ee332d
+      size: 307
+    version: 0.1.0.0
+  original:
+    commit: d0f17cf627c28e005d02e13a69a74ccd615cc9d1
+    git: https://github.com/syallop/PLLabel
+- completed:
+    commit: 07ba8651a6839bd44e2e38d4d1c837d3fc22af4b
+    git: https://github.com/syallop/PLHash
+    name: PLHash
+    pantry-tree:
+      sha256: c665a4d35d5c5223eec33f858bf56df52667e132e931c7ee151a8cc3caa6b72e
+      size: 362
+    version: 0.2.0.0
+  original:
+    commit: 07ba8651a6839bd44e2e38d4d1c837d3fc22af4b
+    git: https://github.com/syallop/PLHash
+- completed:
+    commit: 94a978c839e6528767ca73365ef43dd7d331d8b3
+    git: https://github.com/syallop/PLStore
     name: PLStore
-    version: 0.1.0.0
-    git: https://github.com/syallop/PLStore
     pantry-tree:
+      sha256: 6d8c14440127a26855af0c20740dec0d8afc8054da11ef5f94a3c263b2b20d11
       size: 211
-      sha256: f662fc6cabc3b5bceb8a5d25ccf3b3672a47c3f352770dc688473923f36c560b
-    commit: 3406f7f2e6eb15c83eebb689a08b871f21c2c0d3
-  original:
     subdir: Store
+    version: 0.1.0.0
+  original:
+    commit: 94a978c839e6528767ca73365ef43dd7d331d8b3
     git: https://github.com/syallop/PLStore
-    commit: 3406f7f2e6eb15c83eebb689a08b871f21c2c0d3
+    subdir: Store
 - completed:
-    subdir: Hash
+    commit: 94a978c839e6528767ca73365ef43dd7d331d8b3
+    git: https://github.com/syallop/PLStore
     name: PLStore-Hash
-    version: 0.1.0.0
-    git: https://github.com/syallop/PLStore
     pantry-tree:
+      sha256: b0793793360370a0b32f169577a62d99730c07052e4b40f217db88e388959e29
       size: 119
-      sha256: a3ed9c9903b86c7f2d1c176ef92681ce9e09d6ce65c01e34efac8ca5ad1b9b1f
-    commit: 3406f7f2e6eb15c83eebb689a08b871f21c2c0d3
-  original:
     subdir: Hash
-    git: https://github.com/syallop/PLStore
-    commit: 3406f7f2e6eb15c83eebb689a08b871f21c2c0d3
-- completed:
-    name: Reversible
     version: 0.1.0.0
-    git: https://github.com/syallop/Reversible
-    pantry-tree:
-      size: 361
-      sha256: 38b1feb14760d70bba4ca0b9b1c091292ce240720dbc4a19c0a52c7d24ea766e
-    commit: 5185a10559f0567ba927ea67a0b90f446d87dbe3
   original:
-    git: https://github.com/syallop/Reversible
-    commit: 5185a10559f0567ba927ea67a0b90f446d87dbe3
+    commit: 94a978c839e6528767ca73365ef43dd7d331d8b3
+    git: https://github.com/syallop/PLStore
+    subdir: Hash
 - completed:
+    commit: 9ccb55ba11d7b82a53ed470040b50cac0ea12664
+    git: https://github.com/syallop/Reversible
+    name: Reversible
+    pantry-tree:
+      sha256: 247a4e2e60d10f29ef8474f87cb3e288c787e6ce3689abde7e69dc73a1c531da
+      size: 416
+    version: 0.1.0.0
+  original:
+    commit: 9ccb55ba11d7b82a53ed470040b50cac0ea12664
+    git: https://github.com/syallop/Reversible
+- completed:
+    commit: 74d87b23e7ac8063f25194b607049bd4c7c54f47
+    git: https://github.com/syallop/DSL-Compose.git
     name: DSL-Compose
+    pantry-tree:
+      sha256: 32e09a0c9565cb3743708ec432887f37123ff2d3f77fa21d7008c98589623a7d
+      size: 939
     version: 0.5.0.0
-    git: https://github.com/syallop/DSL-Compose.git
-    pantry-tree:
-      size: 884
-      sha256: 14fa38b8526550df16431834dcf4cce5f61ca37326c7e4d201ad6a73e32b2f43
-    commit: 5a95ae855f3291aa3193a7424892035226b10d2f
   original:
+    commit: 74d87b23e7ac8063f25194b607049bd4c7c54f47
     git: https://github.com/syallop/DSL-Compose.git
-    commit: 5a95ae855f3291aa3193a7424892035226b10d2f
 - completed:
+    commit: bcd94f5cc0c4e919cbda3bb43dde482cac56dd51
+    git: https://github.com/rootmos/haskeline.git
     name: haskeline
-    version: 0.7.4.0
-    git: https://github.com/rootmos/haskeline.git
     pantry-tree:
-      size: 3809
       sha256: 09c650388b4b4bfdf973e442ef86aacd40de12347870c6ae7a37353250982ae4
-    commit: bcd94f5cc0c4e919cbda3bb43dde482cac56dd51
+      size: 3809
+    version: 0.7.4.0
   original:
-    git: https://github.com/rootmos/haskeline.git
     commit: bcd94f5cc0c4e919cbda3bb43dde482cac56dd51
+    git: https://github.com/rootmos/haskeline.git
 - completed:
     hackage: pretty-tree-0.1.0.0@sha256:49b0e17008f9d30328db2bcc2958f3a7b78d154d2335c2dbaa2073e237b524ae,668
     pantry-tree:
-      size: 214
       sha256: 810d2e5cafbecd6d0d0af42b2522d9e55be0241a03a688cdde2cca10490e1b0a
+      size: 214
   original:
     hackage: pretty-tree-0.1.0.0@sha256:49b0e17008f9d30328db2bcc2958f3a7b78d154d2335c2dbaa2073e237b524ae
 - completed:
     hackage: base58-bytestring-0.1.0@sha256:a1da72ee89d5450bac1c792d9fcbe95ed7154ab7246f2172b57bd4fd9b5eab79,1913
     pantry-tree:
-      size: 419
       sha256: 053784f8edef6433518c873a7c502dc75348f812e2384e1306f90467ea54f40b
+      size: 419
   original:
     hackage: base58-bytestring-0.1.0@sha256:a1da72ee89d5450bac1c792d9fcbe95ed7154ab7246f2172b57bd4fd9b5eab79,1913
 - completed:
     hackage: hashing-0.1.0.1@sha256:98861f16791946cdf28e3c7a6ee9ac8b72d546d6e33c569c7087ef18253294e7,2816
     pantry-tree:
-      size: 704
       sha256: a204259113ac5761ded1dac7e37a9d54245f84c8adaeec452346fe3256337d83
+      size: 704
   original:
     hackage: hashing-0.1.0.1@sha256:98861f16791946cdf28e3c7a6ee9ac8b72d546d6e33c569c7087ef18253294e7,2816
 - completed:
     hackage: filepath-bytestring-1.4.2.1.6@sha256:77e1c914b11da3c8b8df61e43a457339dd86dbc4c0ec86973ba178057bfe4fa2,2493
     pantry-tree:
-      size: 821
       sha256: 9e209bea77e690aee4e317c8708f1ccb16dae39bcbbd3927d858d4b6238b5bc0
+      size: 821
   original:
     hackage: filepath-bytestring-1.4.2.1.6@sha256:77e1c914b11da3c8b8df61e43a457339dd86dbc4c0ec86973ba178057bfe4fa2,2493
 snapshots:
 - completed:
-    size: 565720
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/8.yaml
-    sha256: 76bf8992ff8dfe6eda9c02f81866138c2369344d5011ab39ae403457c4448b03
-  original: lts-17.8
+    sha256: abcc4a65c15c7c2313f1a87f01bfd4d910516e1930b99653eef1d2d006515916
+    size: 640074
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/24.yaml
+  original: lts-21.24

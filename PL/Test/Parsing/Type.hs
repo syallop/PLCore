@@ -99,6 +99,3 @@ parseToTypeSpec parseType name inputSource expectedType ppType pp = it (Text.unp
                      , indent1 . ppType $ expectedWithoutComments
                      ]
 
-    | otherwise
-     -> pure ()
-
